@@ -1,0 +1,149 @@
+---
+title: "deepL_api_python"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+今回のPDF翻訳API構築に関する内容を、Markdown形式で以下にまとめました。
+
+------------------------------------------------------------------------
+
+# PythonでDeepL翻訳APIを構築する
+
+本ドキュメントは、PythonでDeepLのAPIを利用し、アップロードされたPDFを翻訳するAPIの構築手順をまとめたものです。
+
+------------------------------------------------------------------------
+
+### システム構成
+
+-   **Webフレームワーク**: **FastAPI**
+    -   軽量・高速で、非同期処理に優れているため、ファイル処理や外部API連携に適しています。
+-   **コンテナ化**: **Docker**
+    -   開発環境と本番環境の差異をなくし、デプロイを容易にします。
+-   **デプロイ先**: **Google Cloud Run**
+    -   サーバーレスでコンテナを実行できるため、運用の手間が少なく、コスト効率に優れています。
+-   **ファイル保存**: **Firebase Storage**
+    -   翻訳後のPDFファイルを保存し、ダウンロード可能なURLを生成します。
+
+------------------------------------------------------------------------
+
+### 1. プロジェクトのファイル構成
+
+```         
+.
+├── app/
+│   ├── main.py
+│   └── __init__.py
+├── Dockerfile
+├── requirements.txt
+├── .env.example
+└── serviceAccountKey.json
+```
+
+------------------------------------------------------------------------
+
+### 2. コードと設定ファイル
+
+#### `requirements.txt`
+
+プロジェクトに必要なPythonライブラリを記述します。
+
+```         
+fastapi
+uvicorn
+python-multipart
+deepl
+google-cloud-storage
+python-dotenv
+```
+
+#### `Dockerfile`
+
+Dockerコンテナをビルドするための設定ファイルです。Python環境の構築、ライブラリのインストール、アプリケーションの実行コマンドなどを定義します。
+
+``` dockerfile
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY ./app /app/app
+ENV DEEPL_AUTH_KEY=your_deepl_auth_key
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/serviceAccountKey.json
+ENV FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+```
+
+#### `app/main.py`
+
+APIの主要なロジックを実装します。PDFファイルのアップロードを受け付け、DeepL APIを呼び出して翻訳し、結果をFirebase Storageに保存してURLを返します。
+
+``` python
+import os
+import io
+import uuid
+import deepl
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from google.cloud import storage
+
+if os.path.exists(".env"):
+    from dotenv import load_dotenv
+    load_dotenv()
+
+deepl_auth_key = os.getenv("DEEPL_AUTH_KEY")
+if not deepl_auth_key:
+    raise ValueError("DEEPL_AUTH_KEY is not set.")
+
+translator = deepl.Translator(deepl_auth_key)
+storage_client = storage.Client()
+bucket_name = os.getenv("FIREBASE_STORAGE_BUCKET")
+if not bucket_name:
+    raise ValueError("FIREBASE_STORAGE_BUCKET is not set.")
+
+app = FastAPI()
+
+@app.post("/translate/pdf/")
+async def translate_pdf(
+    file: UploadFile = File(...),
+    target_lang: str = "en"
+):
+    if file.content_type != "application/pdf":
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Please upload a PDF file."
+        )
+
+    try:
+        pdf_content = await file.read()
+        pdf_file = io.BytesIO(pdf_content)
+
+        translated_pdf_bytes = translator.translate_document(
+            pdf_file,
+            target_lang=target_lang,
+            source_lang="es"
+        )
+        unique_filename = f"{uuid.uuid4()}-{file.filename}"
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(unique_filename)
+        
+        uploaded_file = io.BytesIO(translated_pdf_bytes.content)
+        blob.upload_from_file(uploaded_file, content_type="application/pdf")
+
+        blob.make_public()
+        download_url = blob.public_url
+
+        return {"message": "PDF translated and uploaded successfully.", "download_url": download_url}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+```
+
+------------------------------------------------------------------------
+
+### 3. デプロイ手順
+
+1.  **gcloud CLIのセットアップ**: Google Cloud SDKをインストールし、認証を行います。
+2.  **Dockerイメージのビルドとアップロード**: `gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/your-api-name`
+3.  **Cloud Runへのデプロイ**: `gcloud run deploy your-api-name --image gcr.io/YOUR_PROJECT_ID/your-api-name --platform managed --region us-central1 --allow-unauthenticated --set-env-vars=DEEPL_AUTH_KEY=YOUR_DEEPL_KEY --set-env-vars=FIREBASE_STORAGE_BUCKET=YOUR_STORAGE_BUCKET`
+
+これで、コンテナ化されたAPIがGoogle Cloud Run上で稼働し、翻訳したPDFをFirebase Storageに保存する準備が整います。

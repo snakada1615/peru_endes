@@ -1,0 +1,46 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# Environment variables
+.Renviron
+
+# pkgdown site docs
+docs/
+
+# RStudio Connect
+rsconnect/
+
+# Temporary files
+*.utf8.md
+*.knit.md
+
+# Bookdown files
+/*_files/
+
+# Translation temp files
+po/*~
+
+# database files
+*.dta
+*.sav
