@@ -386,19 +386,28 @@ get_endes_file <- function(yearlist, root_folder) {
       filetype = "sav"
     )
     
-    RECH4File <- filter(dfEndesFiles, str_detect(relative_path, "RECH4"))$filename
-    RECH23File <- filter(dfEndesFiles, str_detect(relative_path, "RECH23"))$filename
+    dfEndesFiles <- dfEndesFiles %>%
+      mutate(
+        relative_path = file.path(root_folder, relative_path, filename),
+        filename = gsub(".sav", "", dfEndesFiles$filename)
+      )
+    
+    res <- setNames(dfEndesFiles$relative_path, dfEndesFiles$filename)
+    return(res)
+# 
+#     RECH4File <- filter(dfEndesFiles, str_detect(filename, "RECH4"))$relative_path
+#     RECH23File <- filter(dfEndesFiles, str_detect(filename, "RECH23"))$relative_path
     # IRFile <- filter(dfEndesFiles, str_detect(relative_path, "IR"))$filename
     # HRFile <- filter(dfEndesFiles, str_detect(relative_path, "HR"))$filename
     # BRFile <- filter(dfEndesFiles, str_detect(relative_path, "BR"))$filename
     
-    return(list(
-      RECH4File = file.path(root_folder, "RECH4", RECH4File),
-      RECH23File = file.path(root_folder, "RECH23", RECH23File)
-      # IR = file.path(root_folder, "IR", IRFile),
-      # HR = file.path(root_folder, "HR", HRFile),
-      # BR = file.path(root_folder, "BR", BRFile)
-    ))
+    # return(list(
+    #   RECH4File = file.path(root_folder, RECH4File, "RECH4.sav"),
+    #   RECH23File = file.path(root_folder, RECH23File, "RECH23.sav")
+    #   # IR = file.path(root_folder, "IR", IRFile),
+    #   # HR = file.path(root_folder, "HR", HRFile),
+    #   # BR = file.path(root_folder, "BR", BRFile)
+    # ))
   }
   
   

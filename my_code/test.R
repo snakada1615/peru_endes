@@ -1,5 +1,7 @@
 # path for R project
 
+rm(list = ls(all = TRUE))
+
 # 各種の関数セット読み込み
 source("myTools.R")
 
