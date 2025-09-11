@@ -1,13 +1,12 @@
-# label_dfの内容確認
-print("=== label_df の内容確認 ===")
-View(label_df)
+# path for R project
 
-# 特に問題となりそうな行を確認
-problem_rows <- label_df[is.na(label_df$vallabel) & !is.na(label_df$val), ]
-print("vallabelがNAだがvalが存在する行:")
-print(problem_rows)
+# 各種の関数セット読み込み
+source("myTools.R")
 
-# 実際に生成されたダミー列名を確認
-dummy_cols <- names(df_dummies)[grepl("_", names(df_dummies))]
-print("生成されたダミー列:")
-print(head(dummy_cols, 20))
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss" 
+
+endes_list <- get_endes_file(
+    yearlist = c("2005", "2008", "2012", "2015"),
+    root_folder = gdrive_dir
+  )
