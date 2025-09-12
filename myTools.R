@@ -28,7 +28,7 @@ hello <- function() {
 #' # attr(sample_df$age, "label") <- "年齢" のようにラベルが設定されていれば、抽出されます。
 #' getLabelfromDTA(sample_df)
 
-getLabelfromDTA <- function(df) {
+getLabelfromDF <- function(df) {
   # 入力チェック: データフレームでない場合はエラーを出す
   if (!is.data.frame(df)) {
     stop("入力は data.frame クラスである必要があります。")
@@ -393,7 +393,7 @@ get_endes_file <- function(yearlist, root_folder) {
       )
     
     res <- setNames(dfEndesFiles$relative_path, dfEndesFiles$filename)
-    return(res)
+    return(as.list(res))
 # 
 #     RECH4File <- filter(dfEndesFiles, str_detect(filename, "RECH4"))$relative_path
 #     RECH23File <- filter(dfEndesFiles, str_detect(filename, "RECH23"))$relative_path
