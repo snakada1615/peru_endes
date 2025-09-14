@@ -22,8 +22,13 @@ for (yr in yearlist) {
     root_folder = root_folder,   # root_folderを渡す
     filetype = "sav"
   ) %>%
-    mutate(year = yr)            # yrを新しい列として追加
-  endes_list <- bind_rows(endes_list, sav_files)
+    mutate(
+      year = yr,        # yrを新しい列として追加
+      relative_path =  file.path(yr, relative_path) # 相対パスを計算して更新
+      )            
+  
+  endes_list <- bind_rows(endes_list, sav_files) %>%
+    as_tibble()
 }
 outputfile <- file.path(gdrive_dir, "output", "endes_data_list.rds") %>%
   normalizePath() %>%
@@ -39,7 +44,7 @@ for (yr in yearlist) {
   for (i in 1:nrow(year_df)) {
     row <- year_df[i,]
     print(row[["filename"]])
-    filepath <- file.path(gdrive_dir, row[["year"]], row[["relative_path"]], row[["filename"]]) %>%
+    filepath <- file.path(gdrive_dir, row[["relative_path"]], row[["filename"]]) %>%
       normalizePath() %>%
       trimws()
     df <- read_sav(filepath, encoding = "latin1")
