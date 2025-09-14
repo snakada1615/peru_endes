@@ -14,6 +14,7 @@ hello <- function() {
   message("Hello, World!")
 }
 
+# ******************************************************************************
 #' データフレームから変数ラベルを抽出する関数
 #'
 #' Stataの .dta ファイルなどを haven::read_dta() で読み込んだ際に
@@ -27,6 +28,7 @@ hello <- function() {
 #' @examples
 #' # attr(sample_df$age, "label") <- "年齢" のようにラベルが設定されていれば、抽出されます。
 #' getLabelfromDTA(sample_df)
+# ******************************************************************************
 
 getLabelfromDF <- function(df) {
   # 入力チェック: データフレームでない場合はエラーを出す
@@ -355,4 +357,42 @@ get_label_list <- function(df) {
   return(temp_label)
 }
 # --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title findVariables
+#' @description 検索条件に合致した行をデータフレームから抽出する関数
+#' @param df データフレーム。検索対象のデータセット。
+#' @param word 文字列。検索するキーワード。
+#' @param cols 文字列ベクトル。検索対象の列名。デフォルトは c("variable", "label")。
+#' @return 検索条件に合致した行を含むデータフレーム。
+#' @details
+#' if_any(all_of(cols), ... ): colsで指定した複数列のうち“少なくとも
+#'    1つの列”が条件（今回はワード一致）を満たす行をTRUEにする
+#' ~ str_detect(.x, regex(word, ignore_case = TRUE)): 
+#' 　 各列に対してwordが部分一致で含まれるかをチェック
+#' 　 ignore_case = TRUE：大文字・小文字を区別しない
+#' 
+# ******************************************************************************
+findVariables <- function(df, word, cols = c("variable", "label")) {
+  if (missing(df) || missing(word)) {
+    stop("df, cols, and word must be specified")
+  }
+  matched_rows <- df %>% 
+    filter(if_any(all_of(cols), ~ str_detect(.x, regex(word, ignore_case = TRUE))))
+  
+  print(matched_rows)
+  return(matched_rows)
+}
+
+# --- 関数定義ここまで ---
+
+# ******************************************************************************
+# これ以下はperu_endes用の関数群
+# ******************************************************************************
+
+findVariables_endes <- function(year, word, cols = c("variable", "label"), root_folder = gdrive_dir) {
+  df <- read.xlsx(file.path(root_folder, "output", year, paste0("endes_var_labels_", year, ".xlsx")))
+  
+                  
+}
 

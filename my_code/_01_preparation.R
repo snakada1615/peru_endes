@@ -9,7 +9,7 @@ source("myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss" 
 
 # 対象とする年のリスト
-yearlist = c("2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
              "2013", "2014", "2015", "2016")
 # yearlist <- c("2015")
 
@@ -37,6 +37,7 @@ outputfile <- file.path(gdrive_dir, "output", "endes_data_list.rds") %>%
 # ファイルをRDSで保存
 saveRDS(endes_list, file = outputfile)
 
+endes_vaeiable_list <- NULL
 for (yr in yearlist) {
   print(paste("Processing year:", yr))
   df_result <- NULL
@@ -59,10 +60,16 @@ for (yr in yearlist) {
     mutate(label_english = "") # 空の列を追加
   
   print(paste0("number of rows =", as.character(nrow(df_result))))
-  outputfile <- file.path(gdrive_dir, "output", yr, paste0("endes_var_labels_", yr, ".rds")) %>%
-    normalizePath() %>%
-    trimws()
-  # saveRDS(df_result, file = outputfile)
-  write.xlsx(df_result, file = gsub(".rds", ".xlsx", outputfile))
+  
+  endes_vaeiable_list <- bind_rows(endes_vaeiable_list, df_result) %>%
+    as_tibble()
 }
+
+# save the variable list to an RDS file
+outputfile <- file.path(gdrive_dir, "output", paste0("endes_var_labels", ".rds")) %>%
+  normalizePath() %>%
+  trimws()
+saveRDS(endes_vaeiable_list, file = outputfile)
+# write.xlsx(endes_vaeiable_list, file = gsub(".rds", ".xlsx", outputfile))
+
 
