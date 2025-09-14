@@ -70,6 +70,6 @@ outputfile <- file.path(gdrive_dir, "output", paste0("endes_var_labels", ".rds")
   normalizePath() %>%
   trimws()
 saveRDS(endes_vaeiable_list, file = outputfile)
-# write.xlsx(endes_vaeiable_list, file = gsub(".rds", ".xlsx", outputfile))
+write.xlsx(endes_vaeiable_list, file = gsub(".rds", ".xlsx", outputfile))
 
 

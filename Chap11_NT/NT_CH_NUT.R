@@ -55,8 +55,8 @@ PRdata <- PRdata %>%
   set_variable_labels(nt_ch_stunt = "Stunted child under 5 years")
 
 # # //Mean haz
-# PRdata <- PRdata %>%
-#   mutate(haz = case_when(hv103 ==1 & hc70<996 ~ hc70/100)) 
+PRdata <- PRdata %>%
+  mutate(haz = case_when(hv103 ==1 & hc70<996 ~ hc70/100))
 # PRdata$nt_ch_mean_haz <- matrixStats::weightedMean(PRdata$haz, PRdata$wt, idxs = NULL, na.rm = TRUE) 
 
 # //Individual haz
@@ -98,8 +98,8 @@ PRdata <- PRdata %>%
   set_variable_labels(nt_ch_ovwt_ht = "Overweight for height child under 5 years")
 
 # # //Mean whz
-# PRdata <- PRdata %>%
-#   mutate(whz = case_when(hv103 ==1 & hc72<996 ~ hc72/100)) 
+PRdata <- PRdata %>%
+  mutate(whz = case_when(hv103 ==1 & hc72<996 ~ hc72/100))
 # PRdata$nt_ch_mean_whz <- matrixStats::weightedMean(PRdata$whz, PRdata$wt, idxs = NULL, na.rm = TRUE) 
 
 # //Individual whz
@@ -141,8 +141,8 @@ PRdata <- PRdata %>%
   set_variable_labels(nt_ch_ovwt_age = "Overweight for age child under 5 years")
 
 # # //Mean waz
-# PRdata <- PRdata %>%
-#   mutate(waz = case_when(hv103 ==1 & hc71<996 ~ hc71/100)) 
+PRdata <- PRdata %>%
+  mutate(waz = case_when(hv103 ==1 & hc71<996 ~ hc71/100))
 # PRdata$nt_ch_mean_waz <- matrixStats::weightedMean(PRdata$waz, PRdata$wt, idxs = NULL, na.rm = TRUE) 
 
 # *** Anemia indicators ***

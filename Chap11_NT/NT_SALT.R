@@ -22,9 +22,9 @@
  HRdata <- HRdata %>%
    mutate(nt_salt_any =
              case_when(
-              hv234a <2  ~ 1 ,
-              hv234a ==6 ~ 2,
-              hv234a ==3 ~ 3)) %>%
+              hv234 >0 & hv234 <= 30  ~ 1 ,
+              hv234 == 994 | hv234 == 0 ~ 2,
+              hv234 == 995 ~ 3)) %>%
    set_value_labels(nt_salt_any = c("With salt tested" = 1, "With salt but not tested"=2, "No salt in household"=3  )) %>%
    set_variable_labels(nt_salt_any = "Salt among all households")
  
@@ -32,8 +32,8 @@
  HRdata <- HRdata %>%
    mutate(nt_salt_iod =
             case_when(
-              hv234a ==1 & hv234a<3  ~ 1 ,
-              hv234a ==0 & hv234a<3 ~ 0)) %>%
+              hv234 > 0 & hv234 <= 30  ~ 1 ,
+              TRUE ~ 0)) %>%
    set_value_labels(nt_salt_iod = c("Yes" = 1, "No"=0  )) %>%
    set_variable_labels(nt_salt_iod = "Households with iodized salt")
  
