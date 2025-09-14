@@ -272,7 +272,7 @@ rm(HRtemp)
 source(here(paste0(chap,"/NT_WM_NUT.R")))
 # Purpose: 	Code women's anthropometric indicators
 
-source(here(paste0(chap,"/NT_tables_adults.R")))
+# source(here(paste0(chap,"/NT_tables_adults.R")))
 # Purpose: 	Produce tables for indicators computed from IR file. 
 # Note:		  The indicators are filtered for age 15-49. This can be changed if required for all women/men. 
 
