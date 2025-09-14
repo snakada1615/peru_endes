@@ -47,10 +47,15 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 ```
 
 ## 2. いろいろテスト用
-```{r}
-print("hello world")
-endes_var_labels %>% findVariables("Hv234")
 
+```{r}
+
+findvariables_endes("salt")
 
 ```
 
+## 3. テスト用2
+
+```{r}
+
+```

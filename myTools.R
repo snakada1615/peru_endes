@@ -390,9 +390,23 @@ findVariables <- function(df, word, cols = c("variable", "label")) {
 # これ以下はperu_endes用の関数群
 # ******************************************************************************
 
-findVariables_endes <- function(year, word, cols = c("variable", "label"), root_folder = gdrive_dir) {
-  df <- read.xlsx(file.path(root_folder, "output", year, paste0("endes_var_labels_", year, ".xlsx")))
-  
-                  
-}
+# ******************************************************************************
+#' @title findvariables_endes
+#' @description endes_var_labelsデータフレームからキーワードで変数を検索し、
+#' endes_listと結合して結果を返す関数
+#' @param word 文字列。検索するキーワード。
+#' @return 検索条件に合致した行を含むデータフレーム。
+# ******************************************************************************
 
+findvariables_endes <- function(word){
+  if (!exists("endes_var_labels") || !exists("endes_list")) {
+    stop("endes_var_labels and endes_list must be loaded in the global environment")
+  }
+
+  res <- endes_var_labels %>% findVariables(word) %>%
+    left_join(endes_list, by = c("year", "filename"))
+  
+  print(res, n = nrow(res))
+  return(res)
+}
+# --- 関数定義ここまで ---

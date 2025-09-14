@@ -52,7 +52,7 @@ for (yr in yearlist) {
     df_label <- getLabelfromDF(df) %>%
       mutate(
         year = row[["year"]],
-        fileName = row[["filename"]]
+        filename = row[["filename"]]
       )
     df_result <- bind_rows(df_result, df_label)
   }
