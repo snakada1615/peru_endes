@@ -23,18 +23,39 @@ execute-dir: project
 
 rm(list = ls(all = TRUE))
 
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+
+
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 
-# DHSデータのルートフォルダを指定
-
-gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
-
 # 対象とする年のリスト
-
 yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016") 
 # yearlist <- c("2015")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 出力用のルートフォルダを指定
+output_dir <- file.path(gdrive_dir, "output", yearlist[3]) %>%
+  normalizePath() %>%
+  trimws() # 正規化してトリムする
+# 出力用のルートフォルダが存在しない場合は作成
+if (!dir_exists(output_dir)) {
+  dir_create(output_dir)
+}
+
 
 # データベース一覧
 
@@ -46,16 +67,61 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```
 
-## 2. いろいろテスト用
+## 2. フォルダ設定
 
 ```{r}
+# 必要なデータセットの抽出
+print("必要なデータセットを抽出します")
 
-findvariables_endes("salt")
+# REC21.sav, rec0111.sav, REC43.sav, REC95.SAV, REC23.SAV
+keep_REC21 <- c("B3", "B5", "CASEID", "BIDX")
+keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002")
+keep_REC43 <- c("H33M", "H33D", "H33Y", "H42", "CASEID", "HIDX")
+
+df_REC21 <- open_endes_file(yearlist[3], "REC21.sav") %>%
+  add_missing_columns(keep_REC21)
+df_rec0111 <- open_endes_file(yearlist[3], "REC0111.SAV") %>%
+  add_missing_columns(keep_rec0111)
+df_REC43 <- open_endes_file(yearlist[3], "REC43.SAV") %>%
+  add_missing_columns(keep_REC43)
+
+print("レコードの重複チェックを行います")
+duplicate_check <- function(df, key_vars, df_name) {
+  temp <- df %>%
+    group_by(across(all_of(key_vars))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    filter(n > 1)
+  
+  if (nrow(temp) > 0) {
+    print(paste("重複レコードがあります in", df_name))
+    print(temp)
+  } else {
+    print(paste("重複レコードはありません in", df_name))
+  }
+}
+
+duplicate_check(df_REC21, c("CASEID", "BIDX"), "REC21.sav")
+duplicate_check(df_rec0111, c("CASEID"), "REC0111.SAV")
+duplicate_check(df_REC43, c("CASEID", "HIDX"), "REC43.SAV")
+
+# データセットの結合
+print("データセットを結合します")
+KRdata <- df_REC21 %>% group_by(CASEID) %>% 
+  filter(BIDX == max(BIDX)) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+  inner_join(df_rec0111, by = "CASEID") %>%
+  inner_join(df_REC43, by = c("CASEID", "BIDX" = "HIDX"))
+
+# 再度重複チェック
+duplicate_check(KRdata, c("CASEID"), "KRdata")
+
+print("データセットの結合が完了しました")
 
 ```
 
 ## 3. テスト用2
 
 ```{r}
+
+
 
 ```

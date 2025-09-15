@@ -378,7 +378,7 @@ findVariables <- function(df, word, cols = c("variable", "label")) {
     stop("df, cols, and word must be specified")
   }
   matched_rows <- df %>% 
-    filter(if_any(all_of(cols), ~ str_detect(.x, regex(word, ignore_case = TRUE))))
+    filter(if_any(all_of(cols), ~ str_detect(.x, stringr::regex(word, ignore_case = TRUE))))
   
   print(matched_rows)
   return(matched_rows)
@@ -409,4 +409,61 @@ findvariables_endes <- function(word){
   print(res, n = nrow(res))
   return(res)
 }
+# --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title open_endes_file
+#' @description 指定した年とファイルタイプに基づき、endes_listから該当する
+#' ファイルのパスを取得し、SPSS形式のデータを読み込んで返す関数
+#' @param year 文字列。対象の年（例: "2005"）
+#' @param fileType 文字列。対象のファイルタイプ（例: "RECH4.sav"）
+#' @return 指定された年とファイルタイプに対応するデータフレーム
+#' 
+# ******************************************************************************
+
+open_endes_file <- function(myyear, fileType) {
+  if (!exists("endes_list")) {
+    stop("endes_list must be loaded in the global environment")
+  }
+  
+  relative_path <- endes_list %>% filter(year == myyear, filename == fileType)
+  if (nrow(relative_path) == 0) {
+    stop(paste("Year", myyear, ", or file", fileType, "not found in endes_list"))
+  }
+  
+  print(paste("year=", myyear, "file=", fileType) )
+  print(nrow(relative_path))
+
+    relative_path <- file.path(gdrive_dir, relative_path$relative_path[1], 
+       relative_path$filename[1]) %>%
+       normalizePath() %>%
+       trimws()
+
+  if (is.na(relative_path) || relative_path == "") {
+    stop(paste("File for year", myyear, "and type", fileType, "not found"))
+  }
+    
+  print(relative_path)
+  df <- read_sav(relative_path)
+  return(df)
+}
+
+# --- 関数定義ここまで ---
+# ******************************************************************************
+# '@title add_missing_columns
+#' @description 指定した列名がデータフレームに存在しない場合、NA列を追加し、
+#' 指定した列順に並び替えて返す関数
+#' @param df データフレーム。対象のデータセット。
+#' @param columns 文字列ベクトル。追加・並び替え対象の列名。
+#' @return 指定した列名がすべて存在し、指定順に並び替えられたデータフレーム。
+#' ******************************************************************************
+add_missing_columns <- function(df, columns) {
+  for(col in columns) {
+    if(!col %in% colnames(df)) {
+      df[[col]] <- NA
+    }
+  }
+  df[, columns]
+}
+
 # --- 関数定義ここまで ---

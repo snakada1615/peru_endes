@@ -60,6 +60,8 @@ dhsFiles <- get_dhs_file(
 
 goAnalysis <- function(year){
   # 設定した年に基づいて四種類のファイル名を取得します。
+  # マージが必要なデータセット
+  # REC21.sav, rec0111.sav, 
   KRdatafile <- dhsFiles[[as.character(year)]]$KR
   PRdatafile <- dhsFiles[[as.character(year)]]$PR
   IRdatafile <- dhsFiles[[as.character(year)]]$IR

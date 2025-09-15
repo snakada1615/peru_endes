@@ -21,6 +21,7 @@
 # ----------------------------------------------------------------------------*/
 
 # age of child. If b19 is not available in the data use v008 - b3
+# no b19 in endes, b3 (REC21.sav), v008 (rec0111.sav)
 if ("TRUE" %in% (!("b19" %in% names(KRdata))))
   KRdata [[paste("b19")]] <- NA
 if ("TRUE" %in% all(is.na(KRdata$b19)))
@@ -39,12 +40,14 @@ KRdata <- KRdata %>%
   mutate(wt = v005/1000000)
 
 # h80a列が存在しない場合はNA列を追加
+# *********** endesでは2015以降のQ465DH(REC95.SAV)　
 if (!"h80a" %in% names(KRdata)) {
   KRdata <- KRdata %>%
     mutate(h80a = NA_real_)
 }
 
 # h42列が存在しない場合はNA列を追加
+# *********** endesでは2009以降(REC43.SAV)
 if (!"h42" %in% names(KRdata)) {
   KRdata <- KRdata %>%
     mutate(h42 = NA_real_)
@@ -65,6 +68,7 @@ KRdata <- KRdata %>%
 
 
 # //Received iron supplements
+# REC43.SAV(2007年以降)
 KRdata <- KRdata %>%
   mutate(nt_ch_micro_iron =
            case_when(
@@ -88,6 +92,7 @@ if ("v008a" %in% names(KRdata)) {
 }
 
 # 2. 以降は temp_v008 を使って安全に処理
+# 3. h33m, h33d, h33y(REC43.SAV)、temp_v008 と比較して6ヶ月以内かどうかを判定
 KRdata <- KRdata %>%
   mutate(
     # h33mがなければ一括で NA 設定（処理をここで止める）
@@ -134,6 +139,7 @@ library(labelled)
 library(naniar)  # for replace_with_na()
 
 # //Received deworming medication
+# REC43.SAV(2007年以降)
 if ("h43" %in% names(KRdata)) {
   KRdata <- KRdata %>%
     mutate(nt_ch_micro_dwm =
@@ -152,6 +158,7 @@ if ("h43" %in% names(KRdata)) {
 }
 
 # //Child living in household with iodized salt
+# hv234 - RECH23.sav(2006年以降)
 if ("hv234a" %in% names(KRdata)) {
   KRdata <- KRdata %>%
     mutate(nt_ch_micro_iod =
