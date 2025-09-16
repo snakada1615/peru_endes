@@ -1,0 +1,187 @@
+# 食事関係のデータ処理
+
+rm(list = ls(all = TRUE))
+
+# 1. libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+
+
+# 2. 各種の関数セット読み込み
+# source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("myTools.R")  # プロジェクトルートから読み込む
+
+# 3. 対象とする年のリスト
+yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
+              "2012", "2013", "2014", "2015", "2016") 
+# yearlist <- c("2015")
+my_year <- yearlist[8]
+
+# 4. DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+
+# 5. 保存したRDSファイルの読み込み
+# データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+# 変数ラベル一覧
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+# 解析を実行する関数(各年ごとに実施)
+go_analysis <- function(my_year){
+  print(paste("Processing year:", my_year))
+  
+  # 6. 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", my_year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+  
+  # 7. 必要なデータセットの抽出
+  print("必要なデータセットを抽出します")
+  
+  keep_REC21 <- c("B3", "B4", "B5", "B9", "CASEID", "BIDX")
+  keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002", "V000", "v003", 
+                    "v013", "v022", "v025", "v026", "v024", "v106", "v190")
+  keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
+  keep_REC41 <- c("M4", "MIDX", "M34", "M38", "M39", "M55A", "M55B", "M55C", "M55D", 
+                  "M55E", "M55F", "M55G", "M55H", "M55I", "M55J", "M55K", 
+                  "M55L", "M55M", "M55N", "M55X", "M55Z", "CASEID", "MIDX")
+  keep_REC42 <- c("V409", "V409A", "V410", "V410A", "V410B", "V410C", "V410D", 
+                  "V411", "V411A", "V414A", "V414B", "V414C", "V414D", "V414E", 
+                  "V414F", "V414G", "V414H", "V414I", "V414J", "V414K", "V414L", 
+                  "V414M", "V414N", "V414O", "V414P", "V414Q", "V414R", "V414S", 
+                  "V414T", "V414U", "V412", "V412A", "V412B", "V413", "V413A",
+                  "V413A", "V413B", "V413C", "V413D", "CASEID")
+  
+  df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
+    add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
+  df_rec0111 <- open_endes_file(my_year, "REC0111.SAV") %>%
+    add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
+  df_REC43 <- open_endes_file(my_year, "REC43.SAV") %>%
+    add_missing_columns(keep_REC43) %>% select(all_of(keep_REC43))
+  df_REC41 <- open_endes_file(my_year, "REC41.SAV") %>%
+    add_missing_columns(keep_REC41) %>% select(all_of(keep_REC41))
+  df_REC42 <- open_endes_file(my_year, "REC42.SAV") %>%
+    add_missing_columns(keep_REC42) %>% select(all_of(keep_REC42))
+  
+  # 8. レコードの重複チェック(結合のため)
+  print("レコードの重複チェックを行います")
+  duplicate_check <- function(df, key_vars, df_name) {
+    temp <- df %>%
+      group_by(across(all_of(key_vars))) %>%
+      summarise(n = n(), .groups = 'drop') %>%
+      filter(n > 1)
+    
+    if (nrow(temp) > 0) {
+      print(paste("重複レコードがあります in", df_name))
+      print(temp)
+      print(paste("レコード数：", nrow(df)))
+    } else {
+      print(paste("重複レコードはありません in", df_name))
+      print(paste("レコード数：", nrow(df)))
+    }
+  }
+  
+  duplicate_check(df_REC21, c("CASEID", "BIDX"), "REC21.sav")
+  duplicate_check(df_rec0111, c("CASEID"), "REC0111.SAV")
+  duplicate_check(df_REC43, c("CASEID", "HIDX"), "REC43.SAV")
+  duplicate_check(df_REC41, c("CASEID", "MIDX"), "REC41.SAV")
+  duplicate_check(df_REC42, c("CASEID"), "REC42.SAV")
+  
+  # 9. データセットの結合
+  print("データセットを結合します")
+  KRdata <- df_REC21 %>% group_by(CASEID) %>% 
+    filter(BIDX == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+    inner_join(df_rec0111, by = "CASEID") %>%
+    inner_join(df_REC43, by = c("CASEID", "BIDX" = "HIDX")) %>%
+    inner_join(df_REC41, by = c("CASEID", "BIDX" = "MIDX")) %>%
+    inner_join(df_REC42, by = "CASEID") %>%
+    mutate(midx= BIDX)
+  
+  
+  # 10. 列名の変更(大文字→小文字)
+  KRdata <- KRdata %>%
+    rename_with(tolower)
+  
+  # 11. 再度重複チェック
+  duplicate_check(KRdata, c("caseid"), "KRdata")
+  
+  print("データセットの結合が完了しました")
+  print(paste("レコード数:", nrow(KRdata)))
+  
+  
+  # 12. Calculate age of child. use v008 - b3
+  KRdata <- KRdata %>%
+    mutate(
+      age = v008 - b3,
+      wt = v005 / 1000000
+    )
+  print("wtおよび年齢変数を追加しました")
+  
+  # 13. 月齢24ヶ月未満の子供に制限
+  #create subset of KRfile to select for children for IYCF indicators
+  KRdata <- KRdata %>%
+    filter(age < 24 & b9==0)
+  print("月齢24ヶ月未満の子供に制限しました")
+  print(paste("レコード数:", nrow(KRdata)))
+  
+  chap <- "Chap11_NT"
+  
+  # 14. 各種の指標計算(NT_CH_MICRO)
+  source(here(paste0(chap,"/NT_CH_MICRO.R")), local = environment())
+  # Purpose: 	Code micronutrient indicators
+  
+  # 15. 各種の指標計算(NT_BF_INIT)
+  source(here(paste0(chap,"/NT_BF_INIT.R")), local = environment())
+  # Purpose:   Code initial breastfeeding indicators
+  
+  
+  # 16.オリジナルのコードに合わせるためデータファイルの名称変更
+  KRiycf <- KRdata  # IYCF indicators are calculated on KRdata
+  
+  # 17. 各種の指標計算(NT_IYCF)
+  source(here(paste0(chap,"/NT_IYCF.R")), local = environment())
+  # Purpose: 			Code to compute infant and child feeding indicators
+  
+  # 18. 年をデータフレームに追加
+  KRiycf <- KRiycf %>%
+    mutate(year = my_year)
+  print("add year variable")
+  
+  # 19. 出力用の変数を指定
+  vars_to_keep <- KRiycf %>%
+    select(starts_with("nt")) %>%
+    names() %>%
+    append(c("year", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
+             "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
+  
+  print(vars_to_keep)
+  # 順序を保って選択
+  
+  KRiycf <- KRiycf[, vars_to_keep]
+  
+  # 20. KRiycfをoutput folderにdta形式で保存
+  print("save KRiycf into output folder")
+  saveRDS(KRiycf, paste0(output_dir, "/KRiycf-nt.rds"))
+  print("complete KRiycf into output folder")
+  
+} 
+
+for (my_year in yearlist) {
+  go_analysis(my_year)
+}
+
+print("All done!")
+# *******************************************************************************************************************************

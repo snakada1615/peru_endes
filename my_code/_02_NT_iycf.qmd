@@ -75,13 +75,30 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 print("必要なデータセットを抽出します")
 
 # REC21.sav, rec0111.sav, REC43.sav, REC95.SAV, REC23.SAV
-keep_RECH1 <- c("HV001", "HV002", "HV103", "HHID", "HVIDX")
-keep_RECH6 <- c("HC1", "hc27", "HC56", "HC70", "HC71", "HC72", "HHID", "HC0")
+keep_REC21 <- c("B3", "B4", "B5", "B9", "CASEID", "BIDX")
+keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002", "V000", "v003", 
+                  "v013", "v022", "v025", "v026", "v024", "v106", "v190")
+keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
+keep_REC41 <- c("M4", "MIDX", "M34", "M38", "M39", "M55A", "M55B", "M55C", "M55D", 
+                "M55E", "M55F", "M55G", "M55H", "M55I", "M55J", "M55K", 
+                "M55L", "M55M", "M55N", "M55X", "M55Z", "CASEID", "MIDX")
+keep_REC42 <- c("V409", "V409A", "V410", "V410A", "V410B", "V410C", "V410D", 
+                "V411", "V411A", "V414A", "V414B", "V414C", "V414D", "V414E", 
+                "V414F", "V414G", "V414H", "V414I", "V414J", "V414K", "V414L", 
+                "V414M", "V414N", "V414O", "V414P", "V414Q", "V414R", "V414S", 
+                "V414T", "V414U", "V412", "V412A", "V412B", "V413", "V413A",
+                "V413A", "V413B", "V413C", "V413D", "CASEID")
 
-df_REC1 <- open_endes_file(my_year, "RECH1.sav") %>%
-  add_missing_columns(keep_RECH1) %>% select(all_of(keep_RECH1))
-df_REC6 <- open_endes_file(my_year, "RECH6.sav") %>%
-  add_missing_columns(keep_RECH6) %>% select(all_of(keep_RECH6))
+df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
+  add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
+df_rec0111 <- open_endes_file(my_year, "REC0111.SAV") %>%
+  add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
+df_REC43 <- open_endes_file(my_year, "REC43.SAV") %>%
+  add_missing_columns(keep_REC43) %>% select(all_of(keep_REC43))
+df_REC41 <- open_endes_file(my_year, "REC41.SAV") %>%
+  add_missing_columns(keep_REC41) %>% select(all_of(keep_REC41))
+df_REC42 <- open_endes_file(my_year, "REC42.SAV") %>%
+  add_missing_columns(keep_REC42) %>% select(all_of(keep_REC42))
 
 print("レコードの重複チェックを行います")
 duplicate_check <- function(df, key_vars, df_name) {
@@ -100,37 +117,48 @@ duplicate_check <- function(df, key_vars, df_name) {
   }
 }
 
-duplicate_check(df_REC1, c("HHID", "HVIDX"), "REC1.sav")
-duplicate_check(df_REC6, c("HHID", "HC0"), "REC6.SAV")
+duplicate_check(df_REC21, c("CASEID", "BIDX"), "REC21.sav")
+duplicate_check(df_rec0111, c("CASEID"), "REC0111.SAV")
+duplicate_check(df_REC43, c("CASEID", "HIDX"), "REC43.SAV")
+duplicate_check(df_REC41, c("CASEID", "MIDX"), "REC41.SAV")
+duplicate_check(df_REC42, c("CASEID"), "REC42.SAV")
 
 # データセットの結合
 print("データセットを結合します")
-PRdata <- df_REC6 %>% 
-  left_join(df_REC1, by = c("HHID" = "HHID",  "HC0" = "HVIDX"))
+KRdata <- df_REC21 %>% group_by(CASEID) %>% 
+  filter(BIDX == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+  inner_join(df_rec0111, by = "CASEID") %>%
+  inner_join(df_REC43, by = c("CASEID", "BIDX" = "HIDX")) %>%
+  inner_join(df_REC41, by = c("CASEID", "BIDX" = "MIDX")) %>%
+  inner_join(df_REC42, by = "CASEID") %>%
+  mutate(midx= BIDX)
+
 
 # 列名の変更(大文字→小文字)
-PRdata <- PRdata %>%
+KRdata <- KRdata %>%
   rename_with(tolower)
 
 # 再度重複チェック
-duplicate_check(PRdata, c("hhid", "hc0"), "KRdata")
+duplicate_check(KRdata, c("caseid"), "KRdata")
 
 print("データセットの結合が完了しました")
-print(paste("レコード数:", nrow(PRdata)))
+print(paste("レコード数:", nrow(KRdata)))
 
-# Peru ENDESにおける最年少児童抽出
-PRdata <- PRdata %>%
-  # 24ヶ月未満 & 前夜在宅のみ
-  filter(hc1 < 24, hv103 == 1) %>%
-  # HHID単位で年齢順に並べる（最年少が上）
-  arrange(hhid, hc1) %>%
-  # 世帯ごとに最年少の1名だけ抽出
-  group_by(hhid) %>%
-  slice(1) %>%
-  ungroup()
 
+# Calculate age of child. use v008 - b3
+KRdata <- KRdata %>%
+  mutate(
+    age = v008 - b3,
+    wt = v005 / 1000000
+    )
+print("wtおよび年齢変数を追加しました")
+
+# 月齢24ヶ月未満の子供に制限
+#create subset of KRfile to select for children for IYCF indicators
+KRdata <- KRdata %>%
+  filter(age < 24 & b9==0)
 print("月齢24ヶ月未満の子供に制限しました")
-print(paste("レコード数:", nrow(PRdata)))
+print(paste("レコード数:", nrow(KRdata)))
 
 ```
 
@@ -139,30 +167,38 @@ print(paste("レコード数:", nrow(PRdata)))
 ```{r}
 chap <- "Chap11_NT"
 
-source(here(paste0(chap,"/NT_CH_NUT.R")), local = environment())
-# Purpose: 	Code child's anthropometry indicators
+source(here(paste0(chap,"/NT_CH_MICRO.R")), local = environment())
+# Purpose: 	Code micronutrient indicators
+
+source(here(paste0(chap,"/NT_BF_INIT.R")), local = environment())
+# Purpose:   Code initial breastfeeding indicators
+
+# オリジナルのコードに合わせるためデータファイルの名称変更
+KRiycf <- KRdata  # IYCF indicators are calculated on KRdata
+source(here(paste0(chap,"/NT_IYCF.R")), local = environment())
+# Purpose: 			Code to compute infant and child feeding indicators
 
 # 年をデータフレームに追加
-PRdata <- PRdata %>%
+KRiycf <- KRiycf %>%
   mutate(year = my_year)
 print("add year variable")
 
 # 出力用の変数を指定
-vars_to_keep <- PRdata %>% 
+vars_to_keep <- KRiycf %>%
   select(starts_with("nt")) %>%
   names() %>%
-  append(c("year", "hhid", "hc0", "hc1", "hc27")) # add the variables we need to keep
+  append(c("year", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
+           "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
 
 print(vars_to_keep)
 # 順序を保って選択
 
-PRdata <- PRdata[, vars_to_keep]
-print("select variables to keep")
+KRiycf <- KRiycf[, vars_to_keep]
 
-# PRdataをoutput folderにdta形式で保存
-print("save PRdata into output folder")
-saveRDS(PRdata, paste0(output_dir, "/PRData.rds"))
-print("complete PRdata into output folder")
+# KRiycfをoutput folderにdta形式で保存
+print("save KRiycf into output folder")
+saveRDS(KRiycf, paste0(output_dir, "/KRiycf-nt.rds"))
+print("complete KRiycf into output folder")
 
 
 # source(here(paste0(chap,"/NT_tables_KR.R")), local = environment())
