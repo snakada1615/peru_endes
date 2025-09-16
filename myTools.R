@@ -426,7 +426,8 @@ open_endes_file <- function(myyear, fileType) {
     stop("endes_list must be loaded in the global environment")
   }
   
-  relative_path <- endes_list %>% filter(year == myyear, filename == fileType)
+  relative_path <- endes_list %>% 
+    filter(year == myyear, tolower(filename) == tolower(fileType))
   if (nrow(relative_path) == 0) {
     stop(paste("Year", myyear, ", or file", fileType, "not found in endes_list"))
   }
@@ -455,7 +456,7 @@ open_endes_file <- function(myyear, fileType) {
 #' 指定した列順に並び替えて返す関数
 #' @param df データフレーム。対象のデータセット。
 #' @param columns 文字列ベクトル。追加・並び替え対象の列名。
-#' @return 指定した列名がすべて存在し、指定順に並び替えられたデータフレーム。
+#' @return 指定した列名がすべて存在するデータフレーム。
 #' ******************************************************************************
 add_missing_columns <- function(df, columns) {
   for(col in columns) {
@@ -463,7 +464,7 @@ add_missing_columns <- function(df, columns) {
       df[[col]] <- NA
     }
   }
-  df[, columns]
+  return(df)
 }
 
 # --- 関数定義ここまで ---

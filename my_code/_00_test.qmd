@@ -74,16 +74,21 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 print("必要なデータセットを抽出します")
 
 # REC21.sav, rec0111.sav, REC43.sav, REC95.SAV, REC23.SAV
-keep_REC21 <- c("B3", "B5", "CASEID", "BIDX")
+keep_REC21 <- c("B3", "B5", "B9", "CASEID", "BIDX")
 keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002")
-keep_REC43 <- c("H33M", "H33D", "H33Y", "H42", "CASEID", "HIDX")
+keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
+keep_REC41 <- c("M4", "MIDX", "M34", "M38", "M55A", "M55B", "M55C", "M55D", "M55E", "M55F", "M55G", "M55H", "M55I", "M55J", "M55K", "M55L", "M55M", "M55N", "M55X", "M55Z", "CASEID", "MIDX")
 
-df_REC21 <- open_endes_file(yearlist[3], "REC21.sav") %>%
-  add_missing_columns(keep_REC21)
-df_rec0111 <- open_endes_file(yearlist[3], "REC0111.SAV") %>%
-  add_missing_columns(keep_rec0111)
-df_REC43 <- open_endes_file(yearlist[3], "REC43.SAV") %>%
-  add_missing_columns(keep_REC43)
+my_year <- yearlist[8]
+
+df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
+  add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
+df_rec0111 <- open_endes_file(my_year, "REC0111.SAV") %>%
+  add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
+df_REC43 <- open_endes_file(my_year, "REC43.SAV") %>%
+  add_missing_columns(keep_REC43) %>% select(all_of(keep_REC43))
+df_REC41 <- open_endes_file(my_year, "REC41.SAV") %>%
+  add_missing_columns(keep_REC41) %>% select(all_of(keep_REC41))
 
 print("レコードの重複チェックを行います")
 duplicate_check <- function(df, key_vars, df_name) {
@@ -95,33 +100,67 @@ duplicate_check <- function(df, key_vars, df_name) {
   if (nrow(temp) > 0) {
     print(paste("重複レコードがあります in", df_name))
     print(temp)
+    print(paste("レコード数：", nrow(df)))
   } else {
     print(paste("重複レコードはありません in", df_name))
+    print(paste("レコード数：", nrow(df)))
   }
 }
 
 duplicate_check(df_REC21, c("CASEID", "BIDX"), "REC21.sav")
 duplicate_check(df_rec0111, c("CASEID"), "REC0111.SAV")
 duplicate_check(df_REC43, c("CASEID", "HIDX"), "REC43.SAV")
+duplicate_check(df_REC41, c("CASEID", "MIDX"), "REC41.SAV")
 
 # データセットの結合
 print("データセットを結合します")
 KRdata <- df_REC21 %>% group_by(CASEID) %>% 
-  filter(BIDX == max(BIDX)) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+  filter(BIDX == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
   inner_join(df_rec0111, by = "CASEID") %>%
-  inner_join(df_REC43, by = c("CASEID", "BIDX" = "HIDX"))
+  inner_join(df_REC43, by = c("CASEID", "BIDX" = "HIDX")) %>%
+  inner_join(df_REC41, by = c("CASEID", "BIDX" = "MIDX"))
+
+# 列名の変更(大文字→小文字)
+KRdata <- KRdata %>%
+  rename_with(tolower)
 
 # 再度重複チェック
-duplicate_check(KRdata, c("CASEID"), "KRdata")
+duplicate_check(KRdata, c("caseid"), "KRdata")
 
 print("データセットの結合が完了しました")
+print(paste("レコード数:", nrow(KRdata)))
+
+
+# Calculate age of child. use v008 - b3
+KRdata <- KRdata %>%
+  mutate(
+    age = v008 - b3,
+    wt = v005 / 1000000
+    )
+print("wtおよび年齢変数を追加しました")
+
+# 月齢24ヶ月未満の子供に制限
+#create subset of KRfile to select for children for IYCF indicators
+KRdata <- KRdata %>%
+  filter(age < 24 & b9==0)
+print("月齢24ヶ月未満の子供に制限しました")
+print(paste("レコード数:", nrow(KRdata)))
 
 ```
 
 ## 3. テスト用2
 
 ```{r}
+chap <- "Chap11_NT"
 
+source(here(paste0(chap,"/NT_CH_MICRO.R")), local = environment())
+# Purpose: 	Code micronutrient indicators
+
+source(here(paste0(chap,"/NT_BF_INIT.R")), local = environment())
+# Purpose:   Code initial breastfeeding indicators
+  
 
 
 ```
+
+## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:

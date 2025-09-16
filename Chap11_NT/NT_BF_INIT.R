@@ -17,23 +17,23 @@
 # nt_bottle			    "Drank from a bottle with a nipple yesterday - under 2 years"
 # ----------------------------------------------------------------------------*/
 
-# age of child. If b19 is not available in the data use v008 - b3
-if ("TRUE" %in% (!("b19" %in% names(KRdata))))
-  KRdata [[paste("b19")]] <- NA
-if ("TRUE" %in% all(is.na(KRdata$b19)))
-{ b19_included <- 0} else { b19_included <- 1}
-
-if (b19_included==1) {
-  KRdata <- KRdata %>%
-    mutate(age = b19)
-} else {
-  KRdata <- KRdata %>%
-    mutate(age = v008 - b3)
-}
-
-
-KRdata <- KRdata %>%
-  mutate(wt = v005/1000000)
+# # age of child. If b19 is not available in the data use v008 - b3
+# if ("TRUE" %in% (!("b19" %in% names(KRdata))))
+#   KRdata [[paste("b19")]] <- NA
+# if ("TRUE" %in% all(is.na(KRdata$b19)))
+# { b19_included <- 0} else { b19_included <- 1}
+# 
+# if (b19_included==1) {
+#   KRdata <- KRdata %>%
+#     mutate(age = b19)
+# } else {
+#   KRdata <- KRdata %>%
+#     mutate(age = v008 - b3)
+# }
+# 
+# 
+# KRdata <- KRdata %>%
+#   mutate(wt = v005/1000000)
 
 # // INITIAL BREASTFEEDING
 
@@ -67,14 +67,16 @@ KRdata <- KRdata %>%
 # //Given prelacteal feed
 
 # m55列が存在するかどうかの事前チェック
-if ("m55" %in% names(KRdata)) {
+if ("m55A" %in% names(KRdata)) {
   # m55列が存在する場合の処理
+  m55_cols <- c("M55A", "M55B", "M55C", "M55D", "M55E", "M55F", "M55G", "M55H", 
+                "M55I", "M55J", "M55K", "M55L", "M55M", "M55N", "M55X", "M55Z")
   KRdata <- KRdata %>%
+    mutate(m55 = ifelse(if_any(c(A, B, C), ~ .x == 1), 1, 0)) %>%
     mutate(
       nt_bf_prelac = case_when(
         (midx == 1 & age < 24) & m4 %in% c(93, 95) & m55 == 1 ~ 1,
-        (midx == 1 & age < 24) & m55 == 0 ~ 0,
-        (midx == 1 & age < 24) & is.na(m55) ~ 0 # m55がNAの場合はNoとして扱う
+        (midx == 1 & age < 24) & m55 == 0 ~ 0
       ),
       nt_bf_prelac_noBirthRecord = 0 # m55が存在する場合は、この変数は常に0
     ) %>%
