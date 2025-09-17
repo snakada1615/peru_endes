@@ -9,7 +9,7 @@ source("myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss" 
 
 # 対象とする年のリスト
-yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011", "2012",
+yearlist <- c("2007", "2008", "2009", "2010", "2011", "2012",
              "2013", "2014", "2015", "2016")
 # yearlist <- c("2015")
 
@@ -38,9 +38,12 @@ outputfile <- file.path(gdrive_dir, "output", "endes_data_list.rds") %>%
 saveRDS(endes_list, file = outputfile)
 
 endes_vaeiable_list <- NULL
+endes_keys <- NULL
 for (yr in yearlist) {
   print(paste("Processing year:", yr))
+  # 変数ラベルの取得
   df_result <- NULL
+  df_result2 <- NULL
   year_df <- endes_list %>% filter(year == yr) # sliceで抜く
   for (i in 1:nrow(year_df)) {
     row <- year_df[i,]
@@ -63,7 +66,39 @@ for (yr in yearlist) {
   
   endes_vaeiable_list <- bind_rows(endes_vaeiable_list, df_result) %>%
     as_tibble()
+  
+  # 家庭データのキー情報を取得
+  df_result2 <-open_endes_file(yr, "RECH0.sav") %>%
+    rename_with(~ tolower(.x)) %>%
+    select(v001 = hv001, v002 = hv002, v003 = hv003, v005 = hv005, hhid = hhid,
+           v021 = hv021, v024 = hv024, v025 = hv025, v026 = hv026) %>%
+    mutate(year = yr)
+  endes_keys <- bind_rows(endes_keys, df_result2) %>% as_tibble()
+  
 }
+
+# CRECERプログラムの介入期間の取得
+crecer_timing <- read_csv(normalizePath(here("my_code", "state_list.csv"))) %>%
+  mutate(
+    treatment_start = as.numeric(year_treated) # treatment_startを数値に変換
+  ) 
+
+# 家庭データにCRECERの介入情報を結合
+endes_keys <- endes_keys %>%
+  left_join(crecer_timing, by = c(v024 = "state_id")) %>%
+  mutate(
+    treated_status = case_when(
+      is.na("year_treated") ~ "never_treated",                            # どれにも該当しない
+      "year_treated" == 2009 & as.numeric(year) >= 2009 ~ "early_treated",# 早期開始州かつ2009年以降
+      "year_treated" == 2011 & as.numeric(year) >= 2011 ~ "late_treated", # 後期開始州かつ2011年以降
+      TRUE ~ "not_yet_treated"                                             # 将来的にtreatedになるが年が到達していない
+    ),
+    group_treated = case_when(
+      "year_trated" == "early_treated" ~ "treat1_grp",
+      "year_treated" == "late_treated" ~ "treat2_grp",
+      TRUE ~ "control_grp"
+    )
+  )
 
 # save the variable list to an RDS file
 outputfile <- file.path(gdrive_dir, "output", paste0("endes_var_labels", ".rds")) %>%
@@ -71,5 +106,6 @@ outputfile <- file.path(gdrive_dir, "output", paste0("endes_var_labels", ".rds")
   trimws()
 saveRDS(endes_vaeiable_list, file = outputfile)
 write.xlsx(endes_vaeiable_list, file = gsub(".rds", ".xlsx", outputfile))
+saveRDS(endes_keys, file = file.path(gdrive_dir, "output", "endes_keys.rds"))
 
-
+print("complete")

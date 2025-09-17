@@ -468,3 +468,32 @@ add_missing_columns <- function(df, columns) {
 }
 
 # --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title duplicate_check
+#' @description 指定したキー変数に基づき、データフレーム内の重複レコードをチェックし、
+#' 結果を標準出力に表示する関数
+#' @param df データフレーム。重複チェック対象のデータセット。
+#' @param key_vars 文字列ベクトル。重複チェックに使用するキー変数名。
+#' @param df_name 文字列。データフレームの名前（メッセージ表示用）。
+#' @return 重複がない場合は1、重複がある場合は0を返す。
+#' ******************************************************************************
+
+duplicate_check <- function(df, key_vars, df_name) {
+  temp <- df %>%
+    group_by(across(all_of(key_vars))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    filter(n > 1)
+  
+  if (nrow(temp) > 0) {
+    print(paste("重複レコードがあります in", df_name))
+    print(temp)
+    print(paste("レコード数：", nrow(df)))
+    res <- 0
+  } else {
+    print(paste("重複レコードはありません in", df_name))
+    print(paste("レコード数：", nrow(df)))
+    res <- 1
+  }
+  return(res)
+}

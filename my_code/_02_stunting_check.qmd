@@ -69,30 +69,10 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```
 
-## 2. フォルダ設定
+## 2. 分析用ファイル作成
 
 ```{r}
 # 必要なデータセットの抽出
-print("必要なデータセットを抽出します")
-
-duplicate_check <- function(df, key_vars, df_name) {
-  temp <- df %>%
-    group_by(across(all_of(key_vars))) %>%
-    summarise(n = n(), .groups = 'drop') %>%
-    filter(n > 1)
-  
-  if (nrow(temp) > 0) {
-    print(paste("重複レコードがあります in", df_name))
-    print(temp)
-    print(paste("レコード数：", nrow(df)))
-    res <- 0
-  } else {
-    print(paste("重複レコードはありません in", df_name))
-    print(paste("レコード数：", nrow(df)))
-    res <- 1
-  }
-  return(res)
-}
 
 ch_data_anthropometric <- NULL
 for (yr in yearlist) {
