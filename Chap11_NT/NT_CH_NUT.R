@@ -28,13 +28,6 @@
 # ----------------------------------------------------------------------------*/
 # 
 
-# Load required packages
-library(dplyr)          # For %>%, mutate(), case_when()
-library(naniar)         # For replace_with_na()
-library(labelled)       # For set_value_labels(), set_variable_labels()
-
-PRdata <- PRdata %>%
-
 # *** Anthropometry indicators ***
 
 # //Severely stunted
