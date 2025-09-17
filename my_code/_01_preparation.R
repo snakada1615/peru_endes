@@ -71,7 +71,8 @@ for (yr in yearlist) {
   df_result2 <-open_endes_file(yr, "RECH0.sav") %>%
     rename_with(~ tolower(.x)) %>%
     select(v001 = hv001, v002 = hv002, v003 = hv003, v005 = hv005, hhid = hhid,
-           v021 = hv021, v024 = hv024, v025 = hv025, v026 = hv026) %>%
+           v021 = hv021, v022 = hv022, v024 = hv024, v025 = hv025, 
+           v026 = hv026) %>%
     mutate(year = yr)
   endes_keys <- bind_rows(endes_keys, df_result2) %>% as_tibble()
   
@@ -85,17 +86,18 @@ crecer_timing <- read_csv(normalizePath(here("my_code", "state_list.csv"))) %>%
 
 # 家庭データにCRECERの介入情報を結合
 endes_keys <- endes_keys %>%
-  left_join(crecer_timing, by = c(v024 = "state_id")) %>%
+  left_join(crecer_timing, by = c("v024" = "state_id")) %>%
   mutate(
     treated_status = case_when(
-      is.na("year_treated") ~ "never_treated",                            # どれにも該当しない
-      "year_treated" == 2009 & as.numeric(year) >= 2009 ~ "early_treated",# 早期開始州かつ2009年以降
-      "year_treated" == 2011 & as.numeric(year) >= 2011 ~ "late_treated", # 後期開始州かつ2011年以降
-      TRUE ~ "not_yet_treated"                                             # 将来的にtreatedになるが年が到達していない
+      year_treated == 2009 & as.numeric(year) >= 2009 ~ "early_treated",  # 早期開始州かつ2009年以降
+      year_treated == 2011 & as.numeric(year) >= 2011 ~ "late_treated",   # 後期開始州かつ2011年以降
+      !is.na(year_treated) ~ "not_yet_treated",                           # 将来的にtreatedになるが年が到達していない
+      is.na(year_treated) ~ "never_treated",                              # どれにも該当しない
+      TRUE ~ "other"                                                       # その他（念のため）
     ),
     group_treated = case_when(
-      "year_trated" == "early_treated" ~ "treat1_grp",
-      "year_treated" == "late_treated" ~ "treat2_grp",
+      year_treated == 2009 ~ "treat1_grp",
+      year_treated == 2011 ~ "treat2_grp",
       TRUE ~ "control_grp"
     )
   )

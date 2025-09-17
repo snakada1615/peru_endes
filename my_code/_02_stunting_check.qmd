@@ -79,14 +79,14 @@ for (yr in yearlist) {
   print(yr)
   temp_ch_data_anthropometric <- readRDS(file.path(gdrive_dir, "output", yr, 
                                                     "PRdata.rds"))
-  temp_rech0 <- open_endes_file(yr, "RECH0.sav") %>%
+  
+  temp_rech0 <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
     # すべての列名を小文字に変換
-    rename_with(~ tolower(.x)) %>%
-    select(v021 = hv021, v022 = hv022, v005 = hv005, hhid = hhid)
+    rename_with(~ tolower(.x)) 
   
   temp_ch_data_anthropometric <- temp_ch_data_anthropometric %>%
     mutate(year = yr) %>%
-    left_join(temp_rech0, by = c("hhid" = "hhid"))
+    left_join(temp_rech0, by = c("hhid" = "hhid", "year" = "year"))
   
   if (is.null(ch_data_anthropometric)){
     ch_data_anthropometric <- temp_ch_data_anthropometric
@@ -162,7 +162,7 @@ design_clean <- subset(design_pooled, !is.na(nt_ch_stunt))
 # 年次別平均を計算
 annual_mean <- svyby(
   formula = ~nt_ch_stunt,
-  by = ~year,
+  by = ~year + group_treated,
   design = design_clean,
   FUN = svymean,
   vartype = c("se", "ci")
