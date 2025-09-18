@@ -41,9 +41,9 @@ library(srvyr)       # for survey design
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 
 # 対象とする年のリスト
-yearlist <- c("2007", "2008", "2009", "2010", "2011",
-"2012", "2013", "2014", "2015", "2016")
-# yearlist <- c("2015")
+# yearlist <- c("2007", "2008", "2009", "2010", "2011",
+# "2012", "2013", "2014", "2015", "2016")
+yearlist <- c("2015")
 # my_year <- yearlist[8]
 
 # DHSデータのルートフォルダを指定
@@ -65,18 +65,17 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 # 必要なデータセットの抽出
 
 # ソースコードのルートフォルダを指定
-chap <- "Chap03_RC"
+chap <- "Chap04_MS"
 
 goAnalysis <- function(year){
   # 設定した年に基づいてファイルを読み込む
-  IRdata <- open_endes_file(year, "REC0111.SAV") %>%
+  IRdata <- open_endes_file(year, "RE516171.SAV") %>%
     rename_with(~ tolower(.x)) # 変数名を小文字に変換
   
   # 母親の雇用状態を追加
-  keep_RE516171 <- c("caseid", "v731", "v717", "v719", "v732", "v741")
-  keep_rec42 <- c("caseid", "v481a", "v481b", "v481c", "v481d", "v481e", 
-                  "v481f", "v481g","v481h", "v481x", "v463a", "v463b", "v463c",
-                  "v463d", "v463e", "v463f", "v463g", "v463x", "v463z")
+  keep_RE516171 <- c("caseid", "v501", "v502", "v505", "v511")
+  keep_rec0111 <- c("caseid", "v005", "v012", "v021", "v022")
+  
   temp_RE516171 <- open_endes_file(year, "RE516171.SAV") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     select(all_of(keep_RE516171))
