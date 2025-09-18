@@ -1,0 +1,138 @@
+---
+title: "test script"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+execute-dir: project
+---
+
+## 1. 共通データのセット
+
+```{r}
+
+rm(list = ls(all = TRUE))
+
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(srvyr)       # for survey design
+
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+
+# 対象とする年のリスト
+yearlist <- c("2007", "2008", "2009", "2010", "2011",
+"2012", "2013", "2014", "2015", "2016")
+# yearlist <- c("2015")
+# my_year <- yearlist[8]
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# データベース一覧
+
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+```
+
+## 2. フォルダ設定
+
+```{r}
+# 必要なデータセットの抽出
+
+# ソースコードのルートフォルダを指定
+chap <- "Chap03_RC"
+
+goAnalysis <- function(year){
+  # 設定した年に基づいてファイルを読み込む
+  IRdata <- open_endes_file(year, "REC0111.SAV") %>%
+    rename_with(~ tolower(.x)) # 変数名を小文字に変換
+  
+  # 母親の雇用状態を追加
+  keep_RE516171 <- c("caseid", "v731", "v717", "v719", "v732", "v741")
+  keep_rec42 <- c("caseid", "v481a", "v481b", "v481c", "v481d", "v481e", 
+                  "v481f", "v481g","v481h", "v481x", "v463a", "v463b", "v463c",
+                  "v463d", "v463e", "v463f", "v463g", "v463x", "v463z")
+  temp_RE516171 <- open_endes_file(year, "RE516171.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    select(all_of(keep_RE516171))
+  
+  temp_REC42 <- open_endes_file(year, "REC42.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    select(all_of(keep_rec42))
+  
+  # 重複チェック
+  duplicate_check(temp_RE516171, "caseid", "RE516171")
+  duplicate_check(temp_REC42, "caseid", "REC42")
+
+  IRdata <- IRdata %>%
+    left_join(temp_RE516171, by = "caseid") %>%
+    left_join(temp_REC42, by = "caseid")
+
+  # create analytic variables
+  source(here(paste0(chap,"/RC_CHAR_WM.R")), local = environment())
+
+  IRdata <- IRdata %>%
+    mutate(year = year)
+  
+  vars_to_keep <- IRdata %>%
+    select(starts_with("rc")) %>%
+    names() %>%
+    append(c("year", "caseid")) # add the variables we need to keep
+  
+  # print(vars_to_keep)
+  # 順序を保って選択
+  
+  IRdata <- IRdata[, vars_to_keep]
+  
+  # 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+  
+  # IRdata folderにrds形式で保存
+  print(sprintf("save IRdata into output folder for %s", year))
+  saveRDS(IRdata, paste0(output_dir, "/IRdata-rc.rds"))
+  print("complete IRdata into output folder")
+}
+
+```
+
+## 3. テスト用2
+
+```{r}
+#** ここから実行
+for (yr in yearlist) {
+  goAnalysis(yr)
+}
+```
+
+## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:
