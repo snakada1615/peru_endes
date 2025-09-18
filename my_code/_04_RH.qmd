@@ -70,30 +70,63 @@ chap <- "Chap04_MS"
 goAnalysis <- function(year){
   
   # 母親の雇用状態を追加
-  keep_RE516171 <- c("caseid", "v501", "v502", "v505", "v511", "v527", "v528", 
-                     "v531")
-  keep_rec0111 <- c("caseid", "v005", "v012", "v021", "v022", "v025", "v106", 
-                    "v190")
+  keep_REC21 <- c("b3", "b4", "b5", "b9", "caseid", "bidx")
+  keep_rec0111 <- c("caseid", "v005", "v008", "v012", "v021", "v022", "v025", 
+                    "v106", "v190")
+  keep_rec41 <- c("caseid", "midx", "m1", "m1d", "m2a", "m2b", "m2c", "m2d", 
+                  "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", 
+                  "m2m", "m13", "m14", "m42c", "m42d", "m42e", "m43", 
+                  "m45", "m60")
+  keep_RE223132 <-c("caseid", "v208")
   
   # 設定した年に基づいてファイルを読み込む
-  IRdata <- open_endes_file(year, "RE516171.SAV") %>%
+  df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    select(all_of(keep_RE516171))
+    add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
+  df_rec0111 <- open_endes_file(my_year, "REC0111.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
+  df_rec41 <- open_endes_file(my_year, "REC41.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_rec41) %>% select(all_of(keep_rec41))
+  df_RE223132 <- open_endes_file(my_year, "RE223132.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_RE223132) %>% select(all_of(keep_RE223132))
 
-  temp_rec0111 <- open_endes_file(year, "rec0111.SAV") %>%
-    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    select(all_of(keep_rec0111))
-  
   # 重複チェック
-  duplicate_check(IRdata, "caseid", "IRData")
-  duplicate_check(temp_rec0111, "caseid", "REC42")
+  duplicate_check(df_rec0111, "caseid", "df_rec0111")
+  duplicate_check(df_REC21, "caseid", "REC21")
+  duplicate_check(df_rec41, c("caseid", "midx"), "df_rec41")
+  duplicate_check(df_RE223132, "caseid", "df_RE223132")
 
+  print("データセットを結合します")
+  IRdata <- df_REC21 %>% group_by(caseid) %>% 
+    filter(bidx == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+    inner_join(df_rec0111, by = "CASEID") %>%
+    left_join(df_rec41, by = c("caseid" = "caseid", "bidx" = "midx")) %>%
+    left_join(df_RE223132, by = "caseid")
+
+  print("データセットの結合が完了しました")
+  print(paste("レコード数:", nrow(IRdata)))
+  
+  # 子供の年齢確認 v008 - b3
   IRdata <- IRdata %>%
-    left_join(temp_rec0111, by = "caseid")
+    mutate(
+      age = v008 - b3,
+      wt = v005 / 1000000
+    )
+  print("wtおよび年齢変数を追加しました")
+  
+  # 13. 月齢24ヶ月未満の子供に制限
+  #create subset of KRfile to select for children for IYCF indicators
+  IRdata <- IRdata %>%
+    filter(age < 24 & b9==0)
+  print("月齢24ヶ月未満の子供に制限しました")
+  print(paste("レコード数:", nrow(IRdata)))
+      
 
   # create analytic variables
-  source(here(paste0(chap,"/MS_MAR.R")), local = environment())
-  source(here(paste0(chap,"/MS_SEX.R")), local = environment())
+  source(here(paste0(chap,"/RH_ANC.R")), local = environment())
 
   IRdata <- IRdata %>%
     mutate(year = year)

@@ -25,8 +25,8 @@
 # rh_anc_neotet   "Protected against neonatal tetanus"
 # ----------------------------------------------------------------------------
 
-IRdata <- IRdata %>%
-  mutate(wt = v005/1000000)
+# IRdata <- IRdata %>%
+#   mutate(wt = v005/1000000)
 
 # period and age of child
 # choose reference period, last 2 years (24 months) or last 5 years (60 months)
@@ -35,19 +35,19 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(period = 60)
 
-# age of child. If b19_01 is not available in the data use v008 - b3_01
-if ("TRUE" %in% (!("b19_01" %in% names(IRdata))))
-  IRdata [[paste("b19_01")]] <- NA
-if ("TRUE" %in% all(is.na(IRdata $b19_01)))
-{ b19_included <- 0} else { b19_included <- 1}
-
-if (b19_included==1) {
-   IRdata <- IRdata %>%
-   mutate(age = b19_01)
-} else {
- IRdata <- IRdata %>%
- mutate(age = v008 - b3_01)
-}
+# # age of child. If b19_01 is not available in the data use v008 - b3_01
+# if ("TRUE" %in% (!("b19_01" %in% names(IRdata))))
+#   IRdata [[paste("b19_01")]] <- NA
+# if ("TRUE" %in% all(is.na(IRdata $b19_01)))
+# { b19_included <- 0} else { b19_included <- 1}
+# 
+# if (b19_included==1) {
+#    IRdata <- IRdata %>%
+#    mutate(age = b19_01)
+# } else {
+#  IRdata <- IRdata %>%
+#  mutate(age = v008 - b3_01)
+# }
 
 ### *** ANC visit indicators *** ###
 
@@ -56,12 +56,12 @@ if (b19_included==1) {
 IRdata <- IRdata %>%
   mutate(rh_anc_pv =
            case_when(
-              m2a_1 == 1   ~ 1 ,
-              m2b_1 == 1 ~ 2,
-              m2c_1 == 1 | m2d_1 == 1 | m2e_1 == 1 ~ 3 ,
-              m2f_1 == 1 | m2g_1 == 1 | m2h_1 == 1 | m2i_1 == 1 | m2j_1 == 1 | m2k_1 == 1 | m2l_1 == 1 | m2m_1 == 1 ~ 4 ,
-              m2a_1 <2 ~ 5,
-              m2a_1 == 9 ~ 9 ,
+              m2a == 1   ~ 1 ,
+              m2b == 1 ~ 2,
+              m2c == 1 | m2d == 1 | m2e == 1 ~ 3 ,
+              m2f == 1 | m2g == 1 | m2h == 1 | m2i == 1 | m2j == 1 | m2k == 1 | m2l == 1 | m2m == 1 ~ 4 ,
+              m2a <2 ~ 5,
+              m2a == 9 ~ 9 ,
               age>=period ~ 99)) %>%
   replace_with_na(replace = list(rh_anc_pv = c(99))) %>%
   set_value_labels(rh_anc_pv = c("Doctor" = 1, "Nurse/midwife"=2, "Other health worker"=3, "TBA/other/relative"=4, "No ANC"=5, "don't know/missing"=9  )) %>%
@@ -81,11 +81,11 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_numvs =
            case_when(
-             m14_1 == 0 ~ 0 ,
-             m14_1 == 1 ~ 1 ,
-             m14_1  %in% c(2,3)   ~ 2 ,
-             m14_1>=4 & m14_1<=90  ~ 3 ,
-             m14_1>90  ~ 9 ,
+             m14 == 0 ~ 0 ,
+             m14 == 1 ~ 1 ,
+             m14  %in% c(2,3)   ~ 2 ,
+             m14>=4 & m14<=90  ~ 3 ,
+             m14>90  ~ 9 ,
              age>=period ~ 99 )) %>%
   replace_with_na(replace = list(rh_anc_numvs = c(99))) %>%
   set_value_labels(rh_anc_numvs = c(none = 0, "1" = 1, "2-3"=2, "4+"=3, "don't know/missing"=9  )) %>%
@@ -104,12 +104,12 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_moprg =
            case_when(
-             m14_1 == 0 ~ 0 ,
-             m13_1  %in% c(0,1,2,3)   ~ 1 ,
-             m13_1  %in% c(4,5)  ~ 2 ,
-             m13_1  %in% c(6,7)~ 3,
-             m13_1>=8 & m13_1<=90 ~ 4, 
-             m13_1>90 & m13_1<100 ~ 9 ,
+             m14 == 0 ~ 0 ,
+             m13  %in% c(0,1,2,3)   ~ 1 ,
+             m13  %in% c(4,5)  ~ 2 ,
+             m13  %in% c(6,7)~ 3,
+             m13>=8 & m13<=90 ~ 4, 
+             m13>90 & m13<100 ~ 9 ,
              age>=period ~ 99 )) %>%
   replace_with_na(replace = list(rh_anc_moprg = c(99))) %>%
   set_value_labels(rh_anc_moprg = c("No ANC" = 0, "<4" = 1, "4-5"=2, "6-7"=3, "8+"=4, "don't know/missing"=9  )) %>%
@@ -129,13 +129,13 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(ancany =
            case_when(
-             m14_1 %in% c(0,99)   ~ 0 ,
-             m14_1>=1 & m14_1<=60 | m14_1==98 ~ 1))
+             m14 %in% c(0,99)   ~ 0 ,
+             m14>=1 & m14<=60 | m14==98 ~ 1))
 IRdata <- IRdata %>%
   mutate(anctiming=
            case_when(
-             m13_1 != 98 ~ m13_1,
-             m13_1 == 98 ~ 99)) %>%    
+             m13 != 98 ~ m13,
+             m13 == 98 ~ 99)) %>%    
   replace_with_na(replace = list(anctiming = c(99))) 
 
 
@@ -169,7 +169,7 @@ rm(sL, sp50, sU)
 IRdata <- IRdata %>%
   mutate(rh_anc_iron =
            case_when(
-             m45_1 == 1 ~ 1 ,
+             m45 == 1 ~ 1 ,
              v208 ==0 | age>=period ~ 99,
              TRUE ~ 0)) %>%
   replace_with_na(replace = list(rh_anc_iron = c(99))) %>%
@@ -180,7 +180,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_parast =
            case_when(
-             m60_1 == 1 ~ 1 ,
+             m60 == 1 ~ 1 ,
              v208 ==0 | age>=period ~ 99,
              TRUE ~ 0)) %>%
   replace_with_na(replace = list(rh_anc_parast = c(99))) %>%
@@ -197,7 +197,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_prgcomp =
            case_when(
-             m43_1 == 1 & ancany==1 ~ 1  ,
+             m43 == 1 & ancany==1 ~ 1  ,
              ancany==1 ~ 0 )) %>%
   set_value_labels(rh_anc_prgcomp = c("No" = 0, "Yes" = 1 )) %>%
   set_variable_labels(rh_anc_prgcomp = "Informed of pregnancy complications during ANC visit")
@@ -206,7 +206,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_bldpres =
            case_when(
-             m42c_1 == 1 & ancany==1 ~ 1  ,
+             m42c == 1 & ancany==1 ~ 1  ,
              ancany==1 ~ 0 )) %>%
   set_value_labels(rh_anc_bldpres = c("No" = 0, "Yes" = 1 )) %>%
   set_variable_labels(rh_anc_bldpres = "Blood pressure was taken during ANC visit")
@@ -215,7 +215,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_urine =
            case_when(
-             m42d_1 == 1 & ancany==1 ~ 1  ,
+             m42d == 1 & ancany==1 ~ 1  ,
              ancany==1 ~ 0 )) %>%
   set_value_labels(rh_anc_urine = c("No" = 0, "Yes" = 1 )) %>%
   set_variable_labels(rh_anc_urine = "Urine sample was taken during ANC visit")
@@ -224,7 +224,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_bldsamp =
            case_when(
-             m42e_1 == 1 & ancany==1 ~ 1  ,
+             m42e == 1 & ancany==1 ~ 1  ,
              ancany==1 ~ 0 )) %>%
   set_value_labels(rh_anc_bldsamp = c("No" = 0, "Yes" = 1 )) %>%
   set_variable_labels(rh_anc_bldsamp = "Blood sample was taken during ANC visit")
@@ -233,7 +233,7 @@ IRdata <- IRdata %>%
 IRdata <- IRdata %>%
   mutate(rh_anc_toxinj =
            case_when(
-             m1_1 >1 & m1_1 <8 ~ 1 ,
+             m1 >1 & m1 <8 ~ 1 ,
              v208 ==0 | age>=period ~ 99,
              TRUE ~ 0)) %>%
   replace_with_na(replace = list(rh_anc_toxinj = c(99))) %>%
@@ -241,10 +241,10 @@ IRdata <- IRdata %>%
   set_variable_labels(rh_anc_toxinj = "Received 2+ tetanus injections during last pregnancy")
 
 # //neonatal tetanus
-# 	*older surveys do not have this indicator. m1a_1 (number of tetanus injections before pregnancy) is needed to compute this indicator
-if ("TRUE" %in% (!("m1a_1" %in% names(IRdata))))
-  IRdata [[paste("m1a_1")]] <- NA
-if ("TRUE" %in% all(is.na(IRdata $m1a_1)))
+# 	*older surveys do not have this indicator. m1a (number of tetanus injections before pregnancy) is needed to compute this indicator
+if ("TRUE" %in% (!("m1a" %in% names(IRdata))))
+  IRdata [[paste("m1a")]] <- NA
+if ("TRUE" %in% all(is.na(IRdata $m1a)))
 { m1a_included <- 0} else { m1a_included <- 1}
 
 
@@ -254,18 +254,18 @@ IRdata <- IRdata %>%
 mutate(ageyr=as.integer(age/12)) %>%
 mutate(tet2lastp=
          case_when(
-              m1_1 >1 & m1_1<8 ~ 1,
+              m1 >1 & m1<8 ~ 1,
               TRUE ~ 0)) 
 IRdata[["totet0"]] <- 0
-IRdata[["totet0"]] <- ifelse(!is.na(IRdata[["m1_1"]]) & IRdata[["m1_1"]]>0 & IRdata[["m1_1"]]<8, IRdata[["m1_1"]], 0)
+IRdata[["totet0"]] <- ifelse(!is.na(IRdata[["m1"]]) & IRdata[["m1"]]>0 & IRdata[["m1"]]<8, IRdata[["m1"]], 0)
 IRdata[["totet"]] <- IRdata[["totet0"]]
-IRdata[["totet"]] <- ifelse(!is.na(IRdata[["m1a_1"]]) & IRdata[["m1a_1"]]>0 & IRdata[["m1a_1"]]<8, IRdata[["m1a_1"]] + IRdata[["totet0"]], IRdata[["totet0"]])
+IRdata[["totet"]] <- ifelse(!is.na(IRdata[["m1a"]]) & IRdata[["m1a"]]>0 & IRdata[["m1a"]]<8, IRdata[["m1a"]] + IRdata[["totet0"]], IRdata[["totet0"]])
 
 IRdata <- IRdata %>%    
 mutate(lastinj=
          case_when(
-              m1_1>0 & m1_1 <8 ~ 0,
-              m1d_1 <20 & (m1_1==0 | (m1_1>7 & m1_1<9996)) ~ (m1d_1 - ageyr),
+              m1>0 & m1 <8 ~ 0,
+              m1d <20 & (m1==0 | (m1>7 & m1<9996)) ~ (m1d - ageyr),
               TRUE ~9999)) %>%
   mutate(ttprotect = 
            case_when(
@@ -282,7 +282,7 @@ IRdata <- IRdata %>%
   set_value_labels(rh_anc_neotet = c("No" = 0, "Yes" = 1 )) %>%
   set_variable_labels(rh_anc_neotet = "Protected against neonatal tetanus")
 
-#if m1a_1 is not available in the dataset
+#if m1a is not available in the dataset
 } else {
   IRdata <- IRdata %>%
   mutate( rh_anc_neotet =NA)
