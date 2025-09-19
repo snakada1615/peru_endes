@@ -189,6 +189,9 @@ annual_mean <- svyby(
 )
 print(annual_mean)
 
+
+
+
 ```
 
 ## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:
