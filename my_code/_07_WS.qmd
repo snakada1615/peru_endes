@@ -64,18 +64,19 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 # 必要なデータセットの抽出
 
 # ソースコードのルートフォルダを指定
-chap <- "Chap10_CH"
+chap <- "Chap02_PH"
 
 goAnalysis <- function(year){
   
   # 母親の雇用状態を追加
-  keep_RECH23 <- c("hhid", "hv205", "hv225")
-  keep_RECH0 <- c("hhid", "hv000")
-  # keep_REC21 <- c("b3", "b5", "b9", "caseid", "bidx")
-  # keep_rec0111 <- c("caseid", "v005", "v008")
-  # # keep_RE223132 <-c("caseid", "v208")
-  # keep_REC42 <- c("caseid", "v465")
-  
+  keep_RECH23 <- c("hhid", "hv201", "hv201a", "hv204", "hv205", "hv206", "hv207",
+                  "hv208", "hv209", "hv210", "hv211", "hv213", "hv216", "hv221", 
+                  "hv225", "hv226", "hv237", "hv237a", "hv237b", "hv237c", "hv237d", 
+                  "hv237e", "hv237f", "hv237g", "hv237h", "hv237i", "hv237j", 
+                  "hv237k", "hv237x", "hv241", "hv241z", "hv243a", "hv243c", 
+                  "hv243d", "hv244", "hv246")
+  keep_RECH0 <- c("hhid", "hv000", "hv005", "hv006", "hv007")
+
   # 設定した年に基づいてファイルを読み込む
   df_REC23 <- open_endes_file(year, "RECH23.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
@@ -85,71 +86,35 @@ goAnalysis <- function(year){
     add_missing_columns(keep_RECH0) %>% select(all_of(keep_RECH0))
 
   # 重複チェック
-  duplicate_check(df_REC21, c("hhid"), "REC23")
+  duplicate_check(df_REC23, c("hhid"), "REC23")
   duplicate_check(df_REC0, c("hhid"), "REC0")
 
   print("データセットを結合します")
-  WASHdata <- df_REC23 %>%
+  HRdata <- df_REC23 %>%
     left_join(df_REC0, by = c("hhid" = "hhid")) %>%
     mutate(year = year)
 
   print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(WASHdata)))
+  print(paste("レコード数:", nrow(HRdata)))
 
-  # 子供の年齢確認 v008 - b3
-  KRdata <- KRdata %>%
-    mutate(
-      age = v008 - b3,
-      wt = v005 / 1000000
-    )
-  print("wtおよび年齢変数を追加しました")
+  source(here(paste0(chap,"/PH_HOUS.R")), local = environment())
+  # Purpose:	Code housing indicators such as house material, assets, cooking fuel and place, and smoking in the home
   
-  # 13. 月齢24ヶ月未満の子供に制限
-  #create subset of KRfile to select for children for IYCF indicators
-  KRdata <- KRdata %>%
-    filter(age < 24 & b9==0)
-  print("月齢24ヶ月未満の子供に制限しました")
-  duplicate_check(KRdata, "caseid", "KRdata")
-  print(paste("レコード数:", nrow(KRdata)))
+  WASHdata <- HRdata
+  source(here(paste0(chap,"/PH_SANI.R")), local = environment())
+  # Purpose: 	Code Sanitation indicators
+  
+  source(here(paste0(chap,"/PH_WATER.R")), local = environment())
+  # Purpose: 	Code Water Source indicators
+  
+  # WASHdataから必要な変数を選択
+  vars_to_keep <- WASHdata %>%
+    select(starts_with("ph")) %>%
+    names() %>%
+    append(c("hhid")) # add the variables we need to keep
       
+  WASHdata <- WASHdata[, vars_to_keep]
 
-  # create analytic variables
-  source(here(paste0(chap,"/CH_SIZE.R")), local = environment())
-  # Purpose: 	Code child size indicators
-  
-  source(here(paste0(chap,"/CH_ARI_FV.R")), local = environment())
-  # Purpose:	Code ARI indicators
-  
-  source(here(paste0(chap,"/CH_VAC.R")), local = environment())
-  # Purpose:	Code vaccination indicators
-  # Note:     This code will create a data subset KRvac for children in the vaccination age group
-
-  source(here(paste0(chap,"/CH_STOOL.R")), local = environment())
-  # Purpose:	Safe disposal of stool
-  # Note:     This code will create a data subset KRstool to selected for youngest child under age 2 living with the mother
-
-  vars_to_keep <- KRdata %>%
-    select(starts_with("ch")) %>%
-    names() %>%
-    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-
-  vars_to_keep2 <- KRvac %>%
-    select(starts_with("ch")) %>%
-    names() %>%
-    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-
-  vars_to_keep3 <- KRstool %>%
-    select(starts_with("ch")) %>%
-    names() %>%
-    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-    
-  # print(vars_to_keep)
-  # 順序を保って選択
-  
-  KRdata <- KRdata[, vars_to_keep]
-  KRvac <- KRvac[, vars_to_keep2]
-  KRstool <- KRstool[, vars_to_keep3]
-  
   # 出力用のルートフォルダを指定
   output_dir <- file.path(gdrive_dir, "output", year) %>%
     normalizePath() %>%
@@ -159,15 +124,11 @@ goAnalysis <- function(year){
     dir_create(output_dir)
   }
   
-  # KRdata folderにrds形式で保存
-  print(sprintf("save KRdata into output folder for %s", year))
-  print("KRdata")
-  saveRDS(KRdata, paste0(output_dir, "/KRdata.rds"))
-  print("KRvac")
-  saveRDS(KRvac, paste0(output_dir, "/KRvac.rds"))
-  print("KRstool")
-  saveRDS(KRstool, paste0(output_dir, "/KRstool.rds"))
-  print("complete KRdata into output folder")
+  # WASHdata folderにrds形式で保存
+  print(sprintf("save WASHdata into output folder for %s", year))
+  print("WASHdata")
+  saveRDS(WASHdata, paste0(output_dir, "/WASHdata-ws.rds"))
+  print("complete WASHdata into output folder")
   
 }
 
