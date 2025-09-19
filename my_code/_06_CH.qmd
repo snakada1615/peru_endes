@@ -65,61 +65,69 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 # 必要なデータセットの抽出
 
 # ソースコードのルートフォルダを指定
-chap <- "Chap09_RH"
+chap <- "Chap10_CH"
 
 goAnalysis <- function(year){
   
   # 母親の雇用状態を追加
-  keep_REC21 <- c("b3", "b4", "b5", "b9", "caseid", "bidx")
-  keep_rec0111 <- c("caseid", "v005", "v008", "v012", "v021", "v022", "v025", 
-                    "v106", "v190")
-  keep_rec41 <- c("caseid", "midx", "m1", "m1d", "m2a", "m2b", "m2c", "m2d", 
-                  "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", 
-                  "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", 
-                  "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n",
-                  "m13", "m14", "m15", "m42c", "m42d", "m42e", "m43", 
-                  "m45", "m60", "m61")
-  keep_RE223132 <-c("caseid", "v208")
-  keep_REC42 <- c("caseid", "v467b","v467c","v467d", "v467f")
+  keep_rec41 <- c("caseid", "midx", "m18", "m19")
+  keep_rec43 <- c("caseid", "hidx", "h0", "h1", "h2", "h3", "h4", "h5", "h6", "h7", 
+                  "h8", "h9",
+                  "h11","h12a", "h12b", "h12c", "h12d", "h12e", 
+                  "h12f", "h12g", "h12h", "h12i", "h12j", "h12k", "h12l", "h12m", 
+                  "h12n", "h12o", "h12p", "h12q", "h12r", "h12s", "h12t", "h12u", 
+                  "h12v", "h12w", "h12x", "h12y", "h12z","h13", "h13b", "h14",
+                  "h15", "h15a", "h15b", "h15c", "h15d", "h15e", "h15f", "h15g", 
+                  "h15h", "h15i", "h15j", "h15k", "h15l", "h15m",
+                  "h22", "h31b", "h31c", "h32a", "h32b", 
+                  "h32c", "h32d", "h32e", "h32f", "h32g", "h32h", "h32i", "h32j", 
+                  "h32k", "h32l", "h32m", "h32n", "h32o", "h32p", "h32q", 
+                  "h32r", "h32s", "h32t", "h32u", "h32v", "h32w", "h32x", "h38",
+                  "h39",
+                  "h46b")
+  keep_REC21 <- c("b3", "b5", "b9", "caseid", "bidx")
+  keep_rec0111 <- c("caseid", "v005", "v008")
+  # keep_RE223132 <-c("caseid", "v208")
+  keep_REC42 <- c("caseid", "v465")
   
   # 設定した年に基づいてファイルを読み込む
   df_REC21 <- open_endes_file(year, "REC21.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
-  df_rec0111 <- open_endes_file(year, "REC0111.SAV") %>%
-    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
   df_rec41 <- open_endes_file(year, "REC41.SAV") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_rec41) %>% select(all_of(keep_rec41))
-  df_RE223132 <- open_endes_file(year, "RE223132.SAV") %>%
+  df_REC43 <- open_endes_file(year, "REC43.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_RE223132) %>% select(all_of(keep_RE223132))
-  
-  df_REC42 <- open_endes_file(year, "REC42.SAV") %>%
+    add_missing_columns(keep_rec43) %>% select(all_of(keep_rec43))
+  df_rec0111 <- open_endes_file(year, "REC0111.SAV") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
+  df_REC42 <- open_endes_file(year, "REC42.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_REC42) %>% select(all_of(keep_REC42))
 
   # 重複チェック
-  duplicate_check(df_rec0111, "caseid", "df_rec0111")
   duplicate_check(df_REC21, c("caseid", "bidx"), "REC21")
   duplicate_check(df_rec41, c("caseid", "midx"), "df_rec41")
-  duplicate_check(df_RE223132, "caseid", "df_RE223132")
+  duplicate_check(df_REC43, c("caseid", "hidx"), "df_REC43")
+  duplicate_check(df_rec0111, "caseid", "df_rec0111")
   duplicate_check(df_REC42, "caseid", "df_REC42")
 
   print("データセットを結合します")
-  IRdata <- df_REC21 %>% group_by(caseid) %>% 
+  KRdata <- df_REC21 %>% group_by(caseid) %>% 
     filter(bidx == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
-    inner_join(df_rec0111, by = "caseid") %>%
     left_join(df_rec41, by = c("caseid" = "caseid", "bidx" = "midx")) %>%
-    left_join(df_RE223132, by = "caseid") %>%
-    left_join(df_REC42, by = "caseid")
+    left_join(df_REC43, by = c("caseid" = "caseid", "bidx" = "hidx")) %>%
+    left_join(df_rec0111, by = c("caseid" = "caseid")) %>%
+    left_join(df_REC42, by = c("caseid" = "caseid")) %>%
+    mutate(year = year)
 
   print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(IRdata)))
+  print(paste("レコード数:", nrow(KRdata)))
 
   # 子供の年齢確認 v008 - b3
-  IRdata <- IRdata %>%
+  KRdata <- KRdata %>%
     mutate(
       age = v008 - b3,
       wt = v005 / 1000000
@@ -128,32 +136,49 @@ goAnalysis <- function(year){
   
   # 13. 月齢24ヶ月未満の子供に制限
   #create subset of KRfile to select for children for IYCF indicators
-  IRdata <- IRdata %>%
+  KRdata <- KRdata %>%
     filter(age < 24 & b9==0)
   print("月齢24ヶ月未満の子供に制限しました")
-  duplicate_check(IRdata, "caseid", "IRdata")
-  print(paste("レコード数:", nrow(IRdata)))
+  duplicate_check(KRdata, "caseid", "KRdata")
+  print(paste("レコード数:", nrow(KRdata)))
       
 
   # create analytic variables
-  source(here(paste0(chap,"/RH_ANC.R")), local = environment())
-  # Purpose: 	Code ANC indicators
-
-  source(here(paste0(chap,"/RH_Probs.R")), local = environment())
-  # Purpose: 	Code indicators for problems accessing health care 
-
-  IRdata <- IRdata %>%
-    mutate(year = year)
+  source(here(paste0(chap,"/CH_SIZE.R")), local = environment())
+  # Purpose: 	Code child size indicators
   
-  vars_to_keep <- IRdata %>%
-    select(starts_with("rh")) %>%
+  source(here(paste0(chap,"/CH_ARI_FV.R")), local = environment())
+  # Purpose:	Code ARI indicators
+  
+  source(here(paste0(chap,"/CH_VAC.R")), local = environment())
+  # Purpose:	Code vaccination indicators
+  # Note:     This code will create a data subset KRvac for children in the vaccination age group
+
+  source(here(paste0(chap,"/CH_STOOL.R")), local = environment())
+  # Purpose:	Safe disposal of stool
+  # Note:     This code will create a data subset KRstool to selected for youngest child under age 2 living with the mother
+
+  vars_to_keep <- KRdata %>%
+    select(starts_with("ch")) %>%
     names() %>%
     append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-  
+
+  vars_to_keep2 <- KRvac %>%
+    select(starts_with("ch")) %>%
+    names() %>%
+    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
+
+  vars_to_keep3 <- KRstool %>%
+    select(starts_with("ch")) %>%
+    names() %>%
+    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
+    
   # print(vars_to_keep)
   # 順序を保って選択
   
-  IRdata <- IRdata[, vars_to_keep]
+  KRdata <- KRdata[, vars_to_keep]
+  KRvac <- KRvac[, vars_to_keep2]
+  KRstool <- KRstool[, vars_to_keep3]
   
   # 出力用のルートフォルダを指定
   output_dir <- file.path(gdrive_dir, "output", year) %>%
@@ -164,21 +189,16 @@ goAnalysis <- function(year){
     dir_create(output_dir)
   }
   
-  # IRdata folderにrds形式で保存
-  print(sprintf("save IRdata into output folder for %s", year))
-  saveRDS(IRdata, paste0(output_dir, "/IRdata-rh.rds"))
-  print("complete IRdata into output folder")
+  # KRdata folderにrds形式で保存
+  print(sprintf("save KRdata into output folder for %s", year))
+  print("KRdata")
+  saveRDS(KRdata, paste0(output_dir, "/KRdata.rds"))
+  print("KRvac")
+  saveRDS(KRvac, paste0(output_dir, "/KRvac.rds"))
+  print("KRstool")
+  saveRDS(KRstool, paste0(output_dir, "/KRstool.rds"))
+  print("complete KRdata into output folder")
   
-  BRdata <- IRdata
-  
-  source(here(paste0(chap,"/RH_DEL.R")), local = environment())
-  # Purpose: 	Code indicators for problems accessing health care 
-
-  # BRdata folderにrds形式で保存
-  print(sprintf("save BRdata into output folder for %s", year))
-  saveRDS(BRdata, paste0(output_dir, "/BRdata-rh.rds"))
-  print("complete BRData into output folder")
-    
 }
 
 ```

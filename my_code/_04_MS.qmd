@@ -99,7 +99,7 @@ goAnalysis <- function(year){
     mutate(year = year)
   
   vars_to_keep <- IRdata %>%
-    select(starts_with("rc")) %>%
+    select(starts_with("ms")) %>%
     names() %>%
     append(c("year", "caseid")) # add the variables we need to keep
   

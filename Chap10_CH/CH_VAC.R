@@ -83,19 +83,19 @@
 KRdata <- KRdata %>%
   mutate(wt = v005/1000000)
 
-# age of child. If b19 is not available in the data use v008 - b3
-if ("TRUE" %in% (!("b19" %in% names(KRdata))))
-  KRdata [[paste("b19")]] <- NA
-if ("TRUE" %in% all(is.na(KRdata$b19)))
-{ b19_included <- 0} else { b19_included <- 1}
-
-if (b19_included==1) {
-  KRdata <- KRdata %>%
-    mutate(age = b19)
-} else {
-  KRdata <- KRdata %>%
-    mutate(age = v008 - b3)
-}
+# # age of child. If b19 is not available in the data use v008 - b3
+# if ("TRUE" %in% (!("b19" %in% names(KRdata))))
+#   KRdata [[paste("b19")]] <- NA
+# if ("TRUE" %in% all(is.na(KRdata$b19)))
+# { b19_included <- 0} else { b19_included <- 1}
+# 
+# if (b19_included==1) {
+#   KRdata <- KRdata %>%
+#     mutate(age = b19)
+# } else {
+#   KRdata <- KRdata %>%
+#     mutate(age = v008 - b3)
+# }
   
 # *** Two age groups used for reporting. 
 KRdata <- KRdata %>%

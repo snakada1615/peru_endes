@@ -14,9 +14,9 @@
 # ch_below_2p5	"Birth weight less than 2.5 kg"
 # ----------------------------------------------------------------------------*/
 
-# weight variable 
-KRdata <- KRdata %>%
-  mutate(wt = v005/1000000)
+# # weight variable 
+# KRdata <- KRdata %>%
+#   mutate(wt = v005/1000000)
 
 # //Child's size at birth
 KRdata <- KRdata %>%
