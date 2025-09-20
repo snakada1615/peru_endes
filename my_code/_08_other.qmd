@@ -1,0 +1,167 @@
+---
+title: "test script"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+execute-dir: project
+---
+
+## 1. 共通データのセット
+
+```{r}
+
+rm(list = ls(all = TRUE))
+
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(survey)       # for survey design
+
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+
+# 対象とする年のリスト
+# yearlist <- c("2007", "2008", "2009", "2010", "2011",
+# "2012", "2013", "2014", "2015", "2016")
+yearlist <- c("2015")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# データベース一覧
+
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+```
+
+## 2. データ処理
+
+```{r}
+# 必要なデータセットの抽出
+
+# ソースコードのルートフォルダを指定
+chap <- "Chap02_PH"
+
+goAnalysis <- function(year){
+  
+  # 母親の雇用状態を追加
+  keep_RECH1 <- c("hhid", "hv102", "hv105")
+  keep_RECH0 <- c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026",
+                  "hv238", "hv241")
+  keep_REC0111 <- c("caseid", "v001", "v002", "v161")
+  keep_RE516171 <- c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
+                     "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
+                     "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
+                     "v822", "v850a", "v850b")
+  keep_RECH23 <- c("hhid", "hv270", "hv271","hv238", "hv244", "hv241", "v246a", "v246b",
+                   "v246c", "v246d", "v246e", "v246f", "v246g", "v246h",
+                   "hv246i", "hv246j", "hv246k", "hv219", "hv220")
+
+  # 設定した年に基づいてファイルを読み込む
+  df_RECH1 <- open_endes_file(year, "RECH1.sav") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_RECH1) %>% select(all_of(keep_RECH1))
+  df_RECH0 <- open_endes_file(year, "RECH0.sav") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_RECH0) %>% select(all_of(keep_RECH0))
+  df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_REC0111) %>% select(all_of(keep_REC0111))
+  df_RE516171 <- open_endes_file(year, "RE516171.sav") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_RE516171) %>% select(all_of(keep_RE516171))
+  df_RECH23 <- open_endes_file(year, "RECH23.sav") %>%
+    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    add_missing_columns(keep_RECH23) %>% select(all_of(keep_RECH23))
+
+  # number of children under 12 years old per household
+  child_count <- df_RECH1 %>%
+    filter(hv105 <= 12, hv102 == 1) %>%     # 年齢<=12かつde jureメンバー
+    group_by(hhid) %>%              # クラスターIDと世帯IDで集計
+    summarise(dm_children_under12 = n()) %>%   # 子供の数をカウント
+    mutate(dm_children_under12 = ifelse(is.na(dm_children_under12), 0, dm_children_under12)) %>% # NAを0に置き換え
+    ungroup()
+    
+  
+  # 重複チェック
+  duplicate_check(child_count, c("hhid"), "child_count")
+  duplicate_check(df_RECH0, c("hhid"), "RECH0")
+  duplicate_check(df_REC0111, c("caseid"), "REC0111")
+  duplicate_check(df_RE516171, c("caseid"), "RE516171")
+  duplicate_check(df_RECH23, c("hhid"), "REC23")
+  
+  print("データセットを結合します")
+  HRdata <- child_count %>%
+    left_join(df_RECH0, by = c("hhid" = "hhid")) %>%
+    left_join(df_REC0111, by = c("hv001" = "v001", "hv002" = "v002")) %>%
+    left_join(df_RE516171, by = c("caseid" = "caseid")) %>%
+    left_join(df_RECH23, by = c("hhid" = "hhid")) %>%
+    mutate(year = year)
+
+  duplicate_check(HRdata, "hhid", "HRdata")
+  print("データセットの結合が完了しました")
+  print(paste("レコード数:", nrow(HRdata)))
+
+  # type of cooking fuel per household  
+  HRdata <- HRdata %>%
+    group_by(hhid) %>% # クラスターIDと世帯IDで集計
+    summarise(dm_cooking_fuel = first(v161)) %>% # 最初の調理燃料を取得
+    mutate(dm_cooking_fuel_traditional = ifelse(dm_cooking_fuel < 7, 0, 1)) %>% # 伝統的な調理燃料かどうか  
+    mutate(dm_cooking_fuel_traditional = ifelse(
+      is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
+      ) %>% # NAを0に置き換え
+    ungroup()
+  
+  # # 出力用のルートフォルダを指定
+  # output_dir <- file.path(gdrive_dir, "output", year) %>%
+  #   normalizePath() %>%
+  #   trimws() # 正規化してトリムする
+  # # 出力用のルートフォルダが存在しない場合は作成
+  # if (!dir_exists(output_dir)) {
+  #   dir_create(output_dir)
+  # }
+  # 
+  # # WASHdata folderにrds形式で保存
+  # print(sprintf("save WASHdata into output folder for %s", year))
+  # print("WASHdata")
+  # saveRDS(WASHdata, paste0(output_dir, "/WASHdata-ws.rds"))
+  # print("complete WASHdata into output folder")
+  
+}
+
+```
+
+## 3. ループ実行
+
+```{r}
+#** ここから実行
+for (yr in yearlist) {
+  goAnalysis(yr)
+}
+```
+
+## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:

@@ -83,7 +83,7 @@ goAnalysis <- function(year){
       ) %>% # NAを0に置き換え
     ungroup()
   
-  var_refrigerator <- if (yr < 2009) "sh2910f" else "hv209" # 冷蔵庫の変数名を年によって変更
+  var_refrigerator <- "hv209" # 冷蔵庫の変数名を年によって変更
   
   ##------------------------------------------------------------------------------------------------
   # women empowerment indicators
