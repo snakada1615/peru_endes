@@ -161,7 +161,10 @@ WEdata <- WEdata %>%
 # //Justify violence - at least one reason
 WEdata <- WEdata %>%
   mutate(dm_dvjustify_onereas =
-           ifelse(v744a==1 | v744b==1 | v744c==1 | v744d==1 | v744e==1 , 1,0)) %>%
+           case_when(
+             v744a==1 | v744b==1 | v744c==1 | v744d==1 | v744e==1 ~ 1,
+             TRUE ~ 0
+           )) %>%
   set_value_labels(dm_dvjustify_onereas = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(dm_dvjustify_onereas = "Agree that husband is justified in hitting or beating his wife for at least one of the reasons")
 

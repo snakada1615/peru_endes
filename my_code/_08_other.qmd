@@ -124,7 +124,7 @@ goAnalysis <- function(year){
     mutate(dm_cooking_fuel_traditional = ifelse(
       is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
     )  %>% # NAを0に置き換え
-    select(caseid, dm_cooking_fuel, dm_cooking_fuel_traditional)
+    select(caseid, v005, dm_cooking_fuel, dm_cooking_fuel_traditional)
   print("調理燃料の分布を確認")
   print(table(cooking_fuel$dm_cooking_fuel))
   print(table(cooking_fuel$dm_cooking_fuel_traditional))
@@ -156,21 +156,21 @@ goAnalysis <- function(year){
   print(names(df_RE516171))
   print(names(df_RECH23))
   
-  # # create analytic variables
-  # # women empowerment indicators
-  # source(here("Chap15_WE","WE_EMPW_update.R"), local = environment())  
-  # WEdata <- WEdata %>%
-  #   mutate(year = year)
-  # 
-  # # WEdataから必要な変数を抽出
-  # vars_to_keep <- WEdata %>%
-  #   select(starts_with("dm_")) %>%
-  #   names() %>%
-  #   append(c("year", "v001", "v002", "v003")) # add the variables we need to keep
-  # 
-  # # 順序を保って選択
-  # WEdata <- WEdata[, vars_to_keep]
-  ##------------------------------------------------------------------------------------------------
+  # create analytic variables
+  # women empowerment indicators
+  source(here("Chap15_WE","WE_EMPW_update.R"), local = environment())
+
+  stop("****************************** stop here ******************************")
+
+    # WEdataから必要な変数を抽出
+  vars_to_keep <- WEdata %>%
+    select(starts_with("dm_")) %>%
+    names() %>%
+    append(c("year", "v001", "v002", "v003")) # add the variables we need to keep
+
+  # 順序を保って選択
+  WEdata <- WEdata[, vars_to_keep]
+  #------------------------------------------------------------------------------------------------
   print(names(IRdata))
   HRdata <- IRdata %>%
   
