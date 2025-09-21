@@ -24,7 +24,6 @@ execute-dir: project
 rm(list = ls(all = TRUE))
 
 # libraries needed
-library(tidyverse)  # most variable creation here uses tidyverse 
 library(tidyselect) # used to select variables in FP_EVENTS.R
 library(haven)      # used for Haven labeled DHS variables
 library(labelled)   # used for Haven labeled variable creation
@@ -35,6 +34,7 @@ library(here)       # to get R project path
 library(fs)         # for file path manipulation
 library(openxlsx) 　# for exporting to excel
 library(survey)       # for survey design
+library(tidyverse)  # most variable creation here uses tidyverse 
 
 
 # 各種の関数セット読み込み
@@ -70,16 +70,15 @@ goAnalysis <- function(year){
   
   # 母親の雇用状態を追加
   keep_RECH1 <- c("hhid", "hv102", "hv105")
-  keep_RECH0 <- c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026",
-                  "hv238", "hv241")
-  keep_REC0111 <- c("caseid", "v001", "v002", "v161")
+  keep_RECH0 <- c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026")
+  keep_REC0111 <- c("caseid", "v161", "hhid", "v005")
   keep_RE516171 <- c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                      "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                      "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
                      "v822", "v850a", "v850b")
-  keep_RECH23 <- c("hhid", "hv270", "hv271","hv238", "hv244", "hv241", "v246a", "v246b",
-                   "v246c", "v246d", "v246e", "v246f", "v246g", "v246h",
-                   "hv246i", "hv246j", "hv246k", "hv219", "hv220")
+  keep_RECH23 <- c("hhid", "hv270", "hv271","hv238", "hv244", "hv241", "hv245", 
+                   "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", "hv246f", 
+                   "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", "hv219", "hv220")
 
   # 設定した年に基づいてファイルを読み込む
   df_RECH1 <- open_endes_file(year, "RECH1.sav") %>%
@@ -90,6 +89,12 @@ goAnalysis <- function(year){
     add_missing_columns(keep_RECH0) %>% select(all_of(keep_RECH0))
   df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
+    mutate(
+      # ゼロ埋めして文字列化（例：3桁 for v001, 4桁 for v002）
+      v001_str = sprintf("%03d", v001),
+      v002_str = sprintf("%04d", v002),
+      hhid = paste0(v001_str, v002_str)
+    ) %>%
     add_missing_columns(keep_REC0111) %>% select(all_of(keep_REC0111))
   df_RE516171 <- open_endes_file(year, "RE516171.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
@@ -98,58 +103,215 @@ goAnalysis <- function(year){
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_RECH23) %>% select(all_of(keep_RECH23))
 
+
   # number of children under 12 years old per household
   child_count <- df_RECH1 %>%
     filter(hv105 <= 12, hv102 == 1) %>%     # 年齢<=12かつde jureメンバー
-    group_by(hhid) %>%              # クラスターIDと世帯IDで集計
-    summarise(dm_children_under12 = n()) %>%   # 子供の数をカウント
-    mutate(dm_children_under12 = ifelse(is.na(dm_children_under12), 0, dm_children_under12)) %>% # NAを0に置き換え
+    group_by(hhid) %>%                      # 世帯IDでグループ化
+    summarise(dm_children_under12 = n(), .groups = "drop") %>%   # 子供の数をカウント
+    select(hhid, dm_children_under12) %>%
     ungroup()
-    
+  
+  print("子供の数の分布を確認")
+  print(table(child_count$dm_children_under12))
+
+  # type of cooking fuel per household  
+  cooking_fuel <- df_REC0111 %>%
+    rename_with(~tolower(.x)) %>%
+    mutate(dm_cooking_fuel = v161) %>% # 最初の調理燃料を取得
+    mutate(dm_cooking_fuel_traditional = 
+             ifelse(dm_cooking_fuel < 7, 0, 1)) %>% # 伝統的な調理燃料かどうか  
+    mutate(dm_cooking_fuel_traditional = ifelse(
+      is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
+    )  %>% # NAを0に置き換え
+    select(caseid, dm_cooking_fuel, dm_cooking_fuel_traditional)
+  print("調理燃料の分布を確認")
+  print(table(cooking_fuel$dm_cooking_fuel))
+  print(table(cooking_fuel$dm_cooking_fuel_traditional))
+  
+  var_refrigerator <- "hv209" # 冷蔵庫の変数名を年によって変更
+
   
   # 重複チェック
   duplicate_check(child_count, c("hhid"), "child_count")
+  duplicate_check(cooking_fuel, c("caseid"), "cooking_fuel")
   duplicate_check(df_RECH0, c("hhid"), "RECH0")
-  duplicate_check(df_REC0111, c("caseid"), "REC0111")
   duplicate_check(df_RE516171, c("caseid"), "RE516171")
   duplicate_check(df_RECH23, c("hhid"), "REC23")
   
   print("データセットを結合します")
-  HRdata <- child_count %>%
+  IRdata <- child_count %>%
     left_join(df_RECH0, by = c("hhid" = "hhid")) %>%
-    left_join(df_REC0111, by = c("hv001" = "v001", "hv002" = "v002")) %>%
-    left_join(df_RE516171, by = c("caseid" = "caseid")) %>%
+    left_join(df_REC0111, by = c("hhid" = "hhid", "hv005" = "v005")) %>%
+    left_join(cooking_fuel, by = c("caseid")) %>%
+    left_join(df_RE516171, by = c("caseid")) %>%
     left_join(df_RECH23, by = c("hhid" = "hhid")) %>%
     mutate(year = year)
 
-  duplicate_check(HRdata, "hhid", "HRdata")
-  print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(HRdata)))
-
-  # type of cooking fuel per household  
-  HRdata <- HRdata %>%
-    group_by(hhid) %>% # クラスターIDと世帯IDで集計
-    summarise(dm_cooking_fuel = first(v161)) %>% # 最初の調理燃料を取得
-    mutate(dm_cooking_fuel_traditional = ifelse(dm_cooking_fuel < 7, 0, 1)) %>% # 伝統的な調理燃料かどうか  
-    mutate(dm_cooking_fuel_traditional = ifelse(
-      is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
-      ) %>% # NAを0に置き換え
-    ungroup()
+  duplicate_check(IRdata, "hhid", "IRdata")
+  print("データセットの結合が完了しました: IRdata")
+  print(paste("レコード数:", nrow(IRdata)))
+  print(names(df_RECH0))
+  print(names(df_REC0111))
+  print(names(df_RE516171))
+  print(names(df_RECH23))
   
-  # # 出力用のルートフォルダを指定
-  # output_dir <- file.path(gdrive_dir, "output", year) %>%
-  #   normalizePath() %>%
-  #   trimws() # 正規化してトリムする
-  # # 出力用のルートフォルダが存在しない場合は作成
-  # if (!dir_exists(output_dir)) {
-  #   dir_create(output_dir)
-  # }
+  # # create analytic variables
+  # # women empowerment indicators
+  # source(here("Chap15_WE","WE_EMPW_update.R"), local = environment())  
+  # WEdata <- WEdata %>%
+  #   mutate(year = year)
   # 
-  # # WASHdata folderにrds形式で保存
-  # print(sprintf("save WASHdata into output folder for %s", year))
-  # print("WASHdata")
-  # saveRDS(WASHdata, paste0(output_dir, "/WASHdata-ws.rds"))
-  # print("complete WASHdata into output folder")
+  # # WEdataから必要な変数を抽出
+  # vars_to_keep <- WEdata %>%
+  #   select(starts_with("dm_")) %>%
+  #   names() %>%
+  #   append(c("year", "v001", "v002", "v003")) # add the variables we need to keep
+  # 
+  # # 順序を保って選択
+  # WEdata <- WEdata[, vars_to_keep]
+  ##------------------------------------------------------------------------------------------------
+  print(names(IRdata))
+  HRdata <- IRdata %>%
+  
+    # 変数名を変更
+    rename(
+      v001 = hv001, # クラスターID
+      v002 = hv002, # 世帯ID
+      v005 = hv005, # 標準化されたウェイト
+      v022 = hv022, # strutum-id
+    ) %>%
+  
+    # コントロール変数の設定
+    mutate(
+      dm_rural = ifelse(hv026 == 3, 1, 0), # 農村ダミー
+      dm_town = ifelse(hv026 == 2, 1, 0), # 小都市ダミー
+      dm_city = ifelse(hv026 == 1, 1, 0), # 中都市ダミー
+      dm_capital = ifelse(hv026 == 0, 1, 0), # 首都ダミー
+      # dm_child_sex = ifelse(hc27 == 1, 1, 0), # 男児ダミー
+      dm_poorest = ifelse(hv270 == 1, 1, 0), # 最も貧しいダミー
+      dm_poorer = ifelse(hv270 == 2, 1, 0), # 貧しいダミー
+      dm_middle = ifelse(hv270 == 3, 1, 0), # 中間層ダミー
+      dm_richer = ifelse(hv270 == 4, 1, 0), # 裕福なダミー
+      dm_richest = ifelse(hv270 == 5, 1, 0), # 最も裕福なダミー
+      dm_weath_index = hv271/100000, # 資産保有状況のnormalized score (mean=0, sd=1)
+      dm_shared_toilet = ifelse(hv238 == 95, 1, 0), # 共用トイレダミー
+      dm_ag_land_ha = ifelse(hv244 == 0, 0, hv245), # 農地面積
+      dm_cooking_house = ifelse(hv241 == 1, 1, 0), # 家庭内調理ダミー
+      dm_cooking_outdoor = ifelse(hv241 == 3, 1, 0), # 屋外調理ダミー
+      dm_cooking_separate = ifelse(hv241 == 2, 1, 0), # 別棟調理ダミー
+      dm_cattle_own = ifelse(hv246a > 0 & hv246a < 98, 1, 0), # 牛飼育ダミー
+      dm_goat_own = ifelse(hv246d > 0 & hv246d < 98, 1, 0), # ヤギ飼育ダミー
+      dm_sheep_own = ifelse(hv246e > 0 & hv246e < 98, 1, 0), # 羊飼育ダミー
+      dm_poultry_own = ifelse(hv246g > 0 & hv246g < 98, 1, 0), # 鶏飼育ダミー
+      dm_refrigerator = ifelse(var_refrigerator == 1, 1, 0), # 冷蔵庫所有ダミー
+      dm_female_headed = ifelse(hv219 == 2, 1, 0), # 女性世帯主ダミー
+      dm_age_of_HH_head = ifelse(hv220 < 20, 1, 
+                          ifelse(hv220 >= 20 & hv220 < 30, 2, 
+                          ifelse(hv220 >= 30 & hv220 < 40, 3,
+                          ifelse(hv220 >= 40 & hv220 < 50, 4,
+                          ifelse(hv220 >= 50 & hv220 < 60, 5,
+                          ifelse(hv220 >= 60 & hv220 < 70, 6,
+                          ifelse(hv220 >= 70 & hv220 < 80, 7,
+                          ifelse(hv220 >= 80, 8, NA)))))))), # 世帯主の年齢カテゴリ変数
+    ) %>%
+    mutate(year = year) # 年を追加
+  
+  vars_to_keep <- HRdata %>%
+    select(starts_with("dm")) %>%
+    names() %>%
+    append(c("year", "v001", "v002", "v005", "v022")) # add the variables we need to keep
+  
+  # print(vars_to_keep)
+  # 順序を保って選択
+  
+  # 重複行の排除（マージ用）
+  HRdata <- HRdata[, vars_to_keep] %>%
+    group_by(v001, v002) %>%
+    summarise(across(everything(), first), .groups = "drop")
+  
+  
+  # ラベルの設定
+  HRdata <- HRdata %>%
+    set_variable_labels(
+      v001 = "Cluster number",
+      v002 = "Household number",
+      dm_children_under12 = "Number of children under 12 years old",
+      dm_cooking_fuel = "type of cooking fuel",
+      dm_cooking_fuel_traditional = "using traditional cooking fuel",
+      dm_rural = "living in rural area",
+      dm_town = "living in small town",
+      dm_city = "living in medium city",
+      dm_capital = "living in capital city",
+      dm_poorest = "poorest wealth quintile",
+      dm_poorer = "poorer wealth quintile",
+      dm_middle = "middle wealth quintile",
+      dm_richer = "richer wealth quintile",
+      dm_richest = "richest wealth quintile",
+      dm_weath_index = "wealth index (normalized score)",
+      dm_shared_toilet = "shared toilet(10 or more HH)",
+      dm_ag_land_ha = "agricultural land (hectare)",
+      dm_cooking_house = "cooking inside house",
+      dm_cooking_outdoor = "cooking outdoor",
+      dm_cooking_separate = "cooking in separate building",
+      dm_cattle_own = "owns cattle",
+      dm_goat_own = "owns goats",
+      dm_sheep_own = "owns sheep",
+      dm_poultry_own = "owns poultry",
+      dm_refrigerator = "owns refrigerator",
+      dm_female_headed = "female headed household",
+      dm_age_of_HH_head = "Age of head of household",
+      year = "Survey year",
+      v005 = "Sample weight",
+      v022 = "Stratum"
+    ) %>%
+    set_value_labels(
+      dm_cooking_fuel = c(
+        "electricity" = 1, "lpg" = 2, "natural gas" = 3, "biogas" = 4, 
+        "kerosene" = 5, "coal, lignite" = 6, "charcoal" = 7, "wood" = 8, 
+        "straw / shrubs / grass" = 9, "agricultural crop" = 10, 
+        "animal dung" = 11, "no food cooked in hh" = 95, "other" = 96, 
+        "not dejure resident" = 97),
+      dm_cooking_fuel_traditional = c("Yes" = 1, "No" = 0),
+      dm_rural = c("Yes" = 1, "No" = 0),
+      dm_town = c("Yes" = 1, "No" = 0),
+      dm_city = c("Yes" = 1, "No" = 0),
+      dm_capital = c("Yes" = 1, "No" = 0),
+      dm_poorest = c("Yes" = 1, "No" = 0),
+      dm_poorer = c("Yes" = 1, "No" = 0),
+      dm_middle = c("Yes" = 1, "No" = 0),
+      dm_richer = c("Yes" = 1, "No" = 0),
+      dm_richest = c("Yes" = 1, "No" = 0),
+      dm_shared_toilet = c("Yes (10 or more households)"=1, "No (less than 10 households)"=0),
+      dm_cooking_house=c("Yes (cooking inside house)"=1,"No (cooking outside or in separate building)"=0),
+      dm_cooking_outdoor=c("Yes (cooking outdoor)"=1,"No (cooking inside house or in separate building)"=0),
+      dm_cooking_separate=c("Yes (cooking in separate building)"=1,"No (cooking inside house or outdoor)"=0),
+      dm_cattle_own=c("Yes (owns cattle)"=1,"No (does not own cattle)"=0),
+      dm_goat_own=c("Yes (owns goats)"=1,"No (does not own goats)"=0),
+      dm_sheep_own=c("Yes (owns sheep)"=1,"No (does not own sheep)"=0),
+      dm_poultry_own=c("Yes (owns poultry)"=1,"No (does not own poultry)"=0),
+      dm_refrigerator=c("Yes" = 1, "No" = 0),
+      dm_female_headed=c("Yes" = 1, "No" = 0),
+      dm_age_of_HH_head = c(
+        "10s"=1, "20s"=2, "30s"=3, "40s"=4, 
+        "50s"=5, "60s"=6, "70s"=7, "80+"=8
+      )
+    )
+  
+  # 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+
+  # WASHdata folderにrds形式で保存
+  print(sprintf("save WASHdata into output folder for %s", year))
+  print("WASHdata")
+  saveRDS(HRdata, paste0(output_dir, "/WASHdata-ws.rds"))
+  print("complete WASHdata into output folder")
   
 }
 

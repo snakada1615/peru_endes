@@ -445,7 +445,7 @@ open_endes_file <- function(myyear, fileType) {
   }
     
   print(relative_path)
-  df <- read_sav(relative_path)
+  df <- read_sav(relative_path, user_na = FALSE)
   return(df)
 }
 
