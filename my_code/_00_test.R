@@ -6,6 +6,42 @@
 # 設定
 chap <- "Chap02_PH"
 
+
+rm(list = ls(all = TRUE))
+
+# libraries needed
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(survey)       # for survey design
+library(tidyverse)  # most variable creation here uses tidyverse 
+
+
+# 各種の関数セット読み込み
+source("myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+
+# 対象とする年のリスト
+# yearlist <- c("2007", "2008", "2009", "2010", "2011",
+#               "2012", "2013", "2014", "2015", "2016")
+yearlist <- c("2015")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# データベース一覧
+
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
 # ============================================================================
 # 1. 変数定義セクション
 # ============================================================================
@@ -20,9 +56,10 @@ get_variable_lists <- function() {
                  "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                  "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
                  "v822", "v850a", "v850b"),
-    RECH23 = c("hhid", "hv270", "hv271", "hv238", "hv244", "hv241", "hv245", 
-               "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", "hv246f", 
-               "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", "hv219", "hv220"),
+    RECH23 = c("hhid", "hv209", "hv270", "hv271","hv238", "hv244", "hv241", 
+                     "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
+                     "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
+                     "hv219", "hv220"),
     child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
     child_count = c("hhid", "dm_children_under12")
   )
@@ -35,6 +72,7 @@ get_variable_lists <- function() {
 # データファイルを読み込む共通関数
 load_endes_data <- function(year, filename, keep_vars) {
   cat("Loading:", filename, "\n")
+  cat("Variables to keep:", paste(keep_vars, collapse = ", "), "\n")
   
   df <- open_endes_file(year, filename) %>%
     rename_with(~ tolower(.x)) %>%
@@ -287,17 +325,13 @@ goAnalysis <- function(year) {
   df_RECH0 <- load_endes_data(year, "RECH0.sav", var_lists$RECH0)
   df_RECH23 <- load_endes_data(year, "RECH23.sav", var_lists$RECH23)
   df_RE516171 <- load_endes_data(year, "RE516171.sav", var_lists$RE516171)
-  
+
   # REC0111は特別処理（hhid作成）
   df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
     rename_with(~ tolower(.x)) %>%
     mutate(hhid = paste0("      ", substr(caseid, 7, 15))) %>%
     add_missing_columns(var_lists$REC0111) %>% 
     select(all_of(var_lists$REC0111))
-  
-  # 一時保存
-  saveRDS(df_REC0111, paste0(output_dir, "/temp.rds"))
-  cat("一時ファイル保存完了\n\n")
   
   # ============================================================================
   # データ処理
@@ -327,9 +361,6 @@ goAnalysis <- function(year) {
   print(table(IRdata$dm_cooking_fuel))
   matched_count <- IRdata %>% summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
   print(matched_count)
-  
-  # caseidが存在するかチェック
-  cat("caseid存在確認:", "caseid" %in% names(IRdata), "\n")
   
   # 残りのデータを結合
   IRdata <- safe_join_datasets(IRdata, df_RE516171, c("caseid"), "RE516171")
@@ -393,4 +424,9 @@ goAnalysis <- function(year) {
   cat("============================================================================\n")
   
   return(HRdata)
+}
+
+#** ここから実行
+for (yr in yearlist) {
+  goAnalysis(yr)
 }
