@@ -1,432 +1,119 @@
-# ============================================================================
-# ENDES データ処理・統合関数
-# 目的: 複数のテーブルから必要な変数を組み合わせて統合データセットを作成
-# ============================================================================
+# Let's create a diagnostic R script to help identify which variable is causing the issue
+# diagnostic_script = '''
+# Diagnostic script to identify problematic variables in set_all_value_labels function
 
-# 設定
-chap <- "Chap02_PH"
-
-
-rm(list = ls(all = TRUE))
-
-# libraries needed
-library(tidyselect) # used to select variables in FP_EVENTS.R
-library(haven)      # used for Haven labeled DHS variables
-library(labelled)   # used for Haven labeled variable creation
-library(expss)      # for creating tables with Haven labeled data
-library(rJava)      # required for xlsx package
-library(naniar)     # to use replace_with_na function
-library(here)       # to get R project path
-library(fs)         # for file path manipulation
-library(openxlsx) 　# for exporting to excel
-library(survey)       # for survey design
-library(tidyverse)  # most variable creation here uses tidyverse 
-
-
-# 各種の関数セット読み込み
-source("myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
-
-# 対象とする年のリスト
-# yearlist <- c("2007", "2008", "2009", "2010", "2011",
-#               "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2015")
-
-# DHSデータのルートフォルダを指定
-gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
-
-# データベース一覧
-
-endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
-
-# 変数ラベル一覧
-
-endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
-
-# ============================================================================
-# 1. 変数定義セクション
-# ============================================================================
-
-# 各テーブルから抽出する変数を定義
-get_variable_lists <- function() {
-  list(
-    RECH1 = c("hhid", "hv102", "hv105"),
-    RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
-    REC0111 = c("caseid", "hhid", "v161"),
-    RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
-                 "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
-                 "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
-                 "v822", "v850a", "v850b"),
-    RECH23 = c("hhid", "hv209", "hv270", "hv271","hv238", "hv244", "hv241", 
-                     "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
-                     "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
-                     "hv219", "hv220"),
-    child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
-    child_count = c("hhid", "dm_children_under12")
+# Function to check data types of all variables that will receive value labels
+diagnose_value_label_issues <- function(data) {
+  cat("=== Diagnostic Report for Value Label Assignment ===\\n\\n")
+  
+  # List of variables that will receive value labels
+  value_label_vars <- c(
+    "dm_cooking_fuel", "dm_cooking_fuel_traditional", "dm_rural", "dm_town", 
+    "dm_city", "dm_capital", "dm_poorest", "dm_poorer", "dm_middle", 
+    "dm_richer", "dm_richest", "dm_shared_toilet", "dm_cooking_house", 
+    "dm_cooking_outdoor", "dm_cooking_separate", "dm_cattle_own", 
+    "dm_goat_own", "dm_sheep_own", "dm_poultry_own", "dm_refrigerator", 
+    "dm_female_headed", "dm_age_of_HH_head"
   )
+  
+  # Check each variable
+  for (var in value_label_vars) {
+    if (var %in% names(data)) {
+      var_class <- class(data[[var]])
+      var_type <- typeof(data[[var]])
+      has_na <- any(is.na(data[[var]]))
+      unique_vals <- length(unique(data[[var]], na.rm = TRUE))
+      
+      cat("Variable:", var, "\\n")
+      cat("  - Class:", paste(var_class, collapse = ", "), "\\n")
+      cat("  - Type:", var_type, "\\n")
+      cat("  - Has NA:", has_na, "\\n")
+      cat("  - Unique values:", unique_vals, "\\n")
+      
+# Check if its numeric or character (required by haven/labelled)
+is_valid <- is.numeric(data[[var]]) || is.character(data[[var]])
+cat("  - Valid for labelling:", is_valid, "\\n")
+
+# Show sample values
+sample_vals <- head(unique(data[[var]], na.rm = TRUE), 5)
+cat("  - Sample values:", paste(sample_vals, collapse = ", "), "\\n")
+cat("\\n")
+
+if (!is_valid) {
+  cat("*** PROBLEM FOUND: Variable", var, "is not numeric or character! ***\\n")
+  cat("*** This variable cannot receive value labels ***\\n\\n")
+}
+} else {
+  cat("Variable:", var, "- NOT FOUND in dataset\\n\\n")
+}
 }
 
-# ============================================================================
-# 2. ヘルパー関数セクション
-# ============================================================================
-
-# データファイルを読み込む共通関数
-load_endes_data <- function(year, filename, keep_vars) {
-  cat("Loading:", filename, "\n")
-  cat("Variables to keep:", paste(keep_vars, collapse = ", "), "\n")
-  
-  df <- open_endes_file(year, filename) %>%
-    rename_with(~ tolower(.x)) %>%
-    add_missing_columns(keep_vars) %>% 
-    select(all_of(keep_vars))
-  
-  return(df)
+cat("=== End of Diagnostic Report ===\\n")
 }
 
-# 出力ディレクトリを準備する関数
-setup_output_directory <- function(year) {
-  output_dir <- file.path(gdrive_dir, "output", year) %>%
-    normalizePath() %>%
-    trimws()
+# Modified function that skips problematic variables
+set_all_value_labels_safe <- function(data) {
+  cat("Attempting to set value labels...\\n")
   
-  if (!dir_exists(output_dir)) {
-    dir_create(output_dir)
+  # Check which variables exist and are valid
+  valid_vars <- c()
+  
+  vars_to_check <- list(
+    dm_cooking_fuel = c("electricity" = 1, "lpg" = 2, "natural gas" = 3, "biogas" = 4, 
+                        "kerosene" = 5, "coal, lignite" = 6, "charcoal" = 7, "wood" = 8, 
+                        "straw / shrubs / grass" = 9, "agricultural crop" = 10, 
+                        "animal dung" = 11, "no food cooked in hh" = 95, "other" = 96, 
+                        "not dejure resident" = 97),
+    dm_cooking_fuel_traditional = c("Yes" = 1, "No" = 0),
+    dm_rural = c("Yes" = 1, "No" = 0),
+    dm_town = c("Yes" = 1, "No" = 0),
+    dm_city = c("Yes" = 1, "No" = 0),
+    dm_capital = c("Yes" = 1, "No" = 0),
+    dm_poorest = c("Yes" = 1, "No" = 0),
+    dm_poorer = c("Yes" = 1, "No" = 0),
+    dm_middle = c("Yes" = 1, "No" = 0),
+    dm_richer = c("Yes" = 1, "No" = 0),
+    dm_richest = c("Yes" = 1, "No" = 0),
+    dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
+    dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
+    dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
+    dm_cooking_separate = c("Yes (cooking in separate building)" = 1, "No (cooking inside house or outdoor)" = 0),
+    dm_cattle_own = c("Yes (owns cattle)" = 1, "No (does not own cattle)" = 0),
+    dm_goat_own = c("Yes (owns goats)" = 1, "No (does not own goats)" = 0),
+    dm_sheep_own = c("Yes (owns sheep)" = 1, "No (does not own sheep)" = 0),
+    dm_poultry_own = c("Yes (owns poultry)" = 1, "No (does not own poultry)" = 0),
+    dm_refrigerator = c("Yes" = 1, "No" = 0),
+    dm_female_headed = c("Yes" = 1, "No" = 0),
+    dm_age_of_HH_head = c("10s" = 1, "20s" = 2, "30s" = 3, "40s" = 4, 
+                          "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
+  )
+  
+  for (var_name in names(vars_to_check)) {
+    if (var_name %in% names(data)) {
+      is_valid <- is.numeric(data[[var_name]]) || is.character(data[[var_name]])
+      if (is_valid) {
+        cat("Setting labels for:", var_name, "\\n")
+        tryCatch({
+          data <- data %>% set_value_labels(!!var_name := vars_to_check[[var_name]])
+        }, error = function(e) {
+          cat("ERROR setting labels for", var_name, ":", e$message, "\\n")
+        })
+      } else {
+        cat("SKIPPING", var_name, "- not numeric or character\\n")
+      }
+    } else {
+      cat("SKIPPING", var_name, "- variable not found\\n")
+    }
   }
   
-  return(output_dir)
+  return(data)
 }
 
-# ============================================================================
-# 3. データ処理関数セクション
-# ============================================================================
-
-# 家族の子供の総数を計算
-calculate_child_count <- function(df_RECH1) {
-  cat("計算中: 家族の子供の総数\n")
-  
-  child_count <- df_RECH1 %>%
-    filter(hv105 <= 12, hv102 == 1) %>%     # 年齢<=12かつde jureメンバー
-    group_by(hhid) %>%                      # 世帯IDでグループ化
-    summarise(dm_children_under12 = n(), .groups = "drop") %>%
-    ungroup()
-  
-  cat("子供の数の分布:\n")
-  print(table(child_count$dm_children_under12))
-  
-  return(child_count)
-}
-
-# 家庭での燃料使用状況を処理
-process_cooking_fuel <- function(df_REC0111) {
-  cat("処理中: 家庭での燃料使用状況\n")
-  
-  cooking_fuel <- df_REC0111 %>%
-    mutate(
-      dm_cooking_fuel = v161,
-      dm_cooking_fuel_traditional = ifelse(dm_cooking_fuel < 7, 0, 1),
-      dm_cooking_fuel_traditional = ifelse(is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
-    ) %>%
-    select(caseid, hhid, dm_cooking_fuel, dm_cooking_fuel_traditional)
-  
-  cat("調理燃料の分布:\n")
-  print(table(cooking_fuel$dm_cooking_fuel))
-  print(table(cooking_fuel$dm_cooking_fuel_traditional))
-  
-  return(cooking_fuel)
-}
-
-# ============================================================================
-# 4. データ統合関数セクション
-# ============================================================================
-
-# データセットを安全に結合
-safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
-  cat("結合中:", join_name, "\n")
-  
-  # 重複チェック
-  duplicate_check(base_data, by_vars, "base_data")
-  duplicate_check(join_data, by_vars, join_name)
-  
-  # 結合実行
-  result <- base_data %>%
-    left_join_safe(join_data, by = by_vars)
-  
-  cat(sprintf("%sを結合しました\n", join_name))
-  duplicate_check(result, by_vars, "結合後データ")
-  
-  return(result)
-}
-
-# ============================================================================
-# 5. 変数作成関数セクション
-# ============================================================================
-
-# 人口統計学的変数を作成
-create_demographic_variables <- function(data) {
-  data %>%
-    rename(
-      v001 = hv001,  # クラスターID
-      v002 = hv002,  # 世帯ID
-      v022 = hv022   # 層ID
-    ) %>%
-    mutate(
-      # 地域タイプ
-      dm_rural = ifelse(hv026 == 3, 1, 0),
-      dm_town = ifelse(hv026 == 2, 1, 0),
-      dm_city = ifelse(hv026 == 1, 1, 0),
-      dm_capital = ifelse(hv026 == 0, 1, 0),
-      
-      # 資産五分位
-      dm_poorest = ifelse(hv270 == 1, 1, 0),
-      dm_poorer = ifelse(hv270 == 2, 1, 0),
-      dm_middle = ifelse(hv270 == 3, 1, 0),
-      dm_richer = ifelse(hv270 == 4, 1, 0),
-      dm_richest = ifelse(hv270 == 5, 1, 0),
-      dm_weath_index = hv271/100000
-    )
-}
-
-# 住居・設備関連変数を作成
-create_housing_variables <- function(data) {
-  data %>%
-    mutate(
-      # トイレ・調理場所
-      dm_shared_toilet = ifelse(hv238 == 95, 1, 0),
-      dm_cooking_house = ifelse(hv241 == 1, 1, 0),
-      dm_cooking_outdoor = ifelse(hv241 == 3, 1, 0),
-      dm_cooking_separate = ifelse(hv241 == 2, 1, 0),
-      
-      # 農地・家畜
-      dm_ag_land_ha = ifelse(hv244 == 0, 0, hv245),
-      dm_cattle_own = ifelse(hv246a > 0 & hv246a < 98, 1, 0),
-      dm_goat_own = ifelse(hv246d > 0 & hv246d < 98, 1, 0),
-      dm_sheep_own = ifelse(hv246e > 0 & hv246e < 98, 1, 0),
-      dm_poultry_own = ifelse(hv246g > 0 & hv246g < 98, 1, 0)
-    )
-}
-
-# 世帯主関連変数を作成
-create_household_head_variables <- function(data, var_refrigerator = "hv209") {
-  data %>%
-    mutate(
-      dm_refrigerator = ifelse(get(var_refrigerator) == 1, 1, 0),
-      dm_female_headed = ifelse(hv219 == 2, 1, 0),
-      dm_age_of_HH_head = case_when(
-        hv220 < 20 ~ 1,
-        hv220 >= 20 & hv220 < 30 ~ 2,
-        hv220 >= 30 & hv220 < 40 ~ 3,
-        hv220 >= 40 & hv220 < 50 ~ 4,
-        hv220 >= 50 & hv220 < 60 ~ 5,
-        hv220 >= 60 & hv220 < 70 ~ 6,
-        hv220 >= 70 & hv220 < 80 ~ 7,
-        hv220 >= 80 ~ 8,
-        TRUE ~ NA_real_
-      )
-    )
-}
-
-# ============================================================================
-# 6. ラベル設定関数セクション
-# ============================================================================
-
-# 変数ラベルを設定
-set_all_variable_labels <- function(data) {
-  data %>%
-    set_variable_labels(
-      v001 = "Cluster number",
-      v002 = "Household number",
-      dm_children_under12 = "Number of children under 12 years old",
-      dm_cooking_fuel = "type of cooking fuel",
-      dm_cooking_fuel_traditional = "using traditional cooking fuel",
-      dm_rural = "living in rural area",
-      dm_town = "living in small town",
-      dm_city = "living in medium city",
-      dm_capital = "living in capital city",
-      dm_poorest = "poorest wealth quintile",
-      dm_poorer = "poorer wealth quintile",
-      dm_middle = "middle wealth quintile",
-      dm_richer = "richer wealth quintile",
-      dm_richest = "richest wealth quintile",
-      dm_weath_index = "wealth index (normalized score)",
-      dm_shared_toilet = "shared toilet(10 or more HH)",
-      dm_ag_land_ha = "agricultural land (hectare)",
-      dm_cooking_house = "cooking inside house",
-      dm_cooking_outdoor = "cooking outdoor",
-      dm_cooking_separate = "cooking in separate building",
-      dm_cattle_own = "owns cattle",
-      dm_goat_own = "owns goats",
-      dm_sheep_own = "owns sheep",
-      dm_poultry_own = "owns poultry",
-      dm_refrigerator = "owns refrigerator",
-      dm_female_headed = "female headed household",
-      dm_age_of_HH_head = "Age of head of household",
-      year = "Survey year",
-      v005 = "Sample weight",
-      v022 = "Stratum"
-    )
-}
-
-# 値ラベルを設定
-set_all_value_labels <- function(data) {
-  data %>%
-    set_value_labels(
-      dm_cooking_fuel = c(
-        "electricity" = 1, "lpg" = 2, "natural gas" = 3, "biogas" = 4, 
-        "kerosene" = 5, "coal, lignite" = 6, "charcoal" = 7, "wood" = 8, 
-        "straw / shrubs / grass" = 9, "agricultural crop" = 10, 
-        "animal dung" = 11, "no food cooked in hh" = 95, "other" = 96, 
-        "not dejure resident" = 97
-      ),
-      dm_cooking_fuel_traditional = c("Yes" = 1, "No" = 0),
-      dm_rural = c("Yes" = 1, "No" = 0),
-      dm_town = c("Yes" = 1, "No" = 0),
-      dm_city = c("Yes" = 1, "No" = 0),
-      dm_capital = c("Yes" = 1, "No" = 0),
-      dm_poorest = c("Yes" = 1, "No" = 0),
-      dm_poorer = c("Yes" = 1, "No" = 0),
-      dm_middle = c("Yes" = 1, "No" = 0),
-      dm_richer = c("Yes" = 1, "No" = 0),
-      dm_richest = c("Yes" = 1, "No" = 0),
-      dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
-      dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
-      dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
-      dm_cooking_separate = c("Yes (cooking in separate building)" = 1, "No (cooking inside house or outdoor)" = 0),
-      dm_cattle_own = c("Yes (owns cattle)" = 1, "No (does not own cattle)" = 0),
-      dm_goat_own = c("Yes (owns goats)" = 1, "No (does not own goats)" = 0),
-      dm_sheep_own = c("Yes (owns sheep)" = 1, "No (does not own sheep)" = 0),
-      dm_poultry_own = c("Yes (owns poultry)" = 1, "No (does not own poultry)" = 0),
-      dm_refrigerator = c("Yes" = 1, "No" = 0),
-      dm_female_headed = c("Yes" = 1, "No" = 0),
-      dm_age_of_HH_head = c("10s" = 1, "20s" = 2, "30s" = 3, "40s" = 4, 
-                            "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
-    )
-}
-
-# ============================================================================
-# 7. メイン処理関数
-# ============================================================================
-
-goAnalysis <- function(year) {
-  cat("============================================================================\n")
-  cat("ENDES データ統合処理開始:", year, "\n")
-  cat("============================================================================\n\n")
-  
-  # 変数リストを取得
-  var_lists <- get_variable_lists()
-  
-  # 出力ディレクトリを準備
-  output_dir <- setup_output_directory(year)
-  
-  # ============================================================================
-  # データ読み込み
-  # ============================================================================
-  cat("## 1. データファイル読み込み\n")
-  
-  df_RECH1 <- load_endes_data(year, "RECH1.sav", var_lists$RECH1)
-  df_RECH0 <- load_endes_data(year, "RECH0.sav", var_lists$RECH0)
-  df_RECH23 <- load_endes_data(year, "RECH23.sav", var_lists$RECH23)
-  df_RE516171 <- load_endes_data(year, "RE516171.sav", var_lists$RE516171)
-
-  # REC0111は特別処理（hhid作成）
-  df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
-    rename_with(~ tolower(.x)) %>%
-    mutate(hhid = paste0("      ", substr(caseid, 7, 15))) %>%
-    add_missing_columns(var_lists$REC0111) %>% 
-    select(all_of(var_lists$REC0111))
-  
-  # ============================================================================
-  # データ処理
-  # ============================================================================
-  cat("## 2. データ処理\n")
-  
-  # 子供の数を計算
-  child_count <- calculate_child_count(df_RECH1)
-  
-  # 調理燃料を処理
-  cooking_fuel <- process_cooking_fuel(df_REC0111)
-  
-  # ============================================================================
-  # データ統合
-  # ============================================================================
-  cat("\n## 3. データセット統合\n")
-  
-  # 基本データから開始
-  IRdata <- child_count
-  
-  # 段階的に結合
-  IRdata <- safe_join_datasets(IRdata, df_RECH0, c("hhid"), "RECH0")
-  IRdata <- safe_join_datasets(IRdata, cooking_fuel, c("hhid"), "cooking_fuel")
-  
-  # 調理燃料マッチング確認
-  cat("調理燃料マッチング確認:\n")
-  print(table(IRdata$dm_cooking_fuel))
-  matched_count <- IRdata %>% summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
-  print(matched_count)
-  
-  # 残りのデータを結合
-  IRdata <- safe_join_datasets(IRdata, df_RE516171, c("caseid"), "RE516171")
-  IRdata <- safe_join_datasets(IRdata, df_RECH23, c("hhid"), "RECH23")
-  
-  # 年情報を追加
-  IRdata <- IRdata %>% mutate(year = year, v005 = hv005)
-  
-  cat("統合完了 - レコード数:", nrow(IRdata), "\n\n")
-  
-  # ============================================================================
-  # 女性のエンパワーメント指標作成
-  # ============================================================================
-  cat("## 4. 女性エンパワーメント指標作成\n")
-  source(here("Chap15_WE", "WE_EMPW_update.R"), local = environment())
-  
-  cat("エンパワーメント指標作成後の確認:\n")
-  print(table(WEdata$dm_cooking_fuel))
-  print(table(WEdata$dm_children_under12))
-  print(table(WEdata$dm_decide_health))
-  
-  # ============================================================================
-  # 最終変数作成
-  # ============================================================================
-  cat("\n## 5. 最終変数作成\n")
-  
-  HRdata <- WEdata %>%
-    create_demographic_variables() %>%
-    create_housing_variables() %>%
-    create_household_head_variables() %>%
-    mutate(year = year)
-  
-  # 必要な変数のみ選択
-  vars_to_keep <- HRdata %>%
-    select(starts_with("dm")) %>%
-    names() %>%
-    append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
-  
-  HRdata <- HRdata %>% select(all_of(vars_to_keep))
-  
-  # 最終重複チェック
-  duplicate_check(HRdata, c("caseid"), "HRdata")
-  
-  # ============================================================================
-  # ラベル設定
-  # ============================================================================
-  cat("## 6. ラベル設定\n")
-  HRdata <- HRdata %>%
-    set_all_variable_labels() %>%
-    set_all_value_labels()
-  
-  # ============================================================================
-  # 保存
-  # ============================================================================
-  cat("## 7. ファイル保存\n")
-  saveRDS(HRdata, paste0(output_dir, "/WASHdata-ws.rds"))
-  cat("WASHdata保存完了:", year, "\n")
-  
-  cat("============================================================================\n")
-  cat("処理完了:", year, "\n")
-  cat("============================================================================\n")
-  
-  return(HRdata)
-}
-
-#** ここから実行
-for (yr in yearlist) {
-  goAnalysis(yr)
-}
+# cat("Diagnostic functions created. Use these in R:\\n")
+# cat("1. diagnose_value_label_issues(your_data)\\n")
+# cat("2. your_data <- set_all_value_labels_safe(your_data)\\n")
+# 
+# 
+# print("R Diagnostic Script:")
+# print("=" * 50)
+# print(diagnostic_script)
