@@ -70,7 +70,7 @@ goAnalysis <- function(year){
   
   keep_RECH1 <- c("hhid", "hv102", "hv105")
   keep_RECH0 <- c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026")
-  keep_REC0111 <- c("caseid", "v161", "v005")
+  keep_REC0111 <- c("caseid", "hhid", "v161")
   keep_RE516171 <- c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                      "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                      "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
@@ -78,9 +78,18 @@ goAnalysis <- function(year){
   keep_RECH23 <- c("hhid", "hv270", "hv271","hv238", "hv244", "hv241", "hv245", 
                    "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", "hv246f", 
                    "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", "hv219", "hv220")
-  keep_child_cooking_fuel <- c("caseid", "hhid", "v005", "dm_cooking_fuel", 
+  keep_child_cooking_fuel <- c("caseid", "hhid", "dm_cooking_fuel", 
                                "dm_cooking_fuel_traditional")
   keep_child_count <- c("hhid", "dm_children_under12")
+
+  # 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
 
   # 設定した年に基づいてファイルを読み込む
   df_RECH1 <- open_endes_file(year, "RECH1.sav") %>%
@@ -93,11 +102,16 @@ goAnalysis <- function(year){
   df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     mutate(
-      hhid = substr(caseid, 1, 12), # 世帯IDをcaseidから抽出
+      hhid = paste0("      ",substr(caseid, 7, 15)), # 世帯IDをcaseidから抽出
     ) %>%
     add_missing_columns(keep_REC0111) %>% select(all_of(keep_REC0111))
   temp <- df_REC0111
-  df_RE516171 <- open_endes_file(year, "RE516171.sav") %>%
+  # ****************************************************
+  saveRDS(temp, paste0(output_dir, "/temp.rds"))
+  print("complete WASHdata into output folder")
+  print("**************************************************")
+  
+    df_RE516171 <- open_endes_file(year, "RE516171.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_RE516171) %>% select(all_of(keep_RE516171))
   df_RECH23 <- open_endes_file(year, "RECH23.sav") %>%
@@ -142,27 +156,39 @@ goAnalysis <- function(year){
   
   #------------------------------------------------------------------------------------------------
   print("データセットを結合します")
+  print("df_RECH0")
   IRdata <- child_count %>%
     left_join(df_RECH0, by = c("hhid" = "hhid"))
+  
+  print(sprintf("%sと%sを結合しました", "df_REC0", "child_count"))
+  print(IRdata, n=10)
+  
+  print("df_REC0111")
   IRdata <- IRdata %>%
-    left_join(df_REC0111, by = c("hhid" = "hhid", "hv005" = "v005"))
-  IRdata <- IRdata %>%
-    left_join(cooking_fuel, by = c("hhid" = "hhid", "caseid" = "caseid"))
-  #------------------------------------------------------------------------------------------------
+    left_join(cooking_fuel, by = c("hhid" = "hhid"))
+  
+  print(sprintf("%sと%sを結合しました", "IRdata", "cooking_fuel"))
+  print(IRdata, n=10)
+  
   print("家庭用燃料 xxxxxxxxxxxxx")
   print(table(IRdata$dm_cooking_fuel))
   # マッチした行数
   print("マッチした行数を確認: 家庭用燃料")
   matched_count <- IRdata %>%
-  summarise(n_matched = sum(!is.na(dm_cooking_fuel))) %>%
-  pull(n_matched)
+  summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
+  print(matched_count)
   #------------------------------------------------------------------------------------------------
-
+  print("IRDataにcaseidが存在するか: ")
+  print("caseid" %in% names(IRdata))
+  print(names(IRdata))
+  print("**************************************************")
+  #--------------------------------------------------
+  
   IRdata <- IRdata %>%
     left_join(df_RE516171, by = c("caseid"))
   IRdata <- IRdata %>%
     left_join(df_RECH23, by = c("hhid" = "hhid")) %>%
-    mutate(year = year)
+    mutate(year = year, v005 = hv005)
   #------------------------------------------------------------------------------------------------
 
   duplicate_check(IRdata, "hhid", "IRdata")
@@ -311,20 +337,10 @@ goAnalysis <- function(year){
       )
     )
   
-  # 出力用のルートフォルダを指定
-  output_dir <- file.path(gdrive_dir, "output", year) %>%
-    normalizePath() %>%
-    trimws() # 正規化してトリムする
-  # 出力用のルートフォルダが存在しない場合は作成
-  if (!dir_exists(output_dir)) {
-    dir_create(output_dir)
-  }
-
   # WASHdata folderにrds形式で保存
   print(sprintf("save WASHdata into output folder for %s", year))
   print("WASHdata")
   saveRDS(HRdata, paste0(output_dir, "/WASHdata-ws.rds"))
-  saveRDS(temp, paste0(output_dir, "/temp.rds"))
   print("complete WASHdata into output folder")
   
 }
