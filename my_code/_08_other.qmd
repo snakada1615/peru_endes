@@ -158,17 +158,17 @@ goAnalysis <- function(year){
   print("データセットを結合します")
   print("df_RECH0")
   IRdata <- child_count %>%
-    left_join(df_RECH0, by = c("hhid" = "hhid"))
+    left_join_safe(df_RECH0, by = c("hhid" = "hhid"))
   
   print(sprintf("%sと%sを結合しました", "df_REC0", "child_count"))
-  print(IRdata, n=10)
+  duplicate_check(IRdata, c("hhid"), "IRdata")
   
   print("df_REC0111")
   IRdata <- IRdata %>%
-    left_join(cooking_fuel, by = c("hhid" = "hhid"))
+    left_join_safe(cooking_fuel, by = c("hhid" = "hhid"))
   
   print(sprintf("%sと%sを結合しました", "IRdata", "cooking_fuel"))
-  print(IRdata, n=10)
+  duplicate_check(IRdata, c("hhid"), "IRdata")
   
   print("家庭用燃料 xxxxxxxxxxxxx")
   print(table(IRdata$dm_cooking_fuel))
@@ -182,16 +182,23 @@ goAnalysis <- function(year){
   print("caseid" %in% names(IRdata))
   print(names(IRdata))
   print("**************************************************")
+  print("重複チェック1：IRdata")
+  duplicate_check(IRdata, "hhid", "IRdata")
   #--------------------------------------------------
+
   
   IRdata <- IRdata %>%
-    left_join(df_RE516171, by = c("caseid"))
+    left_join_safe(df_RE516171, by = c("caseid"))
+
+  duplicate_check(IRdata, "hhid", "IRdata")
+  
   IRdata <- IRdata %>%
-    left_join(df_RECH23, by = c("hhid" = "hhid")) %>%
+    left_join_safe(df_RECH23, by = c("hhid" = "hhid")) %>%
     mutate(year = year, v005 = hv005)
   #------------------------------------------------------------------------------------------------
 
   duplicate_check(IRdata, "hhid", "IRdata")
+  
   print("データセットの結合が完了しました: IRdata")
   print(paste("レコード数:", nrow(IRdata)))
 
@@ -261,7 +268,7 @@ goAnalysis <- function(year){
   vars_to_keep <- HRdata %>%
     select(starts_with("dm")) %>%
     names() %>%
-    append(c("year", "v001", "v002", "v005", "v022", "caseid")) # add the variables we need to keep
+    append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid")) # add the variables we need to keep
   
   print(vars_to_keep)
   # 順序を保って選択

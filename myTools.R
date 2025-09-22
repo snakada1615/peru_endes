@@ -490,6 +490,42 @@ duplicate_check <- function(df, key_vars, df_name) {
     print(paste("重複レコードがあります in", df_name))
     print(temp)
     print(paste("レコード数：", nrow(df)))
+    
+    # 重複による問題が発生する列を特定
+    problematic_cols <- df %>%
+      group_by(across(all_of(key_vars))) %>%
+      summarise(
+        across(everything(), ~ n_distinct(.x, na.rm = TRUE)),
+        .groups = 'drop'
+      ) %>%
+      filter(if_any(-all_of(key_vars), ~ .x > 1))
+    
+    if (nrow(problematic_cols) > 0) {
+      print("\n同じグループ内で異なる値が存在する列がある重複レコード:")
+      
+      # 問題のある列のみを表示
+      problem_detail <- df %>%
+        semi_join(problematic_cols, by = key_vars) %>%
+        group_by(across(all_of(key_vars))) %>%
+        summarise(
+          across(everything(), ~ paste(sort(unique(.x[!is.na(.x)])), collapse = ", ")),
+          .groups = 'drop'
+        )
+      
+      print(problem_detail)
+      
+      # どの列に問題があるかを明示
+      cols_with_issues <- problematic_cols %>%
+        select(-all_of(key_vars)) %>%
+        select_if(~ any(.x > 1)) %>%
+        names()
+      
+      if (length(cols_with_issues) > 0) {
+        print("\n問題のある列:")
+        print(cols_with_issues)
+      }
+    }
+    
     res <- 0
   } else {
     print(paste("重複レコードはありません in", df_name))
@@ -498,3 +534,103 @@ duplicate_check <- function(df, key_vars, df_name) {
   }
   return(res)
 }
+
+
+# --- 関数定義ここまで ---
+# ******************************************************************************
+#' @title left_join_safe
+#' @description left_joinを実行する前に、結合キー以外の共通列で不一致がある場合に
+#' 警告を表示する関数
+#' @param x データフレーム。左側のデータセット。
+#' @param y データフレーム。右側のデータセット。
+#' @param by 文字列ベクトル。結合キーとして使用する列名。デフォルトはNULL（共通列名を使用）。
+#' @param suffix 文字列ベクトル。結合後の共通列名に付加するサフィックス。デフォルトは c(".x", ".y")。
+#' @param ... その他のleft_joinに渡す引数。
+#' @return left_joinの結果のデータフレーム。
+# ******************************************************************************
+
+left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
+  # xとyの共通列名を取得
+  common_cols <- intersect(names(x), names(y))
+  
+  # byがNULLの場合、共通列名を使用
+  if (is.null(by)) {
+    by <- common_cols
+  } else {
+    # 指定されたbyに共通列名が含まれているか確認
+    if (!all(by %in% common_cols)) {
+      stop("指定された 'by' 列の一部が両データフレームに存在しません。")
+    }
+  }
+  
+  # 共通列名からbyを除いた列名を取得
+  cols_to_check <- setdiff(common_cols, by)
+  
+  if (length(cols_to_check) > 0) {
+    warning("結合キー以外の共通列名があります: ", paste(cols_to_check, collapse = ", "))
+    
+    # 簡単な不一致チェック
+    temp_join <- inner_join(x, y, by = by, suffix = suffix)
+    
+    for (col in cols_to_check) {
+      col_x <- paste0(col, suffix[1])
+      col_y <- paste0(col, suffix[2])
+      
+      if (all(c(col_x, col_y) %in% names(temp_join))) {
+        differences <- sum(temp_join[[col_x]] != temp_join[[col_y]], na.rm = TRUE)
+        if (differences > 0) {
+          warning(paste("列", col, "で", differences, "行の不一致があります"))
+        }
+      }
+    }
+  }
+  
+  # 通常のleft_joinを実行
+  result <- left_join(x, y, by = by, suffix = suffix, ...)
+  return(result)
+}
+# --- 関数定義ここまで ---
+# ******************************************************************************
+#' @title duplicate_check_quick
+#' @description 指定したキー変数に基づき、データフレ
+#' ーム内の重複レコードをチェックし、
+#' 重複グループ内で異なる値を持つ列を特定して返す関数
+#' @param df データフレーム。重複チェック対象のデータセット。
+#' @param key_vars 文字列ベクトル。重複チェックに使用するキー変数名。
+#' @return 重複グループ内で異なる値を持つ列の名前のベクトル。
+#'         重複がない場合は「重複レコードはありません」という文字列を返す。
+# ******************************************************************************
+duplicate_check_quick <- function(df, key_vars, df_name) {
+  print(paste("重複レコードの確認 in", df_name))
+  # 重複があるかチェック
+  duplicates_exist <- df %>%
+    group_by(across(all_of(key_vars))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    filter(n > 1) %>%
+    nrow() > 0
+  
+  if (!duplicates_exist) {
+    return("重複レコードはありません")
+  }
+  
+  # 重複グループ内で異なる値を持つ列を特定
+  non_key_vars <- names(df)[!names(df) %in% key_vars]
+  
+  problematic_cols <- c()
+  
+  for (col in non_key_vars) {
+    has_variation <- df %>%
+      group_by(across(all_of(key_vars))) %>%
+      summarise(distinct_count = n_distinct(!!sym(col), na.rm = TRUE), .groups = 'drop') %>%
+      filter(distinct_count > 1) %>%
+      nrow() > 0
+    
+    if (has_variation) {
+      problematic_cols <- c(problematic_cols, col)
+    }
+  }
+  
+  return(problematic_cols)
+}
+# --- 関数定義ここまで ---
+
