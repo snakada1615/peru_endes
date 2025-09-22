@@ -461,6 +461,7 @@ open_endes_file <- function(myyear, fileType) {
 add_missing_columns <- function(df, columns) {
   for(col in columns) {
     if(!col %in% colnames(df)) {
+      print(paste("Adding missing column:", col))
       df[[col]] <- NA
     }
   }
