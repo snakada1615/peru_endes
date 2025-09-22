@@ -469,7 +469,6 @@ add_missing_columns <- function(df, columns) {
 }
 
 # --- 関数定義ここまで ---
-
 # ******************************************************************************
 #' @title duplicate_check
 #' @description 指定したキー変数に基づき、データフレーム内の重複レコードをチェックし、
@@ -481,6 +480,36 @@ add_missing_columns <- function(df, columns) {
 #' ******************************************************************************
 
 duplicate_check <- function(df, key_vars, df_name) {
+  temp <- df %>%
+    group_by(across(all_of(key_vars))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    filter(n > 1)
+  
+  if (nrow(temp) > 0) {
+    print(paste("重複レコードがあります in", df_name))
+    print(temp)
+    print(paste("レコード数：", nrow(df)))
+    res <- 0
+  } else {
+    print(paste("重複レコードはありません in", df_name))
+    print(paste("レコード数：", nrow(df)))
+    res <- 1
+  }
+  return(res)
+}
+# --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title duplicate_check_detail
+#' @description 指定したキー変数に基づき、データフレーム内の重複レコードをチェックし、
+#' 結果を標準出力に表示する関数
+#' @param df データフレーム。重複チェック対象のデータセット。
+#' @param key_vars 文字列ベクトル。重複チェックに使用するキー変数名。
+#' @param df_name 文字列。データフレームの名前（メッセージ表示用）。
+#' @return 重複がない場合は1、重複がある場合は0を返す。
+#' ******************************************************************************
+
+duplicate_check_detail <- function(df, key_vars, df_name) {
   temp <- df %>%
     group_by(across(all_of(key_vars))) %>%
     summarise(n = n(), .groups = 'drop') %>%
@@ -589,48 +618,5 @@ left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
   result <- left_join(x, y, by = by, suffix = suffix, ...)
   return(result)
 }
-# --- 関数定義ここまで ---
-# ******************************************************************************
-#' @title duplicate_check_quick
-#' @description 指定したキー変数に基づき、データフレ
-#' ーム内の重複レコードをチェックし、
-#' 重複グループ内で異なる値を持つ列を特定して返す関数
-#' @param df データフレーム。重複チェック対象のデータセット。
-#' @param key_vars 文字列ベクトル。重複チェックに使用するキー変数名。
-#' @return 重複グループ内で異なる値を持つ列の名前のベクトル。
-#'         重複がない場合は「重複レコードはありません」という文字列を返す。
-# ******************************************************************************
-duplicate_check_quick <- function(df, key_vars, df_name) {
-  print(paste("重複レコードの確認 in", df_name))
-  # 重複があるかチェック
-  duplicates_exist <- df %>%
-    group_by(across(all_of(key_vars))) %>%
-    summarise(n = n(), .groups = 'drop') %>%
-    filter(n > 1) %>%
-    nrow() > 0
-  
-  if (!duplicates_exist) {
-    return("重複レコードはありません")
-  }
-  
-  # 重複グループ内で異なる値を持つ列を特定
-  non_key_vars <- names(df)[!names(df) %in% key_vars]
-  
-  problematic_cols <- c()
-  
-  for (col in non_key_vars) {
-    has_variation <- df %>%
-      group_by(across(all_of(key_vars))) %>%
-      summarise(distinct_count = n_distinct(!!sym(col), na.rm = TRUE), .groups = 'drop') %>%
-      filter(distinct_count > 1) %>%
-      nrow() > 0
-    
-    if (has_variation) {
-      problematic_cols <- c(problematic_cols, col)
-    }
-  }
-  
-  return(problematic_cols)
-}
-# --- 関数定義ここまで ---
 
+# --- 関数定義ここまで ---
