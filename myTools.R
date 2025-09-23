@@ -579,26 +579,36 @@ duplicate_check_detail <- function(df, key_vars, df_name) {
 # ******************************************************************************
 
 left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
-  # xとyの共通列名を取得
-  common_cols <- intersect(names(x), names(y))
-  
-  # byがNULLの場合、共通列名を使用
+  # byがNULLの場合は共通列名をセット
   if (is.null(by)) {
+    common_cols <- intersect(names(x), names(y))
     by <- common_cols
+    by_x <- by_y <- common_cols
+  } else if (is.character(by) && is.null(names(by))) {
+    # 非namedの場合
+    by_x <- by_y <- by
+  } else if (is.character(by) && !is.null(names(by))) {
+    # namedの場合（ex: by = c("A" = "B")）
+    by_x <- names(by)
+    by_y <- unname(by)
   } else {
-    # 指定されたbyに共通列名が含まれているか確認
-    if (!all(by %in% common_cols)) {
-      stop("指定された 'by' 列の一部が両データフレームに存在しません。")
-    }
+    stop("by引数の形式が不正です。")
   }
   
-  # 共通列名からbyを除いた列名を取得
-  cols_to_check <- setdiff(common_cols, by)
+  # チェックのための共通列名取得
+  # named vectorの場合は、左右で異なるキー名を許すため特別な処理
+  # 2つのデータフレーム中の"by"で指定された列同士を対応させる
+  common_cols_x <- intersect(names(x), names(y))
+  if (is.null(by) || (is.character(by) && is.null(names(by)))) {
+    cols_to_check <- setdiff(common_cols_x, by_x)
+  } else {
+    cols_to_check <- intersect(setdiff(names(x), by_x), setdiff(names(y), by_y))
+  }
   
   if (length(cols_to_check) > 0) {
     warning("結合キー以外の共通列名があります: ", paste(cols_to_check, collapse = ", "))
     
-    # 簡単な不一致チェック
+    # inner_joinもbyそのまま渡して大丈夫
     temp_join <- inner_join(x, y, by = by, suffix = suffix)
     
     for (col in cols_to_check) {
