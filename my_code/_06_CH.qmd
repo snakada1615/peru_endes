@@ -68,6 +68,14 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 chap <- "Chap10_CH"
 
 goAnalysis <- function(year){
+  # 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
   
   # 母親の雇用状態を追加
   keep_rec41 <- c("caseid", "midx", "m18", "m19")
@@ -136,65 +144,70 @@ goAnalysis <- function(year){
   
   # 13. 月齢24ヶ月未満の子供に制限
   #create subset of KRfile to select for children for IYCF indicators
-  KRdata <- KRdata %>%
+  KRdata_org <- KRdata %>%
     filter(age < 24 & b9==0)
   print("月齢24ヶ月未満の子供に制限しました")
   duplicate_check(KRdata, "caseid", "KRdata")
   print(paste("レコード数:", nrow(KRdata)))
       
-
+  # 14. ここから実際のデータ処理(1)
+  # KRdataの初期設定
+  KRdata <- KRdata_org
   # create analytic variables
   source(here(paste0(chap,"/CH_SIZE.R")), local = environment())
   # Purpose: 	Code child size indicators
   
+  # データ処理の実施
   source(here(paste0(chap,"/CH_ARI_FV.R")), local = environment())
   # Purpose:	Code ARI indicators
+  
+  # 最終データ項目を選択
+  vars_to_keep <- KRdata %>%
+    select(starts_with("ch")) %>%
+    names() %>%
+    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
+  KRdata <- KRdata[, vars_to_keep]
+
+  # KRdata folderにrds形式で保存
+  print(sprintf("save KRdata into output folder for %s", year))
+  print("KRdata")
+  saveRDS(KRdata, paste0(output_dir, "/KRdata.rds"))
+  
+  # 15. ここから実際のデータ処理(2)
+  # KRdataの初期設定
+  KRdata <- KRdata_org
   
   source(here(paste0(chap,"/CH_VAC.R")), local = environment())
   # Purpose:	Code vaccination indicators
   # Note:     This code will create a data subset KRvac for children in the vaccination age group
 
-  source(here(paste0(chap,"/CH_STOOL.R")), local = environment())
-  # Purpose:	Safe disposal of stool
-  # Note:     This code will create a data subset KRstool to selected for youngest child under age 2 living with the mother
-
-  vars_to_keep <- KRdata %>%
-    select(starts_with("ch")) %>%
-    names() %>%
-    append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-
+  # 最終データ項目を選択
   vars_to_keep2 <- KRvac %>%
     select(starts_with("ch")) %>%
     names() %>%
     append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
+  KRvac <- KRvac[, vars_to_keep2]
 
+  # KRdata folderにrds形式で保存
+  print("KRvac")
+  saveRDS(KRvac, paste0(output_dir, "/KRvac.rds"))
+
+  # 16. ここから実際のデータ処理(3)
+  # KRdataの初期設定
+  KRdata <- KRdata_org  
+  
+  source(here(paste0(chap,"/CH_STOOL.R")), local = environment())
+  # Purpose:	Safe disposal of stool
+  # Note:     This code will create a data subset KRstool to selected for youngest child under age 2 living with the mother
+
+  # 最終データ項目を選択
   vars_to_keep3 <- KRstool %>%
     select(starts_with("ch")) %>%
     names() %>%
     append(c("year", "caseid", "age", "wt")) # add the variables we need to keep
-    
-  # print(vars_to_keep)
-  # 順序を保って選択
-  
-  KRdata <- KRdata[, vars_to_keep]
-  KRvac <- KRvac[, vars_to_keep2]
   KRstool <- KRstool[, vars_to_keep3]
   
-  # 出力用のルートフォルダを指定
-  output_dir <- file.path(gdrive_dir, "output", year) %>%
-    normalizePath() %>%
-    trimws() # 正規化してトリムする
-  # 出力用のルートフォルダが存在しない場合は作成
-  if (!dir_exists(output_dir)) {
-    dir_create(output_dir)
-  }
-  
   # KRdata folderにrds形式で保存
-  print(sprintf("save KRdata into output folder for %s", year))
-  print("KRdata")
-  saveRDS(KRdata, paste0(output_dir, "/KRdata.rds"))
-  print("KRvac")
-  saveRDS(KRvac, paste0(output_dir, "/KRvac.rds"))
   print("KRstool")
   saveRDS(KRstool, paste0(output_dir, "/KRstool.rds"))
   print("complete KRdata into output folder")

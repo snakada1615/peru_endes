@@ -134,6 +134,8 @@ goAnalysis <- function(year){
   duplicate_check(IRdata, "caseid", "IRdata")
   print(paste("レコード数:", nrow(IRdata)))
       
+  # あとで使うためにBRdataを用意
+  BRdata <- IRdata
 
   # create analytic variables
   source(here(paste0(chap,"/RH_ANC.R")), local = environment())
@@ -169,8 +171,7 @@ goAnalysis <- function(year){
   saveRDS(IRdata, paste0(output_dir, "/IRdata-rh.rds"))
   print("complete IRdata into output folder")
   
-  BRdata <- IRdata
-  
+  # 出産時のケアに関する指標
   source(here(paste0(chap,"/RH_DEL.R")), local = environment())
   # Purpose: 	Code indicators for problems accessing health care 
 

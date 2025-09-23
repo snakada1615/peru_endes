@@ -1,0 +1,168 @@
+---
+title: "test script"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+execute-dir: project
+---
+
+## 1. 共通データのセット
+
+```{r}
+
+rm(list = ls(all = TRUE))
+
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(survey)       # for survey design
+
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+
+# 対象とする年のリスト
+yearlist <- c("2007", "2008", "2009", "2010", "2011",
+"2012", "2013", "2014", "2015", "2016")
+# yearlist <- c("2015")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+# ファイル名の設定
+files <- c("BRdata-rh","IRdata-rh","IRdata-rc","KRvac","KRdata",
+           "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool")
+files2 <- c("PRData")
+
+# RDSファイルを読み込む関数
+# year: 年
+# filename: ファイル名（拡張子なし）
+# select_col: 抽出する列名のベクトル（NULLの場合は全列を抽出）
+open_processed_file <- function(year, filename, select_col = NULL) {
+  file_path <- file.path(gdrive_dir, "output", year, paste0(filename, ".RDS")) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+    if (file_exists(file_path)) {
+      df <- readRDS(file_path) %>%
+        rename_with(~ tolower(.x))
+    if (!is.null(select_col)) {
+      df <- df %>% select(all_of(select_col))
+    }
+    print("重複チェック")
+    if (duplicate_check(df, c("caseid"), filename) == 0) {
+      duplicate_check_detail(df, c("caseid"), filename)
+    }
+    return(df)
+  } else {
+    stop("File does not exist: ", file_path)
+  }
+}
+
+```
+
+## 2. データ処理
+
+```{r}
+# 必要なデータセットの抽出
+
+goAnalysis <- function(year){
+
+  print(paste("Processing year:", year))
+  # 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+  
+  # 必要なデータセットの抽出
+  print("必要なデータセットを抽出します")
+  
+  keep_RECH1 <- c("HV001", "HV002", "HV103", "HHID", "HVIDX")
+  keep_RECH6 <- c("HC1", "hc27", "HC56", "HC70", "HC71", "HC72", "HHID", "HC0")
+  data_all <- list()
+  data_merged <- NULL
+  
+  for (f in files){
+    print(paste("Loading file:", f))
+    data_all[[f]] <- open_processed_file(year, f)
+    # if (is.null(data_merged)){
+    #   print(paste("Start from file:", f))
+    #   data_merged <- data_all[[f]]
+    # } else {
+    #   print(paste("Merging with file:", f))
+    #   left_join_safe(data_merged, data_all[[f]], by = c("caseid" = "caseid"))
+    # }
+  }
+  
+  data_merged <- data_all[["BRdata-rh"]]
+  print("Merging with IRdata-rh")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["IRdata-rh"]], by = c("caseid" = "caseid", "age", "wt"))
+  print("Merging with IRdata-rc")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["IRdata-rc"]], by = c("caseid" = "caseid", "year"))
+  print("Merging with KRvac")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["KRvac"]], by = c("caseid" = "caseid", "age", "wt", "year"))
+  print("Merging with KRdata")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["KRdata"]], by = c("caseid" = "caseid", "age", "wt", "year"))
+  print("Merging with KRiycf-nt")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["KRiycf-nt"]], by = c("caseid" = "caseid", "b4", "v005", "v022", 
+                                    "v025", "v106", "v190", "age", "year"))
+  print("Merging with IRdata-ms")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["IRdata-ms"]], by = c("caseid" = "caseid", "year"))
+  print("Merging with KRstool")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["KRstool"]], by = c("caseid" = "caseid", "wt", "age", "year"))
+  print("Merging with WASHdata-ws")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["WASHdata-ws"]], by = c("caseid", "v005", "v022", "v001", "v002", 
+                                      "year"))
+  
+  print("データセットの抽出と結合が完了しました")
+  return(data_all)
+}
+
+```
+
+## 3. ループ実行
+
+```{r}
+#** ここから実行
+for (yr in yearlist) {
+  mydata <- goAnalysis(yr)
+}
+```
+
+## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:

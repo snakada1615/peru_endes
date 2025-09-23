@@ -129,7 +129,7 @@ go_analysis <- function(my_year){
   PRdata <- PRdata[, vars_to_keep]
   print("select variables to keep")
   
-  # PRdataをoutput folderにdta形式で保存
+  # PRdataをoutput folderにrds形式で保存
   print("save PRdata into output folder")
   saveRDS(PRdata, paste0(output_dir, "/PRData.rds"))
   print(paste("Data for year", my_year, "saved to", paste0(output_dir, "/PRData.rds")))

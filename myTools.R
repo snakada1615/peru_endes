@@ -631,6 +631,70 @@ left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
 
 # --- 関数定義ここまで ---
 # ******************************************************************************
+#' @title inner_join_safe
+#' @description inner_joinを実行する前に、結合キー以外の共通列で不一致がある場合に
+#' 警告を表示する関数
+#' @param x データフレーム。左側のデータセット。
+#' @param y データフレーム。右側のデータセット。
+#' @param by 文字列ベクトル。結合キーとして使用する列名。デフォルトはNULL（共通列名を使用）。
+#' @param suffix 文字列ベクトル。結合後の共通列名に付加するサフィックス。デフォルトは c(".x", ".y")。
+#' @param ... その他のinner_joinに渡す引数。
+#' @return inner_joinの結果のデータフレーム。
+# ******************************************************************************
+
+inner_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
+  # byがNULLの場合は共通列名をセット
+  if (is.null(by)) {
+    common_cols <- intersect(names(x), names(y))
+    by <- common_cols
+    by_x <- by_y <- common_cols
+  } else if (is.character(by) && is.null(names(by))) {
+    # 非namedの場合
+    by_x <- by_y <- by
+  } else if (is.character(by) && !is.null(names(by))) {
+    # namedの場合（ex: by = c("A" = "B")）
+    by_x <- names(by)
+    by_y <- unname(by)
+  } else {
+    stop("by引数の形式が不正です。")
+  }
+  
+  # チェックのための共通列名取得
+  # named vectorの場合は、左右で異なるキー名を許すため特別な処理
+  # 2つのデータフレーム中の"by"で指定された列同士を対応させる
+  common_cols_x <- intersect(names(x), names(y))
+  if (is.null(by) || (is.character(by) && is.null(names(by)))) {
+    cols_to_check <- setdiff(common_cols_x, by_x)
+  } else {
+    cols_to_check <- intersect(setdiff(names(x), by_x), setdiff(names(y), by_y))
+  }
+  
+  if (length(cols_to_check) > 0) {
+    warning("結合キー以外の共通列名があります: ", paste(cols_to_check, collapse = ", "))
+    
+    # inner_joinもbyそのまま渡して大丈夫
+    temp_join <- inner_join(x, y, by = by, suffix = suffix)
+    
+    for (col in cols_to_check) {
+      col_x <- paste0(col, suffix[1])
+      col_y <- paste0(col, suffix[2])
+      
+      if (all(c(col_x, col_y) %in% names(temp_join))) {
+        differences <- sum(temp_join[[col_x]] != temp_join[[col_y]], na.rm = TRUE)
+        if (differences > 0) {
+          warning(paste("列", col, "で", differences, "行の不一致があります"))
+        }
+      }
+    }
+  }
+  
+  # 通常のleft_joinを実行
+  result <- inner_join(x, y, by = by, suffix = suffix, ...)
+  return(result)
+}
+
+# --- 関数定義ここまで ---
+# ******************************************************************************
 #' @title diagnose_value_label_issues
 #' @description データフレーム内の特定の変数について、値
 #' ラベルを設定する前に、その変数のデータ型をチェックし、
