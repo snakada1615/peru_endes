@@ -43,7 +43,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 # 対象とする年のリスト
 yearlist <- c("2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2016")
+# yearlist <- c("2008")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -91,6 +91,9 @@ open_processed_file <- function(year, filename, select_col = NULL) {
 # 必要なデータセットの抽出
 
 goAnalysis <- function(year){
+  cat("============================================================================\n")
+  cat("ENDES データ結合処理開始:", year, "\n")
+  cat("============================================================================\n\n")
 
   print(paste("Processing year:", year))
   # 出力用のルートフォルダを指定
@@ -148,10 +151,25 @@ goAnalysis <- function(year){
   print("Merging with WASHdata-ws")
   data_merged <- left_join_safe(data_merged, 
     data_all[["WASHdata-ws"]], by = c("caseid", "v005", "v022", "v001", "v002", 
-                                      "year", "wt"))
+                                      "year"))
   
   print("データセットの抽出と結合が完了しました")
-  return(data_all)
+
+  # ============================================================================
+  # 保存
+  # ============================================================================
+  cat("## 7. ファイル保存\n")
+  saveRDS(data_merged, paste0(output_dir, "/data_merged.rds"))
+  cat("全データ結合完了:", year, "\n")
+  
+  cat("============================================================================\n")
+  cat("処理完了:", year, "\n")
+  cat("============================================================================\n")
+
+  
+    
+  # return(data_all) # デバッグ用
+  return(data_merged)
 }
 
 ```
