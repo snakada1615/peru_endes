@@ -38,15 +38,18 @@ library(sjlabelled)　# ラベル付きデータ処理用
 rm(list = ls(all = TRUE))
 
 # 自作関数読み込み
-source(here("myTools.R"))
+source("../myTools.R")
 
 # ================================================================================
 # 1. データ読み込み
 # ================================================================================
-path_data_file <- normalizePath(
-  here("..", "output", "alldata", "merged_all_years.dta")
-)
-df_org <- read_dta(path_data_file)
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+
+df_org <- readRDS(
+    file.path(gdrive_dir, "output","all_data_merged.rds")
+  )
 
 # 変数ラベル取得
 var_labels <- df_org %>% get_label %>% as_tibble() %>% rename(labels = value)
@@ -63,28 +66,18 @@ var_labels$varname <- names(df_org)
 
 # 除外変数定義
 drop_cols <- c(
-  "caseid", "cluster_id", "strata_id", "state_id", "state",
-  "treated_status", "time_period", "group_summary", "nt_ch_whz", "age",
-  "v001", "v002", "v003", "v005", "v008", "v013", "v022", "v024", "v025", "v026",
-  "b3", "b9", "bidx", "age_months", "b4", "v106", "v190", "hv024", "hv103", 
-  "hv270", "hc1", "hc27", "sampling_weight", "treated_ever", "treated", 
-  "treatment_cohort", "post_treatment", "dm_refrigerator", "nt_bbyfood", 
-  "rc_tobc_other", "ph_wtr_trt_solar", "ms_sex_never", "ms_mar_union", 
-  "ms_mar_never", "nt_ch_micro_vaf", "nt_solids", "nt_ch_sev_stunt",
-  "nt_ch_stunt","nt_ch_mean_haz", "nt_ch_haz","nt_ch_sev_wast", "nt_ch_wast",
-  "nt_ch_ovwt_ht", "nt_ch_mean_whz", "nt_ch_whz", "nt_ch_sev_underwt", 
-  "nt_ch_underwt", "nt_ch_ovwt_age"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "state", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year", "year_treated"
 )
+
 
 # ID・管理用変数
 grouping_cols <- c("caseid", "cluster_id", "strata_id", "state_id", "state",
-                   "treated_status", "time_period", "group_summary",
-                   "treatment_start", "treated_ever", "treated",
-                   "treatment_cohort", "post_treatment", "sampling_weight")
+                   "treated_status", "time_period",
+                   "treatment_start",
+                   "wt")
 
 # パターンマッチによる変数除外
-drop_cols2 <- grep("^ch_pneumo|^ch_rotav", names(df_org), value = TRUE)
-all_drop_cols <- c(drop_cols, drop_cols2, "treatment_start")
+all_drop_cols <- c(drop_cols, "treatment_start")
 
 # 1. 介入前データで絞りこみ
 df_pre <- df_org[df_org$treated_status %in% c("never_treated", "not_yet_treated"), ]
