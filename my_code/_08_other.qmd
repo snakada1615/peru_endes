@@ -127,22 +127,23 @@ setup_output_directory <- function(year) {
   return(output_dir)
 }
 
-# REC0111のHHIDを年度に応じて生成する関数
-process_endes_with_hhid <- function(year, filename) {
-  df <- open_endes_file(year, filename) %>%
-    rename_with(~ tolower(.x))
-  
-  # 年度に応じたHHID生成
-  if (year <= 2011) {
-    df <- df %>% 
-      mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
-  } else {
-    df <- df %>% 
-      mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
-  }
-  
-  return(df)
-}
+# # REC0111のHHIDを年度に応じて生成する関数
+# *******この関数はmyTools.rに移管しました
+# process_endes_with_hhid <- function(year, filename) {
+#   df <- open_endes_file(year, filename) %>%
+#     rename_with(~ tolower(.x))
+#   
+#   # 年度に応じたHHID生成
+#   if (year <= 2011) {
+#     df <- df %>% 
+#       mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
+#   } else {
+#     df <- df %>% 
+#       mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
+#   }
+#   
+#   return(df)
+# }
 
 
 ```

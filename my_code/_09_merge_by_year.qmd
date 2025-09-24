@@ -56,8 +56,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 # ファイル名の設定
 files <- c("BRdata-rh","IRdata-rh","IRdata-rc","KRvac","KRdata",
-           "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool")
-files2 <- c("PRData")
+           "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool", "PRdata")
 
 # RDSファイルを読み込む関数
 # year: 年
@@ -116,13 +115,6 @@ goAnalysis <- function(year){
   for (f in files){
     print(paste("Loading file:", f))
     data_all[[f]] <- open_processed_file(year, f)
-    # if (is.null(data_merged)){
-    #   print(paste("Start from file:", f))
-    #   data_merged <- data_all[[f]]
-    # } else {
-    #   print(paste("Merging with file:", f))
-    #   left_join_safe(data_merged, data_all[[f]], by = c("caseid" = "caseid"))
-    # }
   }
   
   data_merged <- data_all[["BRdata-rh"]]
@@ -181,6 +173,13 @@ goAnalysis <- function(year){
     select(-c(v005, v022, v001, v002))
   data_merged <- left_join_safe(data_merged, 
     data_all[["WASHdata-ws"]], by = c("caseid", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
+  print("Merging with PRdata")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["PRdata"]], by = c("caseid", "hhid", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }

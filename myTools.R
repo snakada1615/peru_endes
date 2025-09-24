@@ -921,4 +921,31 @@ check_source_variables <- function(data) {
   }
 }
 
+# --- 関数定義ここまで ---
 
+# ******************************************************************************
+#' @title process_endes_with_hhid
+#' @description 指定した年とファイル名に基づき、endes_listから該当する
+#' ファイルのパスを取得し、SPSS形式のデータを読み込み、年度に応じて
+#' HHIDを生成して返す関数
+#' @param year 文字列。対象の年（例: "2005"）
+#' @param filename 文字列。対象REC0111のファイル名（例: "REC0111.sav"）
+#' @return 指定された年とファイル名に対応するデータフレーム
+#' ******************************************************************************
+# REC0111のHHIDを年度に応じて生成する関数
+process_endes_with_hhid <- function(year, filename) {
+  df <- open_endes_file(year, filename) %>%
+    rename_with(~ tolower(.x))
+  
+  # 年度に応じたHHID生成
+  if (year <= 2011) {
+    df <- df %>% 
+      mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
+  } else {
+    df <- df %>% 
+      mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
+  }
+  
+  return(df)
+}
+# --- 関数定義ここまで ---
