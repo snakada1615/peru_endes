@@ -127,6 +127,24 @@ setup_output_directory <- function(year) {
   return(output_dir)
 }
 
+# REC0111のHHIDを年度に応じて生成する関数
+process_endes_with_hhid <- function(year, filename) {
+  df <- open_endes_file(year, filename) %>%
+    rename_with(~ tolower(.x))
+  
+  # 年度に応じたHHID生成
+  if (year <= 2011) {
+    df <- df %>% 
+      mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
+  } else {
+    df <- df %>% 
+      mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
+  }
+  
+  return(df)
+}
+
+
 ```
 ## 4. データ処理関数
 
@@ -386,9 +404,10 @@ goAnalysis <- function(year) {
   df_RE516171 <- load_endes_data(year, "RE516171.sav", var_lists$RE516171)
 
   # REC0111は特別処理（hhid作成）
-  df_REC0111 <- open_endes_file(year, "REC0111.sav") %>%
-    rename_with(~ tolower(.x)) %>%
-    mutate(hhid = paste0("      ", substr(caseid, 7, 15))) %>%
+  df_REC0111 <- process_endes_with_hhid(year, "REC0111.sav") %>%
+    # rename_with(~ tolower(.x)) %>%
+    # # mutate(hhid = paste0(sprintf("%6d", v001), sprintf("%6d", v002))) %>%
+    # mutate(hhid = paste0("      ", substr(caseid, 7, 15))) %>%
     add_missing_columns(var_lists$REC0111) %>% 
     select(all_of(var_lists$REC0111))
   
