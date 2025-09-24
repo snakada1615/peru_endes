@@ -480,6 +480,7 @@ add_missing_columns <- function(df, columns) {
 #' ******************************************************************************
 
 duplicate_check <- function(df, key_vars, df_name) {
+  print(paste("Checking duplicates in", df_name, "using keys:", paste(key_vars, collapse = ", ")))
   temp <- df %>%
     group_by(across(all_of(key_vars))) %>%
     summarise(n = n(), .groups = 'drop') %>%
@@ -510,6 +511,7 @@ duplicate_check <- function(df, key_vars, df_name) {
 #' ******************************************************************************
 
 duplicate_check_detail <- function(df, key_vars, df_name) {
+  print(paste("Checking duplicates in", df_name, "using keys:", paste(key_vars, collapse = ", ")))
   temp <- df %>%
     group_by(across(all_of(key_vars))) %>%
     summarise(n = n(), .groups = 'drop') %>%
@@ -565,6 +567,63 @@ duplicate_check_detail <- function(df, key_vars, df_name) {
 }
 
 
+# --- 関数定義ここまで ---
+# ******************************************************************************
+#' @title duplicate_check_detail_most
+#' @description 指定したキー変数に基づき、データフレ
+#' ーム内の重複レコードをチェックし、各重複グループで異なる値を持つ列を詳細に調べる関数
+#' @param df データフレーム。重複チェック対象のデータセット。
+#' @param key_vars 文字列ベクトル。重複チェックに使用するキー変数名。
+#' @param df_name 文字列。データフレームの名前（メッセージ表示用）。
+#' @return 重複がない場合は1、重複がある場合は0を返す。
+#' ******************************************************************************
+duplicate_check_detail_most <- function(df, key_vars, df_name) {
+  temp <- df %>%
+    group_by(across(all_of(key_vars))) %>%
+    summarise(n = n(), .groups = 'drop') %>%
+    filter(n > 1)
+  
+  if (nrow(temp) > 0) {
+    print(paste("重複レコードがあります in", df_name))
+    print(temp)
+    print(paste("レコード数：", nrow(df)))
+    
+    # 各重複グループで異なる値を持つ列を詳細に調べる
+    duplicate_groups <- temp %>% select(all_of(key_vars))
+    
+    # 重複レコードのみを取得
+    duplicate_records <- df %>%
+      semi_join(duplicate_groups, by = key_vars)
+    
+    # 各列について、重複グループ内での値の変動を調べる
+    non_key_vars <- names(df)[!names(df) %in% key_vars]
+    
+    print("\n=== 重複による問題列の詳細診断 ===")
+    
+    for (col in non_key_vars) {
+      col_issues <- duplicate_records %>%
+        group_by(across(all_of(key_vars))) %>%
+        summarise(
+          distinct_values = n_distinct(!!sym(col), na.rm = TRUE),
+          values = paste(sort(unique(!!sym(col)[!is.na(!!sym(col))])), collapse = ", "),
+          .groups = 'drop'
+        ) %>%
+        filter(distinct_values > 1)
+      
+      if (nrow(col_issues) > 0) {
+        cat("\n列:", col, "\n")
+        print(col_issues)
+      }
+    }
+    
+    res <- 0
+  } else {
+    print(paste("重複レコードはありません in", df_name))
+    print(paste("レコード数：", nrow(df)))
+    res <- 1
+  }
+  return(res)
+}
 # --- 関数定義ここまで ---
 # ******************************************************************************
 #' @title left_join_safe
@@ -706,7 +765,7 @@ inner_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
 # and report any potential issues that would prevent label assignment.
 # ******************************************************************************
 diagnose_value_label_issues <- function(data) {
-  cat("=== Diagnostic Report for Value Label Assignment ===\\n\\n")
+  message("=== Diagnostic Report for Value Label Assignment ===\\n\\n")
   
   # List of variables that will receive value labels
   value_label_vars <- c(
@@ -726,31 +785,31 @@ diagnose_value_label_issues <- function(data) {
       has_na <- any(is.na(data[[var]]))
       unique_vals <- length(unique(data[[var]], na.rm = TRUE))
       
-      cat("Variable:", var, "\\n")
-      cat("  - Class:", paste(var_class, collapse = ", "), "\\n")
-      cat("  - Type:", var_type, "\\n")
-      cat("  - Has NA:", has_na, "\\n")
-      cat("  - Unique values:", unique_vals, "\\n")
+      message("Variable:", var, "\\n")
+      message("  - Class:", paste(var_class, collapse = ", "), "\\n")
+      message("  - Type:", var_type, "\\n")
+      message("  - Has NA:", has_na, "\\n")
+      message("  - Unique values:", unique_vals, "\\n")
       
       # Check if its numeric or character (required by haven/labelled)
       is_valid <- is.numeric(data[[var]]) || is.character(data[[var]])
-      cat("  - Valid for labelling:", is_valid, "\\n")
+      message("  - Valid for labelling:", is_valid, "\\n")
       
       # Show sample values
       sample_vals <- head(unique(data[[var]], na.rm = TRUE), 5)
-      cat("  - Sample values:", paste(sample_vals, collapse = ", "), "\\n")
-      cat("\\n")
+      message("  - Sample values:", paste(sample_vals, collapse = ", "), "\\n")
+      message("\\n")
       
       if (!is_valid) {
-        cat("*** PROBLEM FOUND: Variable", var, "is not numeric or character! ***\\n")
-        cat("*** This variable cannot receive value labels ***\\n\\n")
+        message("*** PROBLEM FOUND: Variable", var, "is not numeric or character! ***\\n")
+        message("*** This variable cannot receive value labels ***\\n\\n")
       }
     } else {
-      cat("Variable:", var, "- NOT FOUND in dataset\\n\\n")
+      message("Variable:", var, "- NOT FOUND in dataset\\n\\n")
     }
   }
   
-  cat("=== End of Diagnostic Report ===\\n")
+  message("=== End of Diagnostic Report ===\\n")
 }
 
 # --- 関数定義ここまで ---
@@ -766,7 +825,7 @@ diagnose_value_label_issues <- function(data) {
 #' ******************************************************************************
 # Modified function that skips problematic variables
 set_all_value_labels_safe <- function(data) {
-  cat("Attempting to set value labels...\\n")
+  message("Attempting to set value labels...\\n")
   
   # Check which variables exist and are valid
   valid_vars <- c()
@@ -805,17 +864,17 @@ set_all_value_labels_safe <- function(data) {
     if (var_name %in% names(data)) {
       is_valid <- is.numeric(data[[var_name]]) || is.character(data[[var_name]])
       if (is_valid) {
-        cat("Setting labels for:", var_name, "\\n")
+        message("Setting labels for:", var_name, "\\n")
         tryCatch({
           data <- data %>% set_value_labels(!!var_name := vars_to_check[[var_name]])
         }, error = function(e) {
-          cat("ERROR setting labels for", var_name, ":", e$message, "\\n")
+          message("ERROR setting labels for", var_name, ":", e$message, "\\n")
         })
       } else {
-        cat("SKIPPING", var_name, "- not numeric or character\\n")
+        message("SKIPPING", var_name, "- not numeric or character\\n")
       }
     } else {
-      cat("SKIPPING", var_name, "- variable not found\\n")
+      message("SKIPPING", var_name, "- variable not found\\n")
     }
   }
   
@@ -831,5 +890,35 @@ set_all_value_labels_safe <- function(data) {
 # print("=" * 50)
 # print(diagnostic_script)
 
+# --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title check_source_variables
+#' @description 変数作成に使用する元データの変数の値分布を確認する関数
+#' @param data データフレーム
+#' @return なし。診断結果を標準出力に表示
+# ******************************************************************************
+check_source_variables <- function(data) {
+  cat("=== Source Variable Check ===\n\n")
+  
+  source_vars <- c("hv026", "hv270", "hv238", "hv241", "hv246a", 
+                   "hv246d", "hv246e", "hv246g", "hv209", "hv219", "hv220")
+  
+  for (var in source_vars) {
+    if (var %in% names(data)) {
+      cat("Variable:", var, "\n")
+      cat("  - Class:", class(data[[var]]), "\n")
+      cat("  - Type:", typeof(data[[var]]), "\n")
+      
+      # 値の分布を表示
+      val_table <- table(data[[var]], useNA = "ifany")
+      cat("  - Value distribution:\n")
+      print(val_table)
+      cat("\n")
+    } else {
+      cat("Variable:", var, "- NOT FOUND\n\n")
+    }
+  }
+}
 
 

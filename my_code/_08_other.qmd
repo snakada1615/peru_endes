@@ -51,7 +51,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 # 対象とする年のリスト
 yearlist <- c("2007", "2008", "2009", "2010", "2011",
               "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2016")
+# yearlist <- c("2007")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -204,10 +204,10 @@ safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
 
 ```{r}
 # ============================================================================
-# 5. 変数作成関数セクション
+# 5. 変数作成関数セクション（修正版）
 # ============================================================================
 
-# 人口統計学的変数を作成
+# 人口統計学的変数を作成（修正版）
 create_demographic_variables <- function(data) {
   data %>%
     rename(
@@ -216,48 +216,48 @@ create_demographic_variables <- function(data) {
       v022 = hv022   # 層ID
     ) %>%
     mutate(
-      # 地域タイプ
-      dm_rural = ifelse(hv026 == 3, 1, 0),
-      dm_town = ifelse(hv026 == 2, 1, 0),
-      dm_city = ifelse(hv026 == 1, 1, 0),
-      dm_capital = ifelse(hv026 == 0, 1, 0),
+      # 地域タイプ（logical → numeric変換）
+      dm_rural = as.numeric(ifelse(hv026 == 3, 1, 0)),
+      dm_town = as.numeric(ifelse(hv026 == 2, 1, 0)),
+      dm_city = as.numeric(ifelse(hv026 == 1, 1, 0)),
+      dm_capital = as.numeric(ifelse(hv026 == 0, 1, 0)),
       
-      # 資産五分位
-      dm_poorest = ifelse(hv270 == 1, 1, 0),
-      dm_poorer = ifelse(hv270 == 2, 1, 0),
-      dm_middle = ifelse(hv270 == 3, 1, 0),
-      dm_richer = ifelse(hv270 == 4, 1, 0),
-      dm_richest = ifelse(hv270 == 5, 1, 0),
+      # 資産五分位（logical → numeric変換）
+      dm_poorest = as.numeric(ifelse(hv270 == 1, 1, 0)),
+      dm_poorer = as.numeric(ifelse(hv270 == 2, 1, 0)),
+      dm_middle = as.numeric(ifelse(hv270 == 3, 1, 0)),
+      dm_richer = as.numeric(ifelse(hv270 == 4, 1, 0)),
+      dm_richest = as.numeric(ifelse(hv270 == 5, 1, 0)),
       dm_weath_index = hv271/100000
     )
 }
 
-# 住居・設備関連変数を作成
+# 住居・設備関連変数を作成（修正版）
 create_housing_variables <- function(data) {
   data %>%
     mutate(
-      # トイレ・調理場所
-      dm_shared_toilet = ifelse(hv238 == 95, 1, 0),
-      dm_cooking_house = ifelse(hv241 == 1, 1, 0),
-      dm_cooking_outdoor = ifelse(hv241 == 3, 1, 0),
-      dm_cooking_separate = ifelse(hv241 == 2, 1, 0),
+      # トイレ・調理場所（logical → numeric変換）
+      dm_shared_toilet = as.numeric(ifelse(hv238 == 95, 1, 0)),
+      dm_cooking_house = as.numeric(ifelse(hv241 == 1, 1, 0)),
+      dm_cooking_outdoor = as.numeric(ifelse(hv241 == 3, 1, 0)),
+      dm_cooking_separate = as.numeric(ifelse(hv241 == 2, 1, 0)),
       
-      # 農地・家畜
+      # 農地・家畜（logical → numeric変換）
       dm_ag_land_ha = ifelse(hv244 == 0, 0, hv245),
-      dm_cattle_own = ifelse(hv246a > 0 & hv246a < 98, 1, 0),
-      dm_goat_own = ifelse(hv246d > 0 & hv246d < 98, 1, 0),
-      dm_sheep_own = ifelse(hv246e > 0 & hv246e < 98, 1, 0),
-      dm_poultry_own = ifelse(hv246g > 0 & hv246g < 98, 1, 0)
+      dm_cattle_own = as.numeric(ifelse(hv246a > 0 & hv246a < 98, 1, 0)),
+      dm_goat_own = as.numeric(ifelse(hv246d > 0 & hv246d < 98, 1, 0)),
+      dm_sheep_own = as.numeric(ifelse(hv246e > 0 & hv246e < 98, 1, 0)),
+      dm_poultry_own = as.numeric(ifelse(hv246g > 0 & hv246g < 98, 1, 0))
     )
 }
 
-# 世帯主関連変数を作成
+# 世帯主関連変数を作成（修正版）
 create_household_head_variables <- function(data, var_refrigerator = "hv209") {
   data %>%
     mutate(
-      dm_refrigerator = ifelse(get(var_refrigerator) == 1, 1, 0),
-      dm_female_headed = ifelse(hv219 == 2, 1, 0),
-      dm_age_of_HH_head = case_when(
+      dm_refrigerator = as.numeric(ifelse(get(var_refrigerator) == 1, 1, 0)),
+      dm_female_headed = as.numeric(ifelse(hv219 == 2, 1, 0)),
+      dm_age_of_HH_head = as.numeric(case_when(
         hv220 < 20 ~ 1,
         hv220 >= 20 & hv220 < 30 ~ 2,
         hv220 >= 30 & hv220 < 40 ~ 3,
@@ -267,7 +267,7 @@ create_household_head_variables <- function(data, var_refrigerator = "hv209") {
         hv220 >= 70 & hv220 < 80 ~ 7,
         hv220 >= 80 ~ 8,
         TRUE ~ NA_real_
-      )
+      ))
     )
 }
 
@@ -285,36 +285,36 @@ create_household_head_variables <- function(data, var_refrigerator = "hv209") {
 set_all_variable_labels <- function(data) {
   data %>%
     set_variable_labels(
-      # v001 = "Cluster number",
-      # v002 = "Household number",
+      v001 = "Cluster number",
+      v002 = "Household number",
       dm_children_under12 = "Number of children under 12 years old",
       dm_cooking_fuel = "type of cooking fuel",
       dm_cooking_fuel_traditional = "using traditional cooking fuel",
-      # dm_rural = "living in rural area",
-      # dm_town = "living in small town",
-      # dm_city = "living in medium city",
-      # dm_capital = "living in capital city",
-      # dm_poorest = "poorest wealth quintile",
-      # dm_poorer = "poorer wealth quintile",
-      # dm_middle = "middle wealth quintile",
-      # dm_richer = "richer wealth quintile",
-      # dm_richest = "richest wealth quintile",
-      # dm_weath_index = "wealth index (normalized score)",
-      # dm_shared_toilet = "shared toilet(10 or more HH)",
-      # dm_ag_land_ha = "agricultural land (hectare)",
-      # dm_cooking_house = "cooking inside house",
-      # dm_cooking_outdoor = "cooking outdoor",
-      # dm_cooking_separate = "cooking in separate building",
-      # dm_cattle_own = "owns cattle",
-      # dm_goat_own = "owns goats",
-      # dm_sheep_own = "owns sheep",
-      # dm_poultry_own = "owns poultry",
-      # dm_refrigerator = "owns refrigerator",
-      # dm_female_headed = "female headed household",
-      # dm_age_of_HH_head = "Age of head of household",
-      # year = "Survey year",
-      # v005 = "Sample weight",
-      # v022 = "Stratum"
+      dm_rural = "living in rural area",
+      dm_town = "living in small town",
+      dm_city = "living in medium city",
+      dm_capital = "living in capital city",
+      dm_poorest = "poorest wealth quintile",
+      dm_poorer = "poorer wealth quintile",
+      dm_middle = "middle wealth quintile",
+      dm_richer = "richer wealth quintile",
+      dm_richest = "richest wealth quintile",
+      dm_weath_index = "wealth index (normalized score)",
+      dm_shared_toilet = "shared toilet(10 or more HH)",
+      dm_ag_land_ha = "agricultural land (hectare)",
+      dm_cooking_house = "cooking inside house",
+      dm_cooking_outdoor = "cooking outdoor",
+      dm_cooking_separate = "cooking in separate building",
+      dm_cattle_own = "owns cattle",
+      dm_goat_own = "owns goats",
+      dm_sheep_own = "owns sheep",
+      dm_poultry_own = "owns poultry",
+      dm_refrigerator = "owns refrigerator",
+      dm_female_headed = "female headed household",
+      dm_age_of_HH_head = "Age of head of household",
+      year = "Survey year",
+      v005 = "Sample weight",
+      v022 = "Stratum"
     )
 }
 
@@ -330,27 +330,27 @@ set_all_value_labels <- function(data) {
         "not dejure resident" = 97
       ),
       dm_cooking_fuel_traditional = c("Yes" = 1, "No" = 0),
-      # dm_rural = c("Yes" = 1, "No" = 0),
-      # dm_town = c("Yes" = 1, "No" = 0),
-      # dm_city = c("Yes" = 1, "No" = 0),
-      # dm_capital = c("Yes" = 1, "No" = 0),
-      # dm_poorest = c("Yes" = 1, "No" = 0),
-      # dm_poorer = c("Yes" = 1, "No" = 0),
-      # dm_middle = c("Yes" = 1, "No" = 0),
-      # dm_richer = c("Yes" = 1, "No" = 0),
-      # dm_richest = c("Yes" = 1, "No" = 0),
-      # dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
-      # dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
-      # dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
-      # dm_cooking_separate = c("Yes (cooking in separate building)" = 1, "No (cooking inside house or outdoor)" = 0),
-      # dm_cattle_own = c("Yes (owns cattle)" = 1, "No (does not own cattle)" = 0),
-      # dm_goat_own = c("Yes (owns goats)" = 1, "No (does not own goats)" = 0),
-      # dm_sheep_own = c("Yes (owns sheep)" = 1, "No (does not own sheep)" = 0),
-      # dm_poultry_own = c("Yes (owns poultry)" = 1, "No (does not own poultry)" = 0),
-      # dm_refrigerator = c("Yes" = 1, "No" = 0),
-      # dm_female_headed = c("Yes" = 1, "No" = 0),
-      # dm_age_of_HH_head = c("10s" = 1, "20s" = 2, "30s" = 3, "40s" = 4, 
-      #                       "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
+      dm_rural = c("Yes" = 1, "No" = 0),
+      dm_town = c("Yes" = 1, "No" = 0),
+      dm_city = c("Yes" = 1, "No" = 0),
+      dm_capital = c("Yes" = 1, "No" = 0),
+      dm_poorest = c("Yes" = 1, "No" = 0),
+      dm_poorer = c("Yes" = 1, "No" = 0),
+      dm_middle = c("Yes" = 1, "No" = 0),
+      dm_richer = c("Yes" = 1, "No" = 0),
+      dm_richest = c("Yes" = 1, "No" = 0),
+      dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
+      dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
+      dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
+      dm_cooking_separate = c("Yes (cooking in separate building)" = 1, "No (cooking inside house or outdoor)" = 0),
+      dm_cattle_own = c("Yes (owns cattle)" = 1, "No (does not own cattle)" = 0),
+      dm_goat_own = c("Yes (owns goats)" = 1, "No (does not own goats)" = 0),
+      dm_sheep_own = c("Yes (owns sheep)" = 1, "No (does not own sheep)" = 0),
+      dm_poultry_own = c("Yes (owns poultry)" = 1, "No (does not own poultry)" = 0),
+      dm_refrigerator = c("Yes" = 1, "No" = 0),
+      dm_female_headed = c("Yes" = 1, "No" = 0),
+      dm_age_of_HH_head = c("10s" = 1, "20s" = 2, "30s" = 3, "40s" = 4,
+                            "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
     )
 }
 
@@ -399,9 +399,13 @@ goAnalysis <- function(year) {
   
   # 子供の数を計算
   child_count <- calculate_child_count(df_RECH1)
+  print("子供の数の分布確認:")
+  print(names(child_count))
   
   # 調理燃料を処理
   cooking_fuel <- process_cooking_fuel(df_REC0111)
+  print("調理燃料の分布確認:")
+  print(names(cooking_fuel))
   
   # ============================================================================
   # データ統合
@@ -413,8 +417,9 @@ goAnalysis <- function(year) {
   
   # 段階的に結合
   IRdata <- safe_join_datasets(IRdata, df_RECH0, c("hhid"), "RECH0")
-  IRdata <- safe_join_datasets(IRdata, cooking_fuel, c("hhid"), "cooking_fuel")
-  
+  IRdata <- safe_join_datasets(IRdata, cooking_fuel, c("hhid"), "cooking_fuel") %>%
+    filter(!is.na(caseid))  # caseidがNAの行を削除)
+
   # 調理燃料マッチング確認
   cat("調理燃料マッチング確認:\n")
   print(table(IRdata$dm_cooking_fuel))
@@ -424,10 +429,10 @@ goAnalysis <- function(year) {
   # 残りのデータを結合
   IRdata <- safe_join_datasets(IRdata, df_RE516171, c("caseid"), "RE516171")
   IRdata <- safe_join_datasets(IRdata, df_RECH23, c("hhid"), "RECH23")
-  
+  # 
   # 年情報を追加
   IRdata <- IRdata %>% mutate(year = year, v005 = hv005)
-  
+
   cat("統合完了 - レコード数:", nrow(IRdata), "\n\n")
   
   # ============================================================================
@@ -435,39 +440,41 @@ goAnalysis <- function(year) {
   # ============================================================================
   cat("## 4. 女性エンパワーメント指標作成\n")
   source(here("Chap15_WE", "WE_EMPW_update.R"), local = environment())
-  
+
   cat("エンパワーメント指標作成後の確認:\n")
   print(table(WEdata$dm_cooking_fuel))
   print(table(WEdata$dm_children_under12))
   print(table(WEdata$dm_decide_health))
-  
+
   # ============================================================================
   # 最終変数作成
   # ============================================================================
   cat("\n## 5. 最終変数作成\n")
   
   HRdata <- WEdata
-  # HRdata <- WEdata %>%
-  #   create_demographic_variables() %>%
-  #   create_housing_variables() %>%
-  #   create_household_head_variables() %>%
-  #   mutate(year = year)
-  # 
-  # # 必要な変数のみ選択
-  # vars_to_keep <- HRdata %>%
-  #   select(starts_with("dm")) %>%
-  #   names() %>%
-  #   append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
-  # 
-  # HRdata <- HRdata %>% select(all_of(vars_to_keep))
+  print(names(WEdata))
+  HRdata <- WEdata %>%
+    create_demographic_variables() %>%
+    create_housing_variables() %>%
+    create_household_head_variables() %>%
+    mutate(year = year)
+
+  # 必要な変数のみ選択
+  vars_to_keep <- HRdata %>%
+    select(starts_with("dm")) %>%
+    names() %>%
+    append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
+
+  HRdata <- HRdata %>% select(all_of(vars_to_keep))
   # 
   # # 最終重複チェック
-  # duplicate_check(HRdata, c("caseid"), "HRdata")
+  duplicate_check(HRdata, c("caseid"), "HRdata")
   
   # ============================================================================
   # ラベル設定
   # ============================================================================
   cat("## 6. ラベル設定\n")
+  # ラベル設定でエラーが発生した時以下の行を実行
   # diagnose_value_label_issues(HRdata)
   if (year == "2016") {
     cat("2016年の変数ラベルを更新します\n")
@@ -479,7 +486,7 @@ goAnalysis <- function(year) {
       set_all_variable_labels() %>%
       set_all_value_labels()
     }
-  
+
   # ============================================================================
   # 保存
   # ============================================================================
@@ -499,8 +506,9 @@ goAnalysis <- function(year) {
 ## 9. 実行
 ```{r}
 #** ここから実行
+temp <- list()
 for (yr in yearlist) {
-  goAnalysis(yr)
+  temp[[yr]] <-  goAnalysis(yr)
 }
 
 ```
