@@ -64,6 +64,8 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 ```{r}
 
 all_data_merged <- NULL   # 空のリストまたはデータフレームとして初期化
+
+# 各年ごとのデータセットを読み込み、結合
 for (yr in yearlist) {
   root_folder <- file.path(gdrive_dir, "output", yr) %>%
     normalizePath() %>%
@@ -71,16 +73,26 @@ for (yr in yearlist) {
   year_data <- read_rds(file.path(root_folder, "data_merged.rds")) %>%
     filter(!is.na(hhid))
 
+  print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
   all_data_merged <- bind_rows(all_data_merged, year_data) %>%
     as_tibble()
+  print(paste("Total records so far:", nrow(all_data_merged)))
 }
 
+duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
+
+# 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  select(-v026, -v024)
+  select(-c(v026, v024, v005, v021, v022, v025, v001, v002, v003))
 
+# 共通キーでマージ
 all_data_merged <- all_data_merged %>%
-  left_join_safe(endes_keys, c("year", "hhid", "v005", "v021", "v022", "v025", 
-                               "v001", "v002", "v003"))
+  left_join_safe(endes_keys, c("year", "hhid"))
 
+# 重複チェック
+duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
+
+# ファイルをRDSで保存
+saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", "all_data_merged.rds"))
 
 ```

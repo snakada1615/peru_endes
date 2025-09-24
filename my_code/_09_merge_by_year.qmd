@@ -129,29 +129,61 @@ goAnalysis <- function(year){
   print("Merging with IRdata-rh")
   data_merged <- left_join_safe(data_merged, 
     data_all[["IRdata-rh"]], by = c("caseid" = "caseid", "age", "wt"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with IRdata-rc")
   data_merged <- left_join_safe(data_merged, 
     data_all[["IRdata-rc"]], by = c("caseid" = "caseid", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with KRvac")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRvac"]], by = c("caseid" = "caseid", "age", "wt", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with KRdata")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRdata"]], by = c("caseid" = "caseid", "age", "wt", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with KRiycf-nt")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRiycf-nt"]], by = c("caseid" = "caseid", "b4", "v005", "v022", 
                                     "v025", "v106", "v190", "age", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with IRdata-ms")
   data_merged <- left_join_safe(data_merged, 
     data_all[["IRdata-ms"]], by = c("caseid" = "caseid", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with KRstool")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRstool"]], by = c("caseid" = "caseid", "wt", "age", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with WASHdata-ws")
+  data_all[["WASHdata-ws"]] <- data_all[["WASHdata-ws"]] %>% 
+    select(-c(v005, v022, v001, v002))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["WASHdata-ws"]], by = c("caseid", "v005", "v022", "v001", "v002", 
-                                      "year"))
+    data_all[["WASHdata-ws"]], by = c("caseid", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
   
   print("データセットの抽出と結合が完了しました")
 
@@ -163,7 +195,7 @@ goAnalysis <- function(year){
   cat("全データ結合完了:", year, "\n")
   
   cat("============================================================================\n")
-  cat("処理完了:", year, "\n")
+  cat("処理完了:", year, ": データ数", nrow(data_merged), "\n")
   cat("============================================================================\n")
 
   
@@ -178,8 +210,9 @@ goAnalysis <- function(year){
 
 ```{r}
 #** ここから実行
+mydata <- list()
 for (yr in yearlist) {
-  mydata <- goAnalysis(yr)
+  mydata[[yr]] <- goAnalysis(yr)
 }
 ```
 
