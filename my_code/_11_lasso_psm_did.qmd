@@ -66,7 +66,7 @@ var_labels$varname <- names(df_org)
 
 # 除外変数定義
 drop_cols <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "state", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year", "year_treated"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "state", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw"
 )
 
 
@@ -124,13 +124,64 @@ cat("最終的な介入前データサイズ:", nrow(df_pre), "行 ×", ncol(df_
 # 3. LASSO変数選択（介入前データ）
 # ================================================================================
 
-# 説明変数マトリックス作成
+# 1. 初期設定
 X_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
-X_scaled <- scale(X_matrix)
 Y <- df_pre$treatment_group
 
-cat("説明変数の数:", ncol(X_scaled), "\n")
-cat("目的変数の水準:", levels(Y), "\n\n")
+# 2. 各ステップでの欠損値チェックと処理
+cat("model.matrix後のNA数:", sum(is.na(X_matrix)), "\n")
+
+# model.matrix後の欠損値処理
+if(sum(is.na(X_matrix)) > 0) {
+  complete_idx <- complete.cases(X_matrix)
+  X_matrix <- X_matrix[complete_idx, ]
+  Y <- Y[complete_idx]
+  cat("model.matrix後にNA行を", sum(!complete_idx), "行削除\n")
+}
+
+# 3. scale処理
+X_scaled <- scale(X_matrix)
+cat("scale後のNA数:", sum(is.na(X_scaled)), "\n")
+
+# scale後の欠損値処理
+if(sum(is.na(X_scaled)) > 0) {
+  complete_idx <- complete.cases(X_scaled)
+  X_scaled <- X_scaled[complete_idx, ]
+  Y <- Y[complete_idx]
+  cat("scale後にNA行を", sum(!complete_idx), "行削除\n")
+}
+
+cat("最終的な説明変数の数:", ncol(X_scaled), "\n")
+cat("最終的なサンプル数:", nrow(X_scaled), "\n\n")
+
+
+# # 1. model.matrix作成後のチェック
+# X_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
+# cat("model.matrix後のNA数:", sum(is.na(X_matrix)), "\n")
+# 
+# # 2. model.matrixでNAが生成された場合の対処
+# if(sum(is.na(X_matrix)) > 0) {
+#   # complete.casesで行を削除
+#   complete_idx_matrix <- complete.cases(X_matrix)
+#   X_matrix <- X_matrix[complete_idx_matrix, ]
+#   Y <- df_pre$treatment_group[complete_idx_matrix]
+#   cat("model.matrix後にNA行を", sum(!complete_idx_matrix), "行削除\n")
+# }
+# 
+# # 3. scale処理
+# X_scaled <- scale(X_matrix)
+# cat("scale後のNA数:", sum(is.na(X_scaled)), "\n")
+# 
+# # 4. scale後にもNAがある場合の最終チェック
+# if(sum(is.na(X_scaled)) > 0) {
+#   complete_idx_scaled <- complete.cases(X_scaled)
+#   X_scaled <- X_scaled[complete_idx_scaled, ]
+#   Y <- Y[complete_idx_scaled]
+#   cat("scale後にNA行を", sum(!complete_idx_scaled), "行削除\n")
+# }
+# 
+# cat("最終的な説明変数の数:", ncol(X_scaled), "\n")
+# cat("最終的なサンプル数:", nrow(X_scaled), "\n\n")
 
 # 多項分類LASSO実行
 cat("多項分類LASSO回帰を実行中...\n")
