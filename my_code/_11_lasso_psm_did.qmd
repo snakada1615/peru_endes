@@ -33,6 +33,7 @@ library(survey)    # 重み付き統計解析
 library(ggplot2)
 library(did)       # Staggered DID用（必要に応じて）
 library(sjlabelled)　# ラベル付きデータ処理用
+# library(caret)　# 混同行列用(LASSO学習用のfold生成)
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
@@ -73,7 +74,7 @@ drop_cols <- c(
 # ID・管理用変数
 grouping_cols <- c("caseid", "cluster_id", "strata_id", "state_id", "state",
                    "treated_status", "time_period",
-                   "treatment_start",
+                   "treatment_start","group_treated",
                    "wt")
 
 # パターンマッチによる変数除外
@@ -123,70 +124,82 @@ cat("最終的な介入前データサイズ:", nrow(df_pre), "行 ×", ncol(df_
 # ================================================================================
 # 3. LASSO変数選択（介入前データ）
 # ================================================================================
+# 完全に一から再開
+cat("=== データ処理を再開 ===\n")
+cat("df_pre の次元:", dim(df_pre), "\n")
+cat("covariate_names の数:", length(covariate_names), "\n")
 
-# 1. 初期設定
+# Step 1: model.matrix作成
+cat("Step 1: model.matrix作成中...\n")
 X_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
 Y <- df_pre$treatment_group
+cat("=== 問題列の除去 ===\n")
 
-# 2. 各ステップでの欠損値チェックと処理
-cat("model.matrix後のNA数:", sum(is.na(X_matrix)), "\n")
+# Step 1: 標準偏差が0の列を特定・除去
+col_sds <- apply(X_matrix, 2, sd, na.rm = TRUE)
+zero_sd_cols <- is.na(col_sds) | col_sds == 0
+cat("除去する定数列の数:", sum(zero_sd_cols), "\n")
 
-# model.matrix後の欠損値処理
-if(sum(is.na(X_matrix)) > 0) {
-  complete_idx <- complete.cases(X_matrix)
-  X_matrix <- X_matrix[complete_idx, ]
-  Y <- Y[complete_idx]
-  cat("model.matrix後にNA行を", sum(!complete_idx), "行削除\n")
+if(sum(zero_sd_cols) > 0) {
+  cat("除去する列名:\n")
+  print(colnames(X_matrix)[zero_sd_cols])
+  
+  # 定数列を除去
+  X_matrix_clean <- X_matrix[, !zero_sd_cols, drop = FALSE]
+} else {
+  X_matrix_clean <- X_matrix
 }
 
-# 3. scale処理
-X_scaled <- scale(X_matrix)
-cat("scale後のNA数:", sum(is.na(X_scaled)), "\n")
+cat("列除去後のX_matrix次元:", dim(X_matrix_clean), "\n")
 
-# scale後の欠損値処理
+# Step 2: スケーリング実行
+cat("=== クリーンなデータでスケーリング ===\n")
+X_scaled <- scale(X_matrix_clean)
+
+cat("スケーリング後の次元:", dim(X_scaled), "\n")
+cat("スケーリング後のNA数:", sum(is.na(X_scaled)), "\n")
+
+# Step 3: まだNAがある場合の詳細チェック
 if(sum(is.na(X_scaled)) > 0) {
-  complete_idx <- complete.cases(X_scaled)
-  X_scaled <- X_scaled[complete_idx, ]
-  Y <- Y[complete_idx]
-  cat("scale後にNA行を", sum(!complete_idx), "行削除\n")
+  cat("=== 残存するNA問題の詳細分析 ===\n")
+  
+  # 各列のNA数をチェック
+  col_na_counts <- apply(X_scaled, 2, function(x) sum(is.na(x)))
+  problematic_cols <- col_na_counts > 0
+  
+  cat("NA値を含む列数:", sum(problematic_cols), "\n")
+  if(sum(problematic_cols) > 0) {
+    cat("問題のある列:\n")
+    print(col_na_counts[problematic_cols])
+    
+    # 問題のある列を除去
+    X_scaled <- X_scaled[, !problematic_cols, drop = FALSE]
+    cat("問題列除去後の次元:", dim(X_scaled), "\n")
+  }
 }
 
-cat("最終的な説明変数の数:", ncol(X_scaled), "\n")
-cat("最終的なサンプル数:", nrow(X_scaled), "\n\n")
+# Step 4: 最終確認
+cat("=== 最終確認 ===\n")
+cat("X_scaled次元:", dim(X_scaled), "\n")
+cat("X_scaledのNA数:", sum(is.na(X_scaled)), "\n")
+cat("Y長さ:", length(Y), "\n")
+cat("Y分布:", table(Y), "\n")
 
 
-# # 1. model.matrix作成後のチェック
-# X_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
-# cat("model.matrix後のNA数:", sum(is.na(X_matrix)), "\n")
-# 
-# # 2. model.matrixでNAが生成された場合の対処
-# if(sum(is.na(X_matrix)) > 0) {
-#   # complete.casesで行を削除
-#   complete_idx_matrix <- complete.cases(X_matrix)
-#   X_matrix <- X_matrix[complete_idx_matrix, ]
-#   Y <- df_pre$treatment_group[complete_idx_matrix]
-#   cat("model.matrix後にNA行を", sum(!complete_idx_matrix), "行削除\n")
-# }
-# 
-# # 3. scale処理
-# X_scaled <- scale(X_matrix)
-# cat("scale後のNA数:", sum(is.na(X_scaled)), "\n")
-# 
-# # 4. scale後にもNAがある場合の最終チェック
-# if(sum(is.na(X_scaled)) > 0) {
-#   complete_idx_scaled <- complete.cases(X_scaled)
-#   X_scaled <- X_scaled[complete_idx_scaled, ]
-#   Y <- Y[complete_idx_scaled]
-#   cat("scale後にNA行を", sum(!complete_idx_scaled), "行削除\n")
-# }
-# 
-# cat("最終的な説明変数の数:", ncol(X_scaled), "\n")
-# cat("最終的なサンプル数:", nrow(X_scaled), "\n\n")
-
-# 多項分類LASSO実行
-cat("多項分類LASSO回帰を実行中...\n")
-set.seed(123)  # 再現性のため
-cv_model <- cv.glmnet(X_scaled, Y, alpha = 1, family = "multinomial", nfolds = 10)
+# データが正常な場合のLASSO実行
+if(nrow(X_scaled) > 0 && ncol(X_scaled) > 0 && sum(is.na(X_scaled)) == 0) {
+  cat("=== LASSO実行 ===\n")
+  set.seed(123)
+  
+  cv_model <- cv.glmnet(X_scaled, Y, 
+                       alpha = 1, 
+                       family = "multinomial", 
+                       nfolds = 3)
+  
+  cat("LASSO実行成功！\n")
+} else {
+  cat("まだデータに問題があります\n")
+}
 
 cat("最適λ (lambda.min):", cv_model$lambda.min, "\n")
 cat("1se λ (lambda.1se):", cv_model$lambda.1se, "\n\n")
@@ -203,9 +216,9 @@ for(i in 1:length(coef_min)) {
 cat("LASSO選択変数数:", length(selected_vars), "\n")
 if(length(selected_vars) > 0) {
   cat("選択された変数:\n")
-  # for(i in 1:length(selected_vars)) {
-  #   cat(i, ":", selected_vars[i], "\n")
-  # }
+  for(i in 1:length(selected_vars)) {
+    cat(i, ":", selected_vars[i], "\n")
+  }
   # 変数の重要度確認
   coef_importance <- abs(as.matrix(coef(cv_model, s = "lambda.min")[[1]]))
   top_vars <- head(sort(coef_importance[,1], decreasing = TRUE), 20)
