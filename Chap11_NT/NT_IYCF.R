@@ -235,27 +235,27 @@ KRiycf <- KRiycf %>%
 
 # //Min dietary diversity
 KRiycf <- KRiycf %>%
-  # 1. breastmilk
-  mutate(group1 = case_when(m4==95  ~ 1 ,  m4!=95 ~ 0)) %>% 
-  #2. infant formula, milk other than breast milk, cheese or yogurt or other milk products
-  mutate(group2 = case_when(nt_formula==1 | nt_milk==1 | nt_dairy==1  ~ 1 , nt_formula!=1 | nt_milk!=1 | nt_dairy!=1 ~ 0)) %>%
-  #3. foods made from grains, roots, tubers, and bananas/plantains, including porridge and fortified baby food from grains
-  mutate(group3  = case_when(nt_grains==1 | nt_root==1 | nt_bbyfood==1 ~ 1 , nt_grains!=1 | nt_root!=1 | nt_bbyfood!=1 ~ 0)) %>%
-  #4. vitamin A-rich fruits and vegetables
-  mutate(group4  = case_when(nt_vita==1  ~ 1 , nt_vita!=1 ~ 0)) %>%
-  #5. other fruits and vegetables
-  mutate(group5  = case_when(nt_frtveg==1 ~ 1 , nt_frtveg!=1~ 0)) %>% 
-  #6. eggs
-  mutate(group6  = case_when(nt_eggs==1 ~ 1 , nt_eggs!=1~ 0)) %>% 
-  #7. meat, poultry, fish, and shellfish (and organ meats)
-  mutate(group7  = case_when(nt_meatfish==1 ~ 1 , nt_meatfish!=1~ 0)) %>% 
-  #8. legumes and nuts
-  mutate(group8  = case_when(nt_nuts==1 ~ 1 , nt_nuts!=1~ 0)) %>% 
-  #add the food groups
-  mutate(foodsum  = group1+group2+group3+group4+group5+group6+group7+group8) %>% 
-  mutate(nt_mdd  = case_when(inrange(age,6,23) & foodsum<5 ~ 0 , inrange(age,6,23) & foodsum>=5~ 1)) %>% 
-  #older surveys are 4 out of 7 food groups so the foodsum would add group2-group8 and the recode the sum for 4+ as yes
-  set_value_labels(nt_mdd = c("Yes" = 1, "No"=0  )) %>%
+  # NAを0に置き換えてから処理
+  mutate(across(c(nt_formula, nt_milk, nt_dairy, nt_grains, nt_root, nt_bbyfood, 
+                  nt_vita, nt_frtveg, nt_eggs, nt_meatfish, nt_nuts), ~replace_na(.x, 0))) %>%
+  
+  # 元のコードをシンプルに修正
+  mutate(group1 = ifelse(m4==95, 1, 0)) %>% 
+  mutate(group2 = ifelse(nt_formula==1 | nt_milk==1 | nt_dairy==1, 1, 0)) %>%
+  mutate(group3 = ifelse(nt_grains==1 | nt_root==1 | nt_bbyfood==1, 1, 0)) %>%
+  mutate(group4 = ifelse(nt_vita==1, 1, 0)) %>%
+  mutate(group5 = ifelse(nt_frtveg==1, 1, 0)) %>% 
+  mutate(group6 = ifelse(nt_eggs==1, 1, 0)) %>% 
+  mutate(group7 = ifelse(nt_meatfish==1, 1, 0)) %>% 
+  mutate(group8 = ifelse(nt_nuts==1, 1, 0)) %>% 
+  
+  mutate(foodsum = group1 + group2 + group3 + group4 + group5 + group6 + group7 + group8) %>% 
+  mutate(nt_mdd = case_when(
+    inrange(age, 6, 23) & foodsum < 5 ~ 0,
+    inrange(age, 6, 23) & foodsum >= 5 ~ 1
+  )) %>% 
+  
+  set_value_labels(nt_mdd = c("Yes" = 1, "No" = 0)) %>%
   set_variable_labels(nt_mdd = "Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months")
 
 # //Min meal frequency

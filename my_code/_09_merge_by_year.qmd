@@ -119,15 +119,17 @@ goAnalysis <- function(year){
   
   data_merged <- data_all[["BRdata-rh"]]
   print("Merging with IRdata-rh")
+  data_all[["IRdata-rh"]] <- data_all[["IRdata-rh"]] %>% 
+    select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-rh"]], by = c("caseid" = "caseid", "age", "wt"))
+    data_all[["IRdata-rh"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
   print("Merging with IRdata-rc")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-rc"]], by = c("caseid" = "caseid", "year"))
+    data_all[["IRdata-rc"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
@@ -140,30 +142,35 @@ goAnalysis <- function(year){
   }
   
   print("Merging with KRdata")
+  data_all[["KRdata"]] <- data_all[["KRdata"]] %>% 
+    select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRdata"]], by = c("caseid" = "caseid", "age", "wt", "year"))
+    data_all[["KRdata"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
   print("Merging with KRiycf-nt")
+  data_all[["KRiycf-nt"]] <- data_all[["KRiycf-nt"]] %>% 
+    select(-c("b4", "v005", "v022", "v025", "v106", "v190", "age"))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRiycf-nt"]], by = c("caseid" = "caseid", "b4", "v005", "v022", 
-                                    "v025", "v106", "v190", "age", "year"))
+    data_all[["KRiycf-nt"]], by = c("caseid","year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
   print("Merging with IRdata-ms")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-ms"]], by = c("caseid" = "caseid", "year"))
+    data_all[["IRdata-ms"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
   print("Merging with KRstool")
+  data_all[["KRstool"]] <- data_all[["KRstool"]] %>% 
+    select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRstool"]], by = c("caseid" = "caseid", "wt", "age", "year"))
+    data_all[["KRstool"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
@@ -179,7 +186,9 @@ goAnalysis <- function(year){
   
   print("Merging with PRdata")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["PRdata"]], by = c("caseid", "hhid", "year"))
+    data_all[["PRdata"]], by = c("caseid", "hhid", "year")) %>%
+    filter(age >= 6 & age <= 24)
+  print("子供の月齢6ヶ月から24ヶ月で絞り込みました")
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
