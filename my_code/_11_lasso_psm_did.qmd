@@ -26,13 +26,13 @@ library(tinytex)
 library(here)
 library(haven)
 library(glmnet)
-library(dplyr)
+library(tidyverse)
 # library(fastDummies)
 library(nnet)      # 多項ロジスティック回帰
 library(survey)    # 重み付き統計解析
-library(ggplot2)
 library(did)       # Staggered DID用（必要に応じて）
 library(sjlabelled)　# ラベル付きデータ処理用
+library(tableone)
 # library(caret)　# 混同行列用(LASSO学習用のfold生成)
 
 # オブジェクトクリア
@@ -52,6 +52,16 @@ df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
   ) %>% filter(!is.na(nt_ch_stunt))
 
+# 介入群グループ化
+df_org <- df_org %>%
+  mutate(
+    treatment_group = case_when(
+      treatment_start == "2009" ~ 1,  # 早期介入
+      treatment_start == "2011" ~ 2,  # 後期介入
+      TRUE ~ 0                        # コントロール
+    ),
+    treatment_group = as.factor(treatment_group)
+  )
 # 変数ラベル取得
 var_labels <- df_org %>% get_label %>% as_tibble() %>% rename(labels = value)
 var_labels$varname <- names(df_org)
@@ -67,7 +77,7 @@ var_labels$varname <- names(df_org)
 
 # 除外変数定義
 drop_cols <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk"
 )
 
 
@@ -81,16 +91,16 @@ all_drop_cols <- c(drop_cols, "treatment_start")
 # 1. 介入前データで絞りこみ
 df_pre <- df_org[df_org$treated_status %in% c("never_treated", "not_yet_treated"), ]
 
-# 3. 介入群グループ化
-df_pre <- df_pre %>%
-  mutate(
-    treatment_group = case_when(
-      treatment_start == "2009" ~ 1,  # 早期介入
-      treatment_start == "2011" ~ 2,  # 後期介入
-      TRUE ~ 0                        # コントロール
-    ),
-    treatment_group = as.factor(treatment_group)
-  )
+# # 3. 介入群グループ化
+# df_pre <- df_pre %>%
+#   mutate(
+#     treatment_group = case_when(
+#       treatment_start == "2009" ~ 1,  # 早期介入
+#       treatment_start == "2011" ~ 2,  # 後期介入
+#       TRUE ~ 0                        # コントロール
+#     ),
+#     treatment_group = as.factor(treatment_group)
+#   )
 
 cat("介入前データの群別サンプル数:\n")
 print(table(df_pre$treatment_group))
@@ -240,12 +250,29 @@ if(length(selected_vars) > 0) {
 # 4. 多項GLM-PSM（介入前データで学習）
 # ================================================================================
 if(length(selected_vars) > 0) {
+  # Step 1: LASSO選択変数から年度ダミーを除去
+  year_dummies <- c("year2007", "year2008", "year2009", "year2010", 
+                    "year2011", "year2012", "year2013", "year2014", 
+                    "year2015", "year2016")
+  
+  selected_vars_clean <- setdiff(selected_vars, year_dummies)
+  cat("年度ダミー除去後の変数数:", length(selected_vars_clean), "\n")
+  
+  # Step 2: yearを強制追加（forced-in covariate）
+  selected_vars_final <- c(selected_vars_clean, "year")
+  cat("year追加後の変数数:", length(selected_vars_final), "\n")
+  
+  # Step 3: PSM再実行（yearを含む）
+  # yearをnumericに変換してからmodel.matrixを適用
+  df_pre$year <- as.numeric(as.character(df_pre$year))  # factor → character → numeric
+  
   # LASSO と同じ model.matrix 処理を適用
-  psm_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
+  psm_matrix <- model.matrix(~ . - 1, 
+                            data = df_pre[, c(covariate_names), drop=FALSE])
   
-  # 選択された変数のみ抽出
-  psm_covariates <- as.data.frame(psm_matrix[, selected_vars, drop=FALSE])
-  
+  # 選択された変数のみ抽出  
+  psm_covariates <- as.data.frame(psm_matrix[, selected_vars_final, drop=FALSE])
+
   # 目的変数と管理変数を追加
   psm_data <- cbind(
     treatment_group = df_pre$treatment_group,
@@ -254,7 +281,7 @@ if(length(selected_vars) > 0) {
   )
   
   # 多項ロジスティック回帰で傾向スコア推定
-  psm_formula <- as.formula(paste("treatment_group ~", paste(selected_vars, collapse = " + ")))
+  psm_formula <- as.formula(paste("treatment_group ~", paste(selected_vars_final, collapse = " + ")))
   
   cat("\n多項ロジスティック回帰で傾向スコア推定中...\n")
   psm_model <- multinom(psm_formula, data = psm_data, trace = FALSE)
@@ -282,45 +309,116 @@ if(length(selected_vars) > 0) {
     names(pscore_df) <- paste0("prob_", levels(psm_data$treatment_group))
   }
   
-  # IPTW重み計算（より安全な方法）
+  # IPTW重み計算（改善版）
   psm_data$iptw_weight <- numeric(nrow(psm_data))
   
+  # for文で各行の重みを計算（flooring付き）
   for(i in 1:nrow(psm_data)) {
     group_level <- as.character(psm_data$treatment_group[i])
     prob_col <- paste0("prob_", group_level)
     
     if(prob_col %in% names(pscore_df)) {
-      psm_data$iptw_weight[i] <- 1 / pscore_df[i, prob_col]
+      # 1. 最小確率flooring（0.001未満は0.001として扱う）
+      prob_value <- pscore_df[i, prob_col]
+      prob_floored <- pmax(prob_value, 0.001)  # 最小値0.001に制限
+      psm_data$iptw_weight[i] <- 1 / prob_floored
+      
     } else {
       cat("警告: 群", group_level, "の確率列が見つかりません\n")
       psm_data$iptw_weight[i] <- 1  # デフォルト重み
     }
   }
   
-  cat("PSM完了。重みの要約統計:\n")
+  cat("基本IPTW重み計算完了\n")
   print(summary(psm_data$iptw_weight))
   
-  # 極端な重みの確認
-  extreme_weights <- psm_data$iptw_weight > quantile(psm_data$iptw_weight, 0.99, na.rm = TRUE)
-  if(sum(extreme_weights, na.rm = TRUE) > 0) {
-    cat("警告: 極端に大きな重みが", sum(extreme_weights, na.rm = TRUE), "個あります\n")
+  # 2. サンプリング重みとの合成（df_preにv005列がある場合）
+  if("v005" %in% names(df_pre)) {
+    psm_data$wcombined <- psm_data$iptw_weight * (df_pre$v005/1000000)
+    cat("サンプリング重みとの合成完了\n")
+  } else {
+    # v005がない場合はiptw_weightをそのまま使用
+    psm_data$wcombined <- psm_data$iptw_weight
+    cat("サンプリング重みなし：IPTW重みのみ使用\n")
   }
+  
+  print(summary(psm_data$wcombined))
+  
+  # 3. 重みtrimming（1–99パーセンタイル）
+  q <- quantile(psm_data$wcombined, probs = c(0.01, 0.99), na.rm = TRUE)
+  psm_data$wtrimmed <- pmin(pmax(psm_data$wcombined, q[1]), q[2])
+  
+  # より厳格な95%trimmingの採用
+  q_strict <- quantile(psm_data$wcombined, probs = c(0.05, 0.95), na.rm = TRUE)
+  psm_data$wtrimmed_strict <- pmin(pmax(psm_data$wcombined, q_strict[1]), q_strict[2])
+  
+  cat("重みtrimming完了\n")
+  cat("trimming前後の比較:\n")
+  cat("元の重み - Min:", min(psm_data$wcombined, na.rm = TRUE), 
+      "Max:", max(psm_data$wcombined, na.rm = TRUE), "\n")
+  cat("trimmed重み - Min:", min(psm_data$wtrimmed_strict, na.rm = TRUE), 
+      "Max:", max(psm_data$wtrimmed_strict, na.rm = TRUE), "\n")
+  
+  # 最終的な分析用重みとして wtrimmed_strict を使用
+  psm_data$final_weight <- psm_data$wtrimmed_strict
+  
+  print(summary(psm_data$final_weight))
+  
+  # 極端な重みの確認
+  extreme_weights <- psm_data$final_weight > quantile(psm_data$final_weight, 0.99, na.rm = TRUE)
+  cat("extreme weights after trimming:", sum(extreme_weights, na.rm = TRUE), "個\n")
 
 } else {
   stop("選択された変数がありません。")
 }
 
 ```
+## 5. PSM結果のバランス診断
 
-## 5. 介入後＋コントロールデータへの適用
+```{r}
+# 標準化平均差（SMD）による共変量バランス確認
+# library(tableone)
+balance_table <- CreateTableOne(
+  vars = selected_vars_final, 
+  strata = "treatment_group", 
+  data = psm_data, 
+  test = FALSE
+)
+print(balance_table, smd = TRUE)
+
+# SMD < 0.1 を目標とする
+smd_results <- ExtractSmd(balance_table)
+problematic_vars <- smd_results[abs(smd_results) > 0.1]
+
+# 重み付き後のバランス確認
+svydesign_obj <- svydesign(ids = ~1, weights = ~final_weight, data = psm_data)
+weighted_balance <- svyCreateTableOne(
+  vars = selected_vars_final,
+  strata = "treatment_group", 
+  data = svydesign_obj,
+  test = FALSE
+)
+print(weighted_balance, smd = TRUE)
+
+# 異なるtrimming閾値での感度分析
+trim_levels <- c(0.95, 0.99, 0.995)
+for(trim_level in trim_levels) {
+  q_alt <- quantile(psm_data$wcombined, probs = c(1-trim_level, trim_level), na.rm = TRUE)
+  weights_alt <- pmin(pmax(psm_data$wcombined, q_alt[1]), q_alt[2])
+  cat("Trimming", trim_level*100, "%: Max weight =", max(weights_alt), "\n")
+}
+
+```
+
+## 5. 介入後への適用
 
 ```{r}
 # ================================================================================
-# 5. 介入後＋コントロールデータへの適用
+# 5. 介入後データへのPSM適用（修正版）
 # ================================================================================
 
-# 介入後＋コントロールデータ抽出
-df_post <- df_org[df_org$treated_status %in% c("never_treated", "early_treated", "late_treated"), ]
+# 介入後データ抽出
+df_post <- df_org[df_org$treated_status %in% c("early_treated", "late_treated"), ] 
 
 # 介入群の再定義
 df_post <- df_post %>%
@@ -337,32 +435,77 @@ df_post <- df_post %>%
 cat("\n介入後データの群別サンプル数:\n")
 print(table(df_post$treatment_group))
 
+# 実際の年度に基づくダミー変数作成
+df_post$year2007 <- as.numeric(df_post$year == 2007)
+df_post$year2008 <- as.numeric(df_post$year == 2008)
+df_post$year2009 <- as.numeric(df_post$year == 2009)
+df_post$year2010 <- as.numeric(df_post$year == 2010)
+df_post$year2011 <- as.numeric(df_post$year == 2011)
+df_post$year2012 <- as.numeric(df_post$year == 2012) 
+df_post$year2013 <- as.numeric(df_post$year == 2013)
+df_post$year2014 <- as.numeric(df_post$year == 2014)
+df_post$year2015 <- as.numeric(df_post$year == 2015)
+df_post$year2016 <- as.numeric(df_post$year == 2016)
+
 # 共変量を介入前と同じ形式に調整
 missing_vars <- setdiff(selected_vars, names(df_post))
 if(length(missing_vars) > 0) {
   cat("警告: 以下の変数が介入後データに存在しません:", paste(missing_vars, collapse = ", "), "\n")
-  # 欠損変数を0で補完
   for(var in missing_vars) {
     df_post[[var]] <- 0
   }
 }
 
-# NAを含む行を除去
-post_complete_idx <- complete.cases(df_post[, c(selected_vars, grouping_cols, "nt_ch_stunt")])
+# 🔧 修正：complete.casesをmodel.matrix作成前に実行
+cat("デバッグ情報:\n")
+cat("1. df_post行数（complete.cases前）:", nrow(df_post), "\n")
+
+post_complete_idx <- complete.cases(df_post[, c(covariate_names, grouping_cols, "nt_ch_stunt")])
+cat("2. complete cases数:", sum(post_complete_idx), "\n")
+cat("3. 除去される行数:", sum(!post_complete_idx), "\n")
+
 df_post <- df_post[post_complete_idx, ]
+cat("4. df_post行数（complete.cases後）:", nrow(df_post), "\n")
 
 # 学習済みモデルで傾向スコア予測
 cat("学習済みモデルで介入後データに傾向スコア適用中...\n")
 
-# 介入後データも model.matrix で処理（PSM学習時と同じ形式に）
+# 🔧 修正：クリーンなデータでmodel.matrix作成
 post_matrix <- model.matrix(~ . - 1, data = df_post[, covariate_names, drop=FALSE])
-post_covariates <- as.data.frame(post_matrix[, selected_vars, drop=FALSE])
+selected_vars_post <- intersect(selected_vars, colnames(post_matrix))
+post_covariates <- as.data.frame(post_matrix[, selected_vars_post, drop=FALSE])
 
-# 予測用データフレーム作成
-predict_data <- cbind(
-  treatment_group = df_post$treatment_group,
-  post_covariates
-)
+# ************************************************************************
+# 1. モデル学習時の selected_vars を取得
+# 2. post_covariates に全て用意（なければ0列を追加）
+
+missing_vars_post <- setdiff(selected_vars, colnames(post_covariates))
+if(length(missing_vars_post) > 0) {
+  for(var in missing_vars_post) {
+    post_covariates[[var]] <- 0  # or NA だとエラー、必ず0
+  }
+  # 列順を selected_vars に合わせる
+  post_covariates <- post_covariates[, selected_vars, drop=FALSE]
+}
+# ************************************************************************
+
+# 🔧 修正：次元確認
+cat("post_matrix次元:", dim(post_matrix), "\n")
+cat("post_covariates次元:", dim(post_covariates), "\n") 
+cat("df_post$treatment_group長さ:", length(df_post$treatment_group), "\n")
+
+# 🔧 修正：行数一致確認後にcbind
+if(nrow(post_covariates) == length(df_post$treatment_group)) {
+  predict_data <- cbind(
+    treatment_group = df_post$treatment_group,
+    post_covariates
+  )
+  cat("✓ predict_data作成成功：", nrow(predict_data), "行\n")
+} else {
+  stop("❌ 行数不一致エラー: post_covariates=", nrow(post_covariates), 
+       ", treatment_group=", length(df_post$treatment_group))
+}
+
 
 # 傾向スコア予測
 post_pscore_matrix <- predict(psm_model, newdata = predict_data, type = "probs")
@@ -415,351 +558,118 @@ df_post$sampling_weight_norm <- df_post$v005 / 1000000
 df_post$w_combined <- df_post$iptw_weight * df_post$sampling_weight_norm
 
 # 極端な重みを調整（オプション）
-weight_quantiles <- quantile(df_post$w_combined, c(0.01, 0.99), na.rm = TRUE)
+weight_quantiles <- quantile(df_post$w_combined, c(0.1, 0.9), na.rm = TRUE)
 df_post$w_combined_trimmed <- pmax(pmin(df_post$w_combined, weight_quantiles[2]), weight_quantiles[1])
+
+# 固定上限設定（推奨）
+df_post$w_combined_capped <- pmin(df_post$w_combined_trimmed, 10)
 
 cat("重み付きデータ準備完了。最終サンプル数:", nrow(df_post), "\n")
 cat("重みの要約統計:\n")
-print(summary(df_post$w_combined_trimmed))
+print(summary(df_post$w_combined_capped))
+
+# 介入後データでもバランス診断実施
+post_balance <- CreateTableOne(vars = selected_vars,
+                              strata = 'treatment_group', 
+                              data = df_post, test = FALSE)
+cat("介入後データのバランス診断:\n")
+print(post_balance, smd = TRUE)
+
 
 ```
 
 ## 6. PSMのバランスチェック（クラスターサンプリングによる重み付けなし）
 
 ```{r}
-# ===================================================================
-# PSMバランス確認（重み付けなし）
-# ===================================================================
-# ===================================================================
-# 介入前と介入後のグループで変数選定が異なる（データ処理の途中で
-# dropされる変数があるため、２通りの方法で検証）
-# ===================================================================
+# ================================================================================
+# 6. DID分析用データセット作成
+# ================================================================================
 
-
-# 安全なSMD計算関数
-calculate_smd_robust <- function(data_matrix, group_vector, vars) {
-  results <- data.frame(
-    variable = character(0),
-    smd = numeric(0),
-    mean_control = numeric(0),
-    mean_treated = numeric(0),
-    stringsAsFactors = FALSE
+# Step 1: 介入前後データの統合準備
+# 介入前データにpost変数とタイムスタンプを追加
+df_pre_for_did <- psm_data %>%
+  mutate(
+    post = 0,                    # 介入前期間
+    period = "pre",
+    final_weight = final_weight  # 介入前で計算した重み使用
   )
-  
-  for(i in 1:length(vars)) {
-    var <- vars[i]
-    
-    # 変数が存在するかチェック
-    if(!var %in% colnames(data_matrix)) {
-      next  # 存在しない変数はスキップ
-    }
-    
-    # データの抽出（try-catchで安全に）
-    tryCatch({
-      control_data <- data_matrix[group_vector == 0, var]
-      treated_data <- data_matrix[group_vector == 1, var]
-      
-      # 数値型かチェック
-      if(!is.numeric(control_data) || !is.numeric(treated_data)) {
-        next
-      }
-      
-      # 基本統計量の計算
-      mean_c <- mean(control_data, na.rm = TRUE)
-      mean_t <- mean(treated_data, na.rm = TRUE)
-      var_c <- var(control_data, na.rm = TRUE)
-      var_t <- var(treated_data, na.rm = TRUE)
-      
-      # NA値の処理
-      if(is.na(mean_c) || is.na(mean_t) || is.na(var_c) || is.na(var_t)) {
-        next
-      }
-      
-      # SMD計算（安全版）
-      if(var_c == 0 && var_t == 0) {
-        # 両群の分散が0の場合
-        smd <- 0
-      } else if(var_c == 0 || var_t == 0 || (var_c + var_t) == 0) {
-        # いずれかの分散が0または合計が0の場合
-        # 単純な平均差を使用（絶対値）
-        smd <- abs(mean_t - mean_c)
-      } else {
-        # 通常のSMD計算
-        smd <- abs((mean_t - mean_c) / sqrt((var_t + var_c) / 2))
-      }
-      
-      # 結果を追加
-      results <- rbind(results, data.frame(
-        variable = var,
-        smd = smd,
-        mean_control = mean_c,
-        mean_treated = mean_t,
-        stringsAsFactors = FALSE
-      ))
-      
-    }, error = function(e) {
-      # エラーが発生した変数は静かにスキップ
-      cat("変数", var, "でエラー:", e$message, "\n")
-    })
-  }
-  
-  return(results)
+
+# 介入後データにpost変数とタイムスタンプを追加  
+df_post_for_did <- df_post %>%
+  mutate(
+    post = 1,                         # 介入後期間
+    period = "post",
+    final_weight = w_combined_capped  # 介入後で計算した重み使用
+  )
+
+# Step 2: 共通変数の確認と調整
+common_vars <- intersect(colnames(df_pre_for_did), colnames(df_post_for_did))
+cat("共通変数数:", length(common_vars), "\n")
+
+# 必要な変数リスト
+required_vars <- c("treatment_group", "post", "period", "year", 
+                   "nt_ch_stunt", "final_weight", grouping_cols)
+
+# 不足変数の確認
+missing_pre <- setdiff(required_vars, colnames(df_pre_for_did))
+missing_post <- setdiff(required_vars, colnames(df_post_for_did))
+
+if(length(missing_pre) > 0) {
+  cat("介入前データに不足:", paste(missing_pre, collapse=", "), "\n")
+}
+if(length(missing_post) > 0) {
+  cat("介入後データに不足:", paste(missing_post, collapse=", "), "\n")
 }
 
-# 簡易バランス確認関数（カテゴリ変数対応）
-calculate_balance_simple <- function(data, vars, group_var) {
-  results <- data.frame(
-    variable = character(0),
-    smd = numeric(0),
-    prop_control = numeric(0),
-    prop_treated = numeric(0),
-    stringsAsFactors = FALSE
-  )
-  
-  # 存在する変数のみをフィルタリング
-  existing_vars <- intersect(vars, names(data))
-  
-  for(var in existing_vars) {
-    tryCatch({
-      # データの抽出
-      control_group <- data[data[[group_var]] == 0, ]
-      treated_group <- data[data[[group_var]] == 1, ]
-      
-      # 変数の型を確認
-      if(is.numeric(data[[var]])) {
-        # 数値変数の場合
-        mean_c <- mean(control_group[[var]], na.rm = TRUE)
-        mean_t <- mean(treated_group[[var]], na.rm = TRUE)
-        var_c <- var(control_group[[var]], na.rm = TRUE)
-        var_t <- var(treated_group[[var]], na.rm = TRUE)
-        
-        # SMD計算
-        if(is.na(var_c) || is.na(var_t) || (var_c + var_t) <= 0) {
-          smd <- abs(mean_t - mean_c)
-        } else {
-          smd <- abs((mean_t - mean_c) / sqrt((var_t + var_c) / 2))
-        }
-        
-        results <- rbind(results, data.frame(
-          variable = var,
-          smd = smd,
-          prop_control = mean_c,
-          prop_treated = mean_t,
-          stringsAsFactors = FALSE
-        ))
-        
-      } else {
-        # カテゴリ変数の場合（割合で評価）
-        # 最頻値または "1" の割合を計算
-        if(all(data[[var]] %in% c(0, 1), na.rm = TRUE)) {
-          # バイナリ変数の場合
-          prop_c <- mean(control_group[[var]] == 1, na.rm = TRUE)
-          prop_t <- mean(treated_group[[var]] == 1, na.rm = TRUE)
-        } else {
-          # その他のカテゴリ変数の場合（最頻値の割合）
-          mode_val <- names(sort(table(data[[var]]), decreasing = TRUE))[1]
-          prop_c <- mean(control_group[[var]] == mode_val, na.rm = TRUE)
-          prop_t <- mean(treated_group[[var]] == mode_val, na.rm = TRUE)
-        }
-        
-        # 割合のSMD（標準化差）
-        pooled_var <- prop_c * (1 - prop_c) + prop_t * (1 - prop_t)
-        if(pooled_var > 0) {
-          smd <- abs((prop_t - prop_c) / sqrt(pooled_var / 2))
-        } else {
-          smd <- abs(prop_t - prop_c)
-        }
-        
-        results <- rbind(results, data.frame(
-          variable = var,
-          smd = smd,
-          prop_control = prop_c,
-          prop_treated = prop_t,
-          stringsAsFactors = FALSE
-        ))
-      }
-      
-    }, error = function(e) {
-      # エラー時は静かにスキップ
-    })
-  }
-  
-  return(results)
+# Step 3: データセット結合
+did_data <- bind_rows(
+  df_pre_for_did[, common_vars],
+  df_post_for_did[, common_vars]
+)
+
+cat("DIDデータ作成完了\n")
+cat("総観測数:", nrow(did_data), "\n")
+cat("介入前:", sum(did_data$post == 0), "\n")
+cat("介入後:", sum(did_data$post == 1), "\n")
+
+# Step 4: cluster変数の定義  
+# grouping_colsの内容を確認
+cat("grouping_cols:", paste(grouping_cols, collapse=", "), "\n")
+
+# 適切なクラスター変数を選択（例：caseid, region, strata）
+if("caseid" %in% colnames(did_data)) {
+  did_data$cluster_var <- did_data$caseid
+} else if("region" %in% colnames(did_data)) {
+  did_data$cluster_var <- did_data$region  
+} else if("strata" %in% colnames(did_data)) {
+  did_data$cluster_var <- did_data$strata
+} else {
+  # フォールバック：行番号
+  did_data$cluster_var <- 1:nrow(did_data)
+  cat("警告: 適切なクラスター変数が見つかりません。行番号を使用します。\n")
 }
 
-# ===================================================================
-# 実際のバランス確認実行（修正版）
-# ===================================================================
+# Step 5: DID分析実行
+library(fixest)
 
-cat("\n=== 修正版バランス確認開始 ===\n")
+# 基本DIDモデル
+did_model <- feols(nt_ch_stunt ~ treatment_group * post + 
+                   factor(year),              # 年度固定効果
+                   cluster = "cluster_var",   # クラスター調整
+                   weights = final_weight,    # 重み適用
+                   data = did_data)
 
-# Method 1: model.matrixを使用（エラー処理強化）
-cat("\n=== Method 1: model.matrix（エラー処理強化版） ===\n")
+cat("=== DID分析結果 ===\n")
+summary(did_model)
 
-tryCatch({
-  # PSM学習時と同じ処理
-  pre_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
-  post_matrix <- model.matrix(~ . - 1, data = df_post[, covariate_names, drop=FALSE])
-  
-  # 共通する変数のみを抽出
-  common_vars <- intersect(selected_vars, intersect(colnames(pre_matrix), colnames(post_matrix)))
-  cat("共通変数数:", length(common_vars), "/", length(selected_vars), "\n")
-  
-  if(length(common_vars) > 0) {
-    # バランス確認実行（安全版）
-    balance_before_matrix <- calculate_smd_robust(
-      pre_matrix, 
-      as.numeric(df_pre$treatment_group), 
-      common_vars
-    )
-    
-    balance_after_matrix <- calculate_smd_robust(
-      post_matrix, 
-      as.numeric(df_post$treatment_group), 
-      common_vars
-    )
-    
-    cat("計算できた変数数 - Before:", nrow(balance_before_matrix), 
-        "/ After:", nrow(balance_after_matrix), "\n")
-    
-    # 結果のマージ
-    if(nrow(balance_before_matrix) > 0 && nrow(balance_after_matrix) > 0) {
-      balance_comparison_matrix <- merge(
-        balance_before_matrix, 
-        balance_after_matrix, 
-        by = "variable", 
-        suffixes = c("_before", "_after")
-      )
-      
-      balance_comparison_matrix$improvement <- 
-        balance_comparison_matrix$smd_before - balance_comparison_matrix$smd_after
-      
-      # 結果の要約
-      cat("\n=== バランス改善結果 (Method 1) ===\n")
-      cat("総変数数:", nrow(balance_comparison_matrix), "\n")
-      cat("SMD < 0.1 (良好) - Before:", 
-          sum(balance_comparison_matrix$smd_before < 0.1, na.rm = TRUE), 
-          "/ After:", 
-          sum(balance_comparison_matrix$smd_after < 0.1, na.rm = TRUE), "\n")
-      cat("SMD < 0.05 (優秀) - Before:", 
-          sum(balance_comparison_matrix$smd_before < 0.05, na.rm = TRUE), 
-          "/ After:", 
-          sum(balance_comparison_matrix$smd_after < 0.05, na.rm = TRUE), "\n")
-      
-      # 平均SMDの改善
-      cat("平均SMD - Before:", 
-          round(mean(balance_comparison_matrix$smd_before, na.rm = TRUE), 4),
-          "/ After:",
-          round(mean(balance_comparison_matrix$smd_after, na.rm = TRUE), 4), "\n")
-      
-      # 最も改善された変数 top 5
-      if(nrow(balance_comparison_matrix) > 0) {
-        top_improved <- head(
-          balance_comparison_matrix[order(-balance_comparison_matrix$improvement), ], 
-          5
-        )
-        cat("\n最も改善された変数 Top 5:\n")
-        print(top_improved[, c("variable", "smd_before", "smd_after", "improvement")])
-        
-        # 最もバランスが悪い変数 top 5
-        worst_balance <- head(
-          balance_comparison_matrix[order(-balance_comparison_matrix$smd_after), ], 
-          5
-        )
-        cat("\n最もバランスが悪い変数 Top 5 (After):\n")
-        print(worst_balance[, c("variable", "smd_before", "smd_after", "improvement")])
-      }
-    }
-  }
-}, error = function(e) {
-  cat("Method 1でエラーが発生しました:", e$message, "\n")
-})
+# 交互作用項の効果（DID推定値）
+did_effects <- did_model$coefficients
+treatment1_effect <- did_effects["treatment_group1:post"]
+treatment2_effect <- did_effects["treatment_group2:post"]
 
-# Method 2: 簡易版（カテゴリ変数対応）
-cat("\n\n=== Method 2: 簡易版（全変数対応） ===\n")
-
-tryCatch({
-  balance_before_simple <- calculate_balance_simple(df_pre, selected_vars, "treatment_group")
-  balance_after_simple <- calculate_balance_simple(df_post, selected_vars, "treatment_group")
-  
-  cat("計算できた変数数 - Before:", nrow(balance_before_simple), 
-      "/ After:", nrow(balance_after_simple), "\n")
-  
-  if(nrow(balance_before_simple) > 0 && nrow(balance_after_simple) > 0) {
-    balance_comparison_simple <- merge(
-      balance_before_simple, 
-      balance_after_simple, 
-      by = "variable", 
-      suffixes = c("_before", "_after")
-    )
-    
-    balance_comparison_simple$improvement <- 
-      balance_comparison_simple$smd_before - balance_comparison_simple$smd_after
-    
-    cat("\n=== バランス改善結果 (Method 2) ===\n")
-    cat("総変数数:", nrow(balance_comparison_simple), "\n")
-    cat("SMD < 0.1 (良好) - Before:", 
-        sum(balance_comparison_simple$smd_before < 0.1, na.rm = TRUE), 
-        "/ After:", 
-        sum(balance_comparison_simple$smd_after < 0.1, na.rm = TRUE), "\n")
-    cat("SMD < 0.05 (優秀) - Before:", 
-        sum(balance_comparison_simple$smd_before < 0.05, na.rm = TRUE), 
-        "/ After:", 
-        sum(balance_comparison_simple$smd_after < 0.05, na.rm = TRUE), "\n")
-    
-    # 平均SMDの改善
-    cat("平均SMD - Before:", 
-        round(mean(balance_comparison_simple$smd_before, na.rm = TRUE), 4),
-        "/ After:",
-        round(mean(balance_comparison_simple$smd_after, na.rm = TRUE), 4), "\n")
-  }
-}, error = function(e) {
-  cat("Method 2でエラーが発生しました:", e$message, "\n")
-})
-
-# ===================================================================
-# 結果の可視化（エラー処理付き）
-# ===================================================================
-
-tryCatch({
-  if(exists("balance_comparison_matrix") && nrow(balance_comparison_matrix) > 0) {
-    library(ggplot2)
-    
-    # SMD改善のヒストグラム
-    p_hist <- ggplot(balance_comparison_matrix, aes(x = improvement)) +
-      geom_histogram(bins = 20, alpha = 0.7, fill = "skyblue") +
-      geom_vline(xintercept = 0, color = "red", linetype = "dashed") +
-      labs(
-        title = "Distribution of SMD Improvement (After - Before)",
-        x = "SMD Improvement",
-        y = "Number of Variables",
-        caption = "Positive values indicate improvement"
-      ) +
-      theme_minimal()
-    
-    print(p_hist)
-    
-    # Before vs After SMDの散布図
-    p_scatter <- ggplot(balance_comparison_matrix, aes(x = smd_before, y = smd_after)) +
-      geom_point(alpha = 0.6, size = 2) +
-      geom_abline(intercept = 0, slope = 1, color = "red", linetype = "dashed") +
-      geom_hline(yintercept = 0.1, color = "blue", linetype = "dotted") +
-      geom_vline(xintercept = 0.1, color = "blue", linetype = "dotted") +
-      labs(
-        title = "SMD: Before vs After PSM",
-        x = "SMD Before PSM",
-        y = "SMD After PSM",
-        caption = "Points below diagonal line show improvement\nBlue lines: SMD = 0.1 threshold"
-      ) +
-      theme_minimal()
-    
-    print(p_scatter)
-  }
-}, error = function(e) {
-  cat("可視化でエラーが発生しました:", e$message, "\n")
-})
-
-cat("\n=== バランス確認完了（修正版） ===\n")
+cat("\n=== DID推定結果 ===\n")
+cat("処置群1の効果:", treatment1_effect, "\n")
+cat("処置群2の効果:", treatment2_effect, "\n")
 
 ```
 
@@ -858,12 +768,12 @@ print(anova(anova_model))
   # IPTWウェイトをDIDデータにマージ（caseid等で結合）
   if("w_combined_trimmed" %in% names(df_post)) {
     did_weights <- df_post %>% 
-      select(caseid, year, w_combined_trimmed) %>%
+      select(caseid, year, w_combined_capped) %>%
       mutate(T = as.integer(year))
     
     did_data <- did_data %>%
       left_join(did_weights, by = c("caseid", "T")) %>%
-      mutate(weights = ifelse(is.na(w_combined_trimmed), 1, w_combined_trimmed))
+      mutate(weights = ifelse(is.na(w_combined_capped), 1, w_combined_capped))
   } else {
     did_data$weights <- 1
   }
