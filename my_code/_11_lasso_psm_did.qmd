@@ -72,9 +72,7 @@ drop_cols <- c(
 
 
 # ID・管理用変数
-grouping_cols <- c("caseid", "cluster_id", "strata_id", "state_id", "state",
-                   "treated_status", "time_period",
-                   "treatment_start","group_treated",
+grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated",
                    "wt")
 
 # パターンマッチによる変数除外
