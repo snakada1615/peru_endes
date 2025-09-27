@@ -125,9 +125,6 @@ df_pre <- df_pre[complete_idx, ]
 cat("NA値を含む行を", initial_rows - nrow(df_pre), "行削除しました\n")
 cat("最終的な介入前データサイズ:", nrow(df_pre), "行 ×", ncol(df_pre), "列\n\n")
 
-# 7. データ保存
-saveRDS(df_pre, file.path(save_path, "df_pre_lasso.rds"))
-cat("介入前データを保存しました:", file.path(save_path, "df_pre_lasso.rds"), "\n")
 
 ```
 
@@ -462,10 +459,6 @@ cat("3. 除去される行数:", sum(!post_complete_idx), "\n")
 
 df_post <- df_post[post_complete_idx, ]
 cat("4. df_post行数（complete.cases後）:", nrow(df_post), "\n")
-
-# データ保存
-saveRDS(df_post, file.path(save_path, "df_post_lasso.rds"))
-cat("介入後データを保存しました:", file.path(save_path, "df_post_lasso.rds"), "\n")
 
 # 学習済みモデルで傾向スコア予測
 cat("学習済みモデルで介入後データに傾向スコア適用中...\n")
