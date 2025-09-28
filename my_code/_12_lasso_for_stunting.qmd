@@ -38,6 +38,10 @@ library(fixest)   # 回帰分析の推定結果から係数表（推定値、標
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
 
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
 # 自作関数読み込み
 source("../myTools.R")
 
@@ -53,6 +57,13 @@ save_path <- file.path(gdrive_dir, "output", "lasso_psm_did")
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
   ) %>% filter(!is.na(nt_ch_stunt))
+
+# データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
 
 # 介入群グループ化
 df_org <- df_org %>%
@@ -73,18 +84,38 @@ var_labels$varname <- names(df_org)
 ## 2. LASSO用データ前処理（介入前データのみ）
 
 ```{r}
+#| tbl-colwidths: [80, 20]
 # ================================================================================
 # 2. LASSO用データ前処理（介入前データのみ）
 # ================================================================================
+library(knitr)
+
 
 # 除外変数定義
 drop_cols <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "state"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", 
+"m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", 
+"m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", 
+"m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", 
+"m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", 
+"v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", 
+"v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", 
+"wt", "year_treated", "state","rh_anc_pv","rh_anc_numvsrh_anc_moprg",
+"rh_anc_median","rc_edu","rc_litr_cats","rc_empl","nt_bf_status","ms_mar_union",
+"ms_mar_never","ms_sex_recent","dm_weath_index","dm_cooking_fuel_traditional"
 )
 
 # 古い除外変数リスト（念のため保存）
 drop_cols_old <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", 
+"m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", 
+"m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", 
+"m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", 
+"m42e", "m43", "m45", "m60", "m61", "v001", "v002", "v003", "v005", "v008", 
+"v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", 
+"v467b", "v467c", "v467d", "v467f", 
+"period", "treated_status", "treatment_start", "wt", "year_treated", 
+"ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other"
 )
 
 
@@ -111,7 +142,8 @@ covariate_names <- setdiff(names(df_lasso), c(all_drop_cols, grouping_cols))
 
 
 # 6. 共変量のNAがある行を除去
-complete_idx <- complete.cases(df_lasso[, covariate_names])
+# df_lasso <- df_lasso[, covariate_names]
+complete_idx <- complete.cases(df_lasso)
 initial_rows <- nrow(df_lasso)
 df_lasso <- df_lasso[complete_idx, ]
 cat("NA値を含む行を", initial_rows - nrow(df_lasso), "行削除しました\n")
@@ -119,23 +151,31 @@ cat("最終的な介入前データサイズ:", nrow(df_lasso), "行 ×", ncol(d
 
 # 共変量のラベル保存
 covariate_names_label <- var_labels %>%
-  filter(varname %in% names(df_lasso))
+  filter(varname %in% covariate_names)
+knitr::kable(covariate_names_label)
 
 # ********** デバッグ用 **********
-# ダミーでない変数を抽出
-non_dummy <- list()
-for (var in names(df_lasso)) {
-  if (!is_dummy_var(df_lasso[[var]])) {
-    non_dummy <- append(non_dummy, var)
-  } else {
-    cat("ダミー変数:", var)
-    print(table(df_lasso[[var]], useNA = "always"))
-    cat("\n")
+if (debug_mode) {
+  cat("=== デバッグモード: 変数の詳細確認 ===\n")
+  cat("共変量数:", length(covariate_names), "\n")
+  cat("共変量:\n")
+  
+  # ダミーでない変数を抽出
+  non_dummy <- list()
+  temp <- df_lasso[, covariate_names]
+  for (var in names(temp)) {
+    if (!is_dummy_var(temp[[var]])) {
+      non_dummy <- append(non_dummy, var)
+    } else {
+      cat("ダミー変数:", var)
+      print(table(temp[[var]], useNA = "always"))
+      cat("\n")
+    }
   }
+  cat("ダミー変数でない変数数:", length(non_dummy), "\n")
+  cat("ダミー変数でない変数:\n")
+  print(non_dummy)
 }
-cat("ダミー変数でない変数数:", length(non_dummy), "\n")
-cat("ダミー変数でない変数:\n")
-print(non_dummy)
 # ********** デバッグ用 **********
 
 
