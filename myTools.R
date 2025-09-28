@@ -979,3 +979,17 @@ process_endes_with_hhid <- function(year, filename) {
   return(df)
 }
 # --- 関数定義ここまで ---
+
+# ******************************************************************************
+#' @title is_dummy_var
+#' @description 変数がダミー変数（0と1のみを取る）かどうかを判定する関数
+#' @param x ベクトル。判定対象の変数。
+#' @return 変数がダミー変数であればTRUE、そうでなければFALSE。
+# ******************************************************************************
+
+is_dummy_var <- function(x) {
+  # 欠損値を除外し、残りの値がすべて 0 か 1 であるか判定
+  unique_vals <- unique(stats::na.omit(x))
+  all(unique_vals %in% c(0, 1))
+}
+# --- 関数定義ここまで ---

@@ -79,51 +79,64 @@ var_labels$varname <- names(df_org)
 
 # 除外変数定義
 drop_cols <- c(
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "state"
+)
+
+# 古い除外変数リスト（念のため保存）
+drop_cols_old <- c(
   "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other"
 )
 
 
 # ID・管理用変数
 grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated",
-                   "wt")
+                   "wt", "treatment_group")
 
-# パターンマッチによる変数除外
-all_drop_cols <- c(drop_cols, "treatment_start")
-
-# 1. 介入前データで絞りこみ
-df_pre <- df_org[df_org$treated_status %in% c("never_treated", "not_yet_treated"), ]
-
-# # 3. 介入群グループ化
-# df_pre <- df_pre %>%
-#   mutate(
-#     treatment_group = case_when(
-#       treatment_start == "2009" ~ 1,  # 早期介入
-#       treatment_start == "2011" ~ 2,  # 後期介入
-#       TRUE ~ 0                        # コントロール
-#     ),
-#     treatment_group = as.factor(treatment_group)
-#   )
+# 1. LASSO用のデータセット定義
+df_lasso <- df_org
 
 cat("介入前データの群別サンプル数:\n")
-print(table(df_pre$treatment_group))
+print(table(df_lasso$treatment_group))
 
 # 4. NAの多い列を除去（10%以上NA）
-initial_cols <- ncol(df_pre)
-keep_cols <- names(df_pre)[sapply(df_pre, function(x) sum(is.na(x)) <= nrow(df_pre) * 0.1)]
-df_pre <- df_pre[, keep_cols]
-cat("NA値の多い列を", initial_cols - ncol(df_pre), "個削除しました\n")
+initial_cols <- ncol(df_lasso)
+keep_cols <- names(df_lasso)[sapply(df_lasso, function(x) sum(is.na(x)) <= nrow(df_lasso) * 0.1)]
+df_lasso <- df_lasso[, keep_cols]
+cat("NA値の多い列を", initial_cols - ncol(df_lasso), "個削除しました\n")
 
 # 5. 共変量名の再定義（NA除去後）
-all_drop_cols <- intersect(all_drop_cols, names(df_pre))
-grouping_cols <- intersect(grouping_cols, names(df_pre))
-covariate_names <- setdiff(names(df_pre), c(all_drop_cols, grouping_cols, "treatment_group"))
+all_drop_cols <- intersect(drop_cols, names(df_lasso))
+grouping_cols <- intersect(grouping_cols, names(df_lasso))
+covariate_names <- setdiff(names(df_lasso), c(all_drop_cols, grouping_cols))
+
 
 # 6. 共変量のNAがある行を除去
-complete_idx <- complete.cases(df_pre[, covariate_names])
-initial_rows <- nrow(df_pre)
-df_pre <- df_pre[complete_idx, ]
-cat("NA値を含む行を", initial_rows - nrow(df_pre), "行削除しました\n")
-cat("最終的な介入前データサイズ:", nrow(df_pre), "行 ×", ncol(df_pre), "列\n\n")
+complete_idx <- complete.cases(df_lasso[, covariate_names])
+initial_rows <- nrow(df_lasso)
+df_lasso <- df_lasso[complete_idx, ]
+cat("NA値を含む行を", initial_rows - nrow(df_lasso), "行削除しました\n")
+cat("最終的な介入前データサイズ:", nrow(df_lasso), "行 ×", ncol(df_lasso), "列\n\n")
+
+# 共変量のラベル保存
+covariate_names_label <- var_labels %>%
+  filter(varname %in% names(df_lasso))
+
+# ********** デバッグ用 **********
+# ダミーでない変数を抽出
+non_dummy <- list()
+for (var in names(df_lasso)) {
+  if (!is_dummy_var(df_lasso[[var]])) {
+    non_dummy <- append(non_dummy, var)
+  } else {
+    cat("ダミー変数:", var)
+    print(table(df_lasso[[var]], useNA = "always"))
+    cat("\n")
+  }
+}
+cat("ダミー変数でない変数数:", length(non_dummy), "\n")
+cat("ダミー変数でない変数:\n")
+print(non_dummy)
+# ********** デバッグ用 **********
 
 
 ```
@@ -136,13 +149,13 @@ cat("最終的な介入前データサイズ:", nrow(df_pre), "行 ×", ncol(df_
 # ================================================================================
 # 完全に一から再開
 cat("=== データ処理を再開 ===\n")
-cat("df_pre の次元:", dim(df_pre), "\n")
+cat("df_lasso の次元:", dim(df_lasso), "\n")
 cat("covariate_names の数:", length(covariate_names), "\n")
 
 # Step 1: model.matrix作成
 cat("Step 1: model.matrix作成中...\n")
-X_matrix <- model.matrix(~ . - 1, data = df_pre[, covariate_names, drop=FALSE])
-Y <- df_pre$treatment_group
+X_matrix <- model.matrix(~ . - 1, data = df_lasso[, covariate_names, drop=FALSE])
+Y <- df_lasso$treatment_group
 cat("=== 問題列の除去 ===\n")
 
 # Step 1: 標準偏差が0の列を特定・除去
@@ -266,20 +279,20 @@ if(length(selected_vars) > 0) {
   
   # Step 3: PSM再実行（yearを含む）
   # yearをnumericに変換してからmodel.matrixを適用
-  df_pre$year <- as.numeric(as.character(df_pre$year))  # factor → character → numeric
+  df_lasso$year <- as.numeric(as.character(df_lasso$year))  # factor → character → numeric
   
   # LASSO と同じ model.matrix 処理を適用
   psm_matrix <- model.matrix(~ . - 1, 
-                            data = df_pre[, c(covariate_names), drop=FALSE])
+                            data = df_lasso[, c(covariate_names), drop=FALSE])
   
   # 選択された変数のみ抽出  
   psm_covariates <- as.data.frame(psm_matrix[, selected_vars_final, drop=FALSE])
 
   # 目的変数と管理変数を追加
   psm_data <- cbind(
-    treatment_group = df_pre$treatment_group,
+    treatment_group = df_lasso$treatment_group,
     psm_covariates,
-    df_pre[, intersect(grouping_cols, names(df_pre))]
+    df_lasso[, intersect(grouping_cols, names(df_lasso))]
   )
   
   # 多項ロジスティック回帰で傾向スコア推定
@@ -334,9 +347,9 @@ if(length(selected_vars) > 0) {
   cat("基本IPTW重み計算完了\n")
   print(summary(psm_data$iptw_weight))
   
-  # 2. サンプリング重みとの合成（df_preにv005列がある場合）
-  if("v005" %in% names(df_pre)) {
-    psm_data$wcombined <- psm_data$iptw_weight * (df_pre$v005/1000000)
+  # 2. サンプリング重みとの合成（df_lassoにv005列がある場合）
+  if("v005" %in% names(df_lasso)) {
+    psm_data$wcombined <- psm_data$iptw_weight * (df_lasso$v005/1000000)
     cat("サンプリング重みとの合成完了\n")
   } else {
     # v005がない場合はiptw_weightをそのまま使用
@@ -579,7 +592,7 @@ print(post_balance, smd = TRUE)
 # ================================================================================
 
 # Step 1: 介入前後データの統合準備
-df_pre_for_did <- psm_data %>%
+df_lasso_for_did <- psm_data %>%
   mutate(
     post = 0,                    # 介入前期間
     period = "pre",
@@ -594,7 +607,7 @@ df_post_for_did <- df_post %>%
   )
 
 # Step 2: 共通変数の確認と調整
-common_vars <- intersect(colnames(df_pre_for_did), colnames(df_post_for_did))
+common_vars <- intersect(colnames(df_lasso_for_did), colnames(df_post_for_did))
 cat("共通変数数:", length(common_vars), "\n")
 
 # 必要な変数リスト
@@ -602,7 +615,7 @@ required_vars <- c("treatment_group", "post", "period", "year",
                    "nt_ch_stunt", "final_weight", grouping_cols)
 
 # 不足変数の確認
-missing_pre <- setdiff(required_vars, colnames(df_pre_for_did))
+missing_pre <- setdiff(required_vars, colnames(df_lasso_for_did))
 missing_post <- setdiff(required_vars, colnames(df_post_for_did))
 
 if(length(missing_pre) > 0) {
@@ -614,7 +627,7 @@ if(length(missing_post) > 0) {
 
 # Step 3: データセット結合
 did_data <- bind_rows(
-  df_pre_for_did[, common_vars],
+  df_lasso_for_did[, common_vars],
   df_post_for_did[, common_vars]
 )
 
