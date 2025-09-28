@@ -52,7 +52,7 @@ source("../myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_psm_did")
+save_path <- file.path(gdrive_dir, "output", "lasso_stunting")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
@@ -84,44 +84,35 @@ var_labels$varname <- names(df_org)
 ## 2. LASSO用データ前処理（介入前データのみ）
 
 ```{r}
-#| tbl-colwidths: [80, 20]
 # ================================================================================
 # 2. LASSO用データ前処理（介入前データのみ）
 # ================================================================================
-library(knitr)
+library(gt)
 
-
-# 除外変数定義
-drop_cols <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", 
-"m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", 
-"m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", 
-"m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", 
-"m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", 
-"v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", 
-"v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", 
-"wt", "year_treated", "state","rh_anc_pv","rh_anc_numvsrh_anc_moprg",
-"rh_anc_median","rc_edu","rc_litr_cats","rc_empl","nt_bf_status","ms_mar_union",
-"ms_mar_never","ms_sex_recent","dm_weath_index","dm_cooking_fuel_traditional"
+# 除外変数定義(初期値)
+drop_cols_init <- c(
+"b3","b4","b5","b9","bidx","caseid","hc27","hhid","m1","m13","m14","m15","m1d",
+"m2a","m2b","m2c","m2d","m2e","m2f","m2g","m2h","m2i","m2j","m2k","m2l","m2m",
+"m3a","m3b","m3c","m3d","m3e","m3f","m3g","m3h","m3i","m3j","m3k","m3l","m3m",
+"m3n","m42c","m42d","m42e","m43","m45","m60","m61","v001","v002","v003","v005",
+"v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
+"v467b","v467c","v467d","v467f",
+"wt","state","age","treated_status","treatment_start","year_treated",
+"ch_report_bw","ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
+"rh_anc_bldpres","rh_anc_median","rh_anc_bldsamp","rh_anc_median","rh_anc_numvs","rh_anc_numvsrh_anc_moprg","rh_anc_prgcomp","rh_anc_pv","rh_anc_toxinj","rh_anc_urine"
 )
 
-# 古い除外変数リスト（念のため保存）
-drop_cols_old <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", 
-"m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", 
-"m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", 
-"m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", 
-"m42e", "m43", "m45", "m60", "m61", "v001", "v002", "v003", "v005", "v008", 
-"v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", 
-"v467b", "v467c", "v467d", "v467f", 
-"period", "treated_status", "treatment_start", "wt", "year_treated", 
-"ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other"
-)
+# 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
+y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz")
+y_var <- "nt_ch_stunt"
+y_var_drop <- setdiff(y_var_all, y_var)
 
+# 除外変数定義(最終値)
+drop_cols <- c(drop_cols_init, y_var_all)
 
 # ID・管理用変数
 grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated",
-                   "wt", "treatment_group")
+                   "wt", "treatment_group", y_var)
 
 # 1. LASSO用のデータセット定義
 df_lasso <- df_org
@@ -152,7 +143,14 @@ cat("最終的な介入前データサイズ:", nrow(df_lasso), "行 ×", ncol(d
 # 共変量のラベル保存
 covariate_names_label <- var_labels %>%
   filter(varname %in% covariate_names)
-knitr::kable(covariate_names_label)
+# print文の代替
+covariate_names_label %>%
+  gt() %>%
+  cols_width(
+    1 ~ pct(20),
+    2 ~ pct(80)
+  ) %>%
+  print()
 
 # ********** デバッグ用 **********
 if (debug_mode) {
@@ -184,6 +182,7 @@ if (debug_mode) {
 ## 3. LASSOによる変数選択（介入前データ）
 
 ```{r}
+library(gt)
 # ================================================================================
 # 3. LASSO変数選択（介入前データ）
 # ================================================================================
@@ -195,9 +194,9 @@ cat("covariate_names の数:", length(covariate_names), "\n")
 # Step 1: model.matrix作成
 cat("Step 1: model.matrix作成中...\n")
 X_matrix <- model.matrix(~ . - 1, data = df_lasso[, covariate_names, drop=FALSE])
-Y <- df_lasso$treatment_group
-cat("=== 問題列の除去 ===\n")
+Y <- df_lasso$nt_ch_stunt
 
+cat("=== 問題列の除去 ===\n")
 # Step 1: 標準偏差が0の列を特定・除去
 col_sds <- apply(X_matrix, 2, sd, na.rm = TRUE)
 zero_sd_cols <- is.na(col_sds) | col_sds == 0
@@ -289,9 +288,21 @@ if(length(selected_vars) > 0) {
     as_tibble(rownames = "labels") %>%
     filter(labels %in% selected_vars) %>%
     left_join(var_labels, by = join_by("labels" == "varname"))
-  print(coef_importance, n = nrow(coef_importance))
-  write_csv(coef_importance, file.path(save_path, "lasso_selected_vars_importance.csv"))
-    
+  saveRDS(coef_importance, file.path(save_path, "lasso_selected_vars_importance.rds"))
+
+  # 列幅を指定して結果出力
+  coef_importance %>%
+    gt() %>%
+    cols_width(
+      1 ~ pct(15),
+      2 ~ pct(15),
+      3 ~ pct(70)
+    ) %>%
+  fmt_number(
+    columns = c("lambda.min"),
+    decimals = 4  # 小数点以下4桁
+  ) %>%
+  print()    
 } else {
   stop("変数が選択されませんでした。λの値を調整してください。")
 }
