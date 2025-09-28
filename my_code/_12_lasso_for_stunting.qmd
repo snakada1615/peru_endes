@@ -147,8 +147,8 @@ covariate_names_label <- var_labels %>%
 covariate_names_label %>%
   gt() %>%
   cols_width(
-    1 ~ pct(20),
-    2 ~ pct(80)
+    1 ~ pct(80),
+    2 ~ pct(20)
   ) %>%
   print()
 
