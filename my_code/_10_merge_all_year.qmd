@@ -23,6 +23,10 @@ execute-dir: project
 
 rm(list = ls(all = TRUE))
 
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
 # libraries needed
 library(tidyverse)  # most variable creation here uses tidyverse 
 library(tidyselect) # used to select variables in FP_EVENTS.R
@@ -63,6 +67,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```{r}
 
+library(sjmisc)  # add_rowsのために追加
 all_data_merged <- NULL   # 空のリストまたはデータフレームとして初期化
 
 # 各年ごとのデータセットを読み込み、結合
@@ -74,9 +79,19 @@ for (yr in yearlist) {
     filter(!is.na(hhid))
 
   print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
-  all_data_merged <- bind_rows(all_data_merged, year_data) %>%
+  # bind_rowsの代わりにadd_rowsを使用
+  all_data_merged <- add_rows(all_data_merged, year_data) %>%
     as_tibble()
   print(paste("Total records so far:", nrow(all_data_merged)))
+  
+  # if (debug_mode) {
+  #   if ("rc_edu_acceptable" %in% names(year_data)) {
+  #     print(paste("year_data: ", get_label(year_data$rc_edu_acceptable)))
+  #     print(paste("all_data: ", get_label("all_data: ",all_data_merged$rc_edu_acceptable)))
+  #   } else {
+  #     stop(paste("failed in year", yr, ": 'rc_edu_acceptable' not found"))
+  #   }
+  # }
 }
 
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
