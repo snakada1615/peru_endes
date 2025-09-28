@@ -103,7 +103,7 @@ drop_cols_init <- c(
 )
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
-y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz")
+y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
 y_var <- "nt_ch_stunt"
 y_var_drop <- setdiff(y_var_all, y_var)
 
@@ -298,10 +298,10 @@ if(length(selected_vars) > 0) {
       2 ~ pct(15),
       3 ~ pct(70)
     ) %>%
-  fmt_number(
-    columns = c("lambda.min"),
-    decimals = 4  # 小数点以下4桁
-  ) %>%
+    fmt_number(
+      columns = c("lambda.min"),
+      decimals = 4  # 小数点以下4桁
+    ) %>%
   print()    
 } else {
   stop("変数が選択されませんでした。λの値を調整してください。")
