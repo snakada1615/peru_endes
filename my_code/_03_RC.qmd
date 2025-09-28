@@ -59,7 +59,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```
 
-## 2. フォルダ設定
+## 2. データ読み込み、データ処理、結果保存
 
 ```{r}
 # 必要なデータセットの抽出

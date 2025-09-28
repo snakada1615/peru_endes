@@ -55,9 +55,13 @@ IRdata <- IRdata %>%
            v133<=20 ~ v133, 
            v133>20 & v133<95 ~ 20, 
            v133>95 | v149>7 ~ 99)) %>%
+  mutate(rc_edu_acceptable = case_when(
+    rc_edu >= 4 ~ 1,
+    TRUE ~ 0)) %>%
   
   set_variable_labels(
     rc_edu = "Highest level of schooling attended or completed",
+    rc_edu_acceptable = "Attended or completed at least secondary education",
     eduyr = "Years of education"
   ) %>%
   replace_with_na(replace = list(eduyr = c(99)))
@@ -199,7 +203,8 @@ IRdata <- IRdata %>%
     emp == 1 & v717 == 6 ~ 6,
     emp == 1 & (v717 == 4 | v717 == 5) ~ 7,
     emp == 1 & v717>9 & v717<98 ~ 8,
-    emp == 1 & (v717 == 96 | v717 == 99 | is.na(v717)) ~ 9 ))%>%
+    emp == 1 & (v717 == 96 | v717 == 99 | is.na(v717)) ~ 9,
+    TRUE ~ 0 ))%>%
       
   set_value_labels(rc_occup = 
                      c("Professional"=1, 
@@ -210,7 +215,8 @@ IRdata <- IRdata %>%
                        "Domestic service"=6,
                        "Agriculture"=7,
                        "Other"=8,
-                       "Don't know/missing"=9)) %>%
+                       "Don't know/missing"=9,
+                       "not working"=0)) %>%
   set_variable_labels(rc_occup = "Occupation among those employed in the past 12 months") %>%
 
 
