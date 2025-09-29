@@ -44,7 +44,7 @@ source("../myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_stunting")
+save_path <- file.path(gdrive_dir, "output", "lasso_stunting2")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
@@ -95,7 +95,7 @@ drop_cols_init <- c(
 )
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
-y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
+y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem", "ch_below_2p5")
 y_var <- "nt_ch_stunt"
 y_var_drop <- setdiff(y_var_all, y_var)
 
@@ -164,6 +164,11 @@ if (debug_mode) {
   cat("ダミー変数でない変数数:", length(non_dummy), "\n")
   cat("ダミー変数でない変数:\n")
   print(non_dummy)
+  # non_dummy %>%
+  #   gt() %>%
+  #   cols_width(
+  #     1 ~ pct(100)
+  #   )
 }
 # ********** デバッグ用 **********
 

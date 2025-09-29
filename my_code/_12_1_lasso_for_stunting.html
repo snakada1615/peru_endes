@@ -262,7 +262,7 @@ The following objects are masked from 'package:ggplot2':
 <span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>)</span>
 <span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)</span></span>
-<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>y_var_all <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"nt_ch_stunt"</span>, <span class="st">"nt_ch_sev_stunt"</span>, <span class="st">"nt_ch_haz"</span>, <span class="st">"nt_ch_sev_wast"</span>, <span class="st">"nt_ch_wast"</span>, <span class="st">"nt_ch_whz"</span>, <span class="st">"nt_ch_ovwt_ht"</span>, <span class="st">"nt_ch_ovwt_age"</span>, <span class="st">"nt_ch_underwt"</span>, <span class="st">"nt_ch_sev_underwt"</span>, <span class="st">"nt_ch_any_anem"</span>, <span class="st">"nt_ch_mod_anem"</span>, <span class="st">"nt_ch_sev_anem"</span>)</span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>y_var_all <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"nt_ch_stunt"</span>, <span class="st">"nt_ch_sev_stunt"</span>, <span class="st">"nt_ch_haz"</span>, <span class="st">"nt_ch_sev_wast"</span>, <span class="st">"nt_ch_wast"</span>, <span class="st">"nt_ch_whz"</span>, <span class="st">"nt_ch_ovwt_ht"</span>, <span class="st">"nt_ch_ovwt_age"</span>, <span class="st">"nt_ch_underwt"</span>, <span class="st">"nt_ch_sev_underwt"</span>, <span class="st">"nt_ch_any_anem"</span>, <span class="st">"nt_ch_mod_anem"</span>, <span class="st">"nt_ch_sev_anem"</span>, <span class="st">"ch_below_2p5"</span>)</span>
 <span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>y_var <span class="ot">&lt;-</span> <span class="st">"nt_ch_stunt"</span></span>
 <span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>y_var_drop <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(y_var_all, y_var)</span>
 <span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a></span>
@@ -324,23 +324,23 @@ The following objects are masked from 'package:ggplot2':
 <span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    <span class="dv">2</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">20</span>)</span>
 <span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  ) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
-<div id="oenyfzlngy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
-<style>#oenyfzlngy table {
+<div id="zzhkhbcuon" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#zzhkhbcuon table {
   font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-#oenyfzlngy thead, #oenyfzlngy tbody, #oenyfzlngy tfoot, #oenyfzlngy tr, #oenyfzlngy td, #oenyfzlngy th {
+#zzhkhbcuon thead, #zzhkhbcuon tbody, #zzhkhbcuon tfoot, #zzhkhbcuon tr, #zzhkhbcuon td, #zzhkhbcuon th {
   border-style: none;
 }
 
-#oenyfzlngy p {
+#zzhkhbcuon p {
   margin: 0;
   padding: 0;
 }
 
-#oenyfzlngy .gt_table {
+#zzhkhbcuon .gt_table {
   display: table;
   border-collapse: collapse;
   line-height: normal;
@@ -366,12 +366,12 @@ The following objects are masked from 'package:ggplot2':
   border-left-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_caption {
+#zzhkhbcuon .gt_caption {
   padding-top: 4px;
   padding-bottom: 4px;
 }
 
-#oenyfzlngy .gt_title {
+#zzhkhbcuon .gt_title {
   color: #333333;
   font-size: 125%;
   font-weight: initial;
@@ -383,7 +383,7 @@ The following objects are masked from 'package:ggplot2':
   border-bottom-width: 0;
 }
 
-#oenyfzlngy .gt_subtitle {
+#zzhkhbcuon .gt_subtitle {
   color: #333333;
   font-size: 85%;
   font-weight: initial;
@@ -395,7 +395,7 @@ The following objects are masked from 'package:ggplot2':
   border-top-width: 0;
 }
 
-#oenyfzlngy .gt_heading {
+#zzhkhbcuon .gt_heading {
   background-color: #FFFFFF;
   text-align: center;
   border-bottom-color: #FFFFFF;
@@ -407,13 +407,13 @@ The following objects are masked from 'package:ggplot2':
   border-right-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_bottom_border {
+#zzhkhbcuon .gt_bottom_border {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_col_headings {
+#zzhkhbcuon .gt_col_headings {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -428,7 +428,7 @@ The following objects are masked from 'package:ggplot2':
   border-right-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_col_heading {
+#zzhkhbcuon .gt_col_heading {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -448,7 +448,7 @@ The following objects are masked from 'package:ggplot2':
   overflow-x: hidden;
 }
 
-#oenyfzlngy .gt_column_spanner_outer {
+#zzhkhbcuon .gt_column_spanner_outer {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -460,15 +460,15 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 4px;
 }
 
-#oenyfzlngy .gt_column_spanner_outer:first-child {
+#zzhkhbcuon .gt_column_spanner_outer:first-child {
   padding-left: 0;
 }
 
-#oenyfzlngy .gt_column_spanner_outer:last-child {
+#zzhkhbcuon .gt_column_spanner_outer:last-child {
   padding-right: 0;
 }
 
-#oenyfzlngy .gt_column_spanner {
+#zzhkhbcuon .gt_column_spanner {
   border-bottom-style: solid;
   border-bottom-width: 2px;
   border-bottom-color: #D3D3D3;
@@ -480,11 +480,11 @@ The following objects are masked from 'package:ggplot2':
   width: 100%;
 }
 
-#oenyfzlngy .gt_spanner_row {
+#zzhkhbcuon .gt_spanner_row {
   border-bottom-style: hidden;
 }
 
-#oenyfzlngy .gt_group_heading {
+#zzhkhbcuon .gt_group_heading {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -510,7 +510,7 @@ The following objects are masked from 'package:ggplot2':
   text-align: left;
 }
 
-#oenyfzlngy .gt_empty_group_heading {
+#zzhkhbcuon .gt_empty_group_heading {
   padding: 0.5px;
   color: #333333;
   background-color: #FFFFFF;
@@ -525,15 +525,15 @@ The following objects are masked from 'package:ggplot2':
   vertical-align: middle;
 }
 
-#oenyfzlngy .gt_from_md > :first-child {
+#zzhkhbcuon .gt_from_md > :first-child {
   margin-top: 0;
 }
 
-#oenyfzlngy .gt_from_md > :last-child {
+#zzhkhbcuon .gt_from_md > :last-child {
   margin-bottom: 0;
 }
 
-#oenyfzlngy .gt_row {
+#zzhkhbcuon .gt_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -552,7 +552,7 @@ The following objects are masked from 'package:ggplot2':
   overflow-x: hidden;
 }
 
-#oenyfzlngy .gt_stub {
+#zzhkhbcuon .gt_stub {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -565,7 +565,7 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 5px;
 }
 
-#oenyfzlngy .gt_stub_row_group {
+#zzhkhbcuon .gt_stub_row_group {
   color: #333333;
   background-color: #FFFFFF;
   font-size: 100%;
@@ -579,15 +579,15 @@ The following objects are masked from 'package:ggplot2':
   vertical-align: top;
 }
 
-#oenyfzlngy .gt_row_group_first td {
+#zzhkhbcuon .gt_row_group_first td {
   border-top-width: 2px;
 }
 
-#oenyfzlngy .gt_row_group_first th {
+#zzhkhbcuon .gt_row_group_first th {
   border-top-width: 2px;
 }
 
-#oenyfzlngy .gt_summary_row {
+#zzhkhbcuon .gt_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -597,16 +597,16 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 5px;
 }
 
-#oenyfzlngy .gt_first_summary_row {
+#zzhkhbcuon .gt_first_summary_row {
   border-top-style: solid;
   border-top-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_first_summary_row.thick {
+#zzhkhbcuon .gt_first_summary_row.thick {
   border-top-width: 2px;
 }
 
-#oenyfzlngy .gt_last_summary_row {
+#zzhkhbcuon .gt_last_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -616,7 +616,7 @@ The following objects are masked from 'package:ggplot2':
   border-bottom-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_grand_summary_row {
+#zzhkhbcuon .gt_grand_summary_row {
   color: #333333;
   background-color: #FFFFFF;
   text-transform: inherit;
@@ -626,7 +626,7 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 5px;
 }
 
-#oenyfzlngy .gt_first_grand_summary_row {
+#zzhkhbcuon .gt_first_grand_summary_row {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -636,7 +636,7 @@ The following objects are masked from 'package:ggplot2':
   border-top-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_last_grand_summary_row_top {
+#zzhkhbcuon .gt_last_grand_summary_row_top {
   padding-top: 8px;
   padding-bottom: 8px;
   padding-left: 5px;
@@ -646,11 +646,11 @@ The following objects are masked from 'package:ggplot2':
   border-bottom-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_striped {
+#zzhkhbcuon .gt_striped {
   background-color: rgba(128, 128, 128, 0.05);
 }
 
-#oenyfzlngy .gt_table_body {
+#zzhkhbcuon .gt_table_body {
   border-top-style: solid;
   border-top-width: 2px;
   border-top-color: #D3D3D3;
@@ -659,7 +659,7 @@ The following objects are masked from 'package:ggplot2':
   border-bottom-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_footnotes {
+#zzhkhbcuon .gt_footnotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -673,7 +673,7 @@ The following objects are masked from 'package:ggplot2':
   border-right-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_footnote {
+#zzhkhbcuon .gt_footnote {
   margin: 0px;
   font-size: 90%;
   padding-top: 4px;
@@ -682,7 +682,7 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 5px;
 }
 
-#oenyfzlngy .gt_sourcenotes {
+#zzhkhbcuon .gt_sourcenotes {
   color: #333333;
   background-color: #FFFFFF;
   border-bottom-style: none;
@@ -696,7 +696,7 @@ The following objects are masked from 'package:ggplot2':
   border-right-color: #D3D3D3;
 }
 
-#oenyfzlngy .gt_sourcenote {
+#zzhkhbcuon .gt_sourcenote {
   font-size: 90%;
   padding-top: 4px;
   padding-bottom: 4px;
@@ -704,72 +704,72 @@ The following objects are masked from 'package:ggplot2':
   padding-right: 5px;
 }
 
-#oenyfzlngy .gt_left {
+#zzhkhbcuon .gt_left {
   text-align: left;
 }
 
-#oenyfzlngy .gt_center {
+#zzhkhbcuon .gt_center {
   text-align: center;
 }
 
-#oenyfzlngy .gt_right {
+#zzhkhbcuon .gt_right {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
-#oenyfzlngy .gt_font_normal {
+#zzhkhbcuon .gt_font_normal {
   font-weight: normal;
 }
 
-#oenyfzlngy .gt_font_bold {
+#zzhkhbcuon .gt_font_bold {
   font-weight: bold;
 }
 
-#oenyfzlngy .gt_font_italic {
+#zzhkhbcuon .gt_font_italic {
   font-style: italic;
 }
 
-#oenyfzlngy .gt_super {
+#zzhkhbcuon .gt_super {
   font-size: 65%;
 }
 
-#oenyfzlngy .gt_footnote_marks {
+#zzhkhbcuon .gt_footnote_marks {
   font-size: 75%;
   vertical-align: 0.4em;
   position: initial;
 }
 
-#oenyfzlngy .gt_asterisk {
+#zzhkhbcuon .gt_asterisk {
   font-size: 100%;
   vertical-align: 0;
 }
 
-#oenyfzlngy .gt_indent_1 {
+#zzhkhbcuon .gt_indent_1 {
   text-indent: 5px;
 }
 
-#oenyfzlngy .gt_indent_2 {
+#zzhkhbcuon .gt_indent_2 {
   text-indent: 10px;
 }
 
-#oenyfzlngy .gt_indent_3 {
+#zzhkhbcuon .gt_indent_3 {
   text-indent: 15px;
 }
 
-#oenyfzlngy .gt_indent_4 {
+#zzhkhbcuon .gt_indent_4 {
   text-indent: 20px;
 }
 
-#oenyfzlngy .gt_indent_5 {
+#zzhkhbcuon .gt_indent_5 {
   text-indent: 25px;
 }
 
-#oenyfzlngy .katex-display {
+#zzhkhbcuon .katex-display {
   display: inline-flex !important;
   margin-bottom: 0.75em !important;
 }
 
-#oenyfzlngy div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+#zzhkhbcuon div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
   height: 0px !important;
 }
 </style>
@@ -863,262 +863,258 @@ The following objects are masked from 'package:ggplot2':
 <td class="gt_row gt_left" headers="varname">rc_tobc_smk_any</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="labels">Birth weight less than 2.5 kg</td>
-<td class="gt_row gt_left" headers="varname">ch_below_2p5</td>
-</tr>
-<tr class="odd">
 <td class="gt_row gt_left" headers="labels">ARI symptoms in the 2 weeks before the survey</td>
 <td class="gt_row gt_left" headers="varname">ch_ari</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Fever symptoms in the 2 weeks before the survey</td>
 <td class="gt_row gt_left" headers="varname">ch_fever</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_bf_start_1hr</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_bf_start_1day</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
 <td class="gt_row gt_left" headers="varname">nt_bf_prelac_nobirthrecord</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Drank from a bottle with a nipple yesterday - under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_bottle</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Age-appropriately breastfed - last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_ageapp_bf</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given infant formula in day/night before survey - last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_formula</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given other liquids in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_liquids</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given fortified baby food in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_bbyfood</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given grains in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_grains</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given vitamin A rich food in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_vita</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_frtveg</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_root</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_nuts</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given meat, fish, shellfish, or poultry in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_meatfish</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given eggs in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_eggs</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_dairy</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child given any solid or semisolid food in day/night before survey- last-born under 2 years</td>
 <td class="gt_row gt_left" headers="varname">nt_solids</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child given milk or milk products- last-born 6-23 months</td>
 <td class="gt_row gt_left" headers="varname">nt_fed_milk</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
 <td class="gt_row gt_left" headers="varname">nt_mdd</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child with minimum meal frequency- last-born 6-23 months</td>
 <td class="gt_row gt_left" headers="varname">nt_mmf</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Child with minimum acceptable diet- last-born 6-23 months</td>
 <td class="gt_row gt_left" headers="varname">nt_mad</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Youngest children age 6-23 mos living with mother given Vit A rich food</td>
 <td class="gt_row gt_left" headers="varname">nt_ch_micro_vaf</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Current marital status</td>
 <td class="gt_row gt_left" headers="varname">ms_mar_stat</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">First marriage by age 15</td>
 <td class="gt_row gt_left" headers="varname">ms_afm_15</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">First marriage by age 18</td>
 <td class="gt_row gt_left" headers="varname">ms_afm_18</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">First marriage by age 20</td>
 <td class="gt_row gt_left" headers="varname">ms_afm_20</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">First marriage by age 22</td>
 <td class="gt_row gt_left" headers="varname">ms_afm_22</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">First marriage by age 25</td>
 <td class="gt_row gt_left" headers="varname">ms_afm_25</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels"></td>
 <td class="gt_row gt_left" headers="varname">ms_age</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Never had sex</td>
 <td class="gt_row gt_left" headers="varname">ms_sex_never</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">First sex by age 15</td>
 <td class="gt_row gt_left" headers="varname">ms_afs_15</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">First sex by age 18</td>
 <td class="gt_row gt_left" headers="varname">ms_afs_18</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">First sex by age 20</td>
 <td class="gt_row gt_left" headers="varname">ms_afs_20</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">First sex by age 22</td>
 <td class="gt_row gt_left" headers="varname">ms_afs_22</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">First sex by age 25</td>
 <td class="gt_row gt_left" headers="varname">ms_afs_25</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
 <td class="gt_row gt_left" headers="varname">ch_stool_safe</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Number of children under 12 years old</td>
 <td class="gt_row gt_left" headers="varname">dm_children_under12</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">type of cooking fuel</td>
 <td class="gt_row gt_left" headers="varname">dm_cooking_fuel</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she burns food</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_burn</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_argue</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she goes out without telling him</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_goout</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_neglect</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she refuses to have sexual intercourse with him</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_refusesex</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife for at least one of the reasons</td>
 <td class="gt_row gt_left" headers="varname">dm_dvjustify_onereas</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
 <td class="gt_row gt_left" headers="varname">dm_justify_refusesex</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">living in small town</td>
 <td class="gt_row gt_left" headers="varname">dm_town</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">living in medium city</td>
 <td class="gt_row gt_left" headers="varname">dm_city</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">living in capital city</td>
 <td class="gt_row gt_left" headers="varname">dm_capital</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">poorest wealth quintile</td>
 <td class="gt_row gt_left" headers="varname">dm_poorest</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">poorer wealth quintile</td>
 <td class="gt_row gt_left" headers="varname">dm_poorer</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">middle wealth quintile</td>
 <td class="gt_row gt_left" headers="varname">dm_middle</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">richer wealth quintile</td>
 <td class="gt_row gt_left" headers="varname">dm_richer</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">richest wealth quintile</td>
 <td class="gt_row gt_left" headers="varname">dm_richest</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">agricultural land (hectare)</td>
 <td class="gt_row gt_left" headers="varname">dm_ag_land_ha</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">owns cattle</td>
 <td class="gt_row gt_left" headers="varname">dm_cattle_own</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">owns goats</td>
 <td class="gt_row gt_left" headers="varname">dm_goat_own</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">owns sheep</td>
 <td class="gt_row gt_left" headers="varname">dm_sheep_own</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">owns poultry</td>
 <td class="gt_row gt_left" headers="varname">dm_poultry_own</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">owns refrigerator</td>
 <td class="gt_row gt_left" headers="varname">dm_refrigerator</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">female headed household</td>
 <td class="gt_row gt_left" headers="varname">dm_female_headed</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">Age of head of household</td>
 <td class="gt_row gt_left" headers="varname">dm_age_of_hh_head</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">Mild anemia - child 6-59 months</td>
 <td class="gt_row gt_left" headers="varname">nt_ch_mild_anem</td>
 </tr>
@@ -1148,10 +1144,15 @@ The following objects are masked from 'package:ggplot2':
 <span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"ダミー変数でない変数数:"</span>, <span class="fu">length</span>(non_dummy), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"ダミー変数でない変数:</span><span class="sc">\n</span><span class="st">"</span>)</span>
 <span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(non_dummy)</span>
-<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>  <span class="co"># non_dummy %&gt;%</span></span>
+<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   gt() %&gt;%</span></span>
+<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   cols_width(</span></span>
+<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a>  <span class="co">#     1 ~ pct(100)</span></span>
+<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a>  <span class="co">#   )</span></span>
+<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>=== デバッグモード: 変数の詳細確認 ===
-共変量数: 84 
+共変量数: 83 
 共変量:
 ダミー変数: rh_anc_pvskill
     0     1  &lt;NA&gt; 
@@ -1216,10 +1217,6 @@ The following objects are masked from 'package:ggplot2':
 ダミー変数: rc_tobc_smk_any
     0     1  &lt;NA&gt; 
 23677   437     0 
-
-ダミー変数: ch_below_2p5
-    0     1  &lt;NA&gt; 
-22637  1477     0 
 
 ダミー変数: ch_ari
     0     1  &lt;NA&gt; 
@@ -1503,7 +1500,7 @@ The following objects are masked from 'package:ggplot2':
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"covariate_names の数:"</span>, <span class="fu">length</span>(covariate_names), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>covariate_names の数: 84 </code></pre>
+<pre><code>covariate_names の数: 83 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 1: model.matrix作成</span></span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Step 1: model.matrix作成中...</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1539,7 +1536,7 @@ The following objects are masked from 'package:ggplot2':
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"列除去後のX_matrix次元:"</span>, <span class="fu">dim</span>(X_matrix_clean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>列除去後のX_matrix次元: 24114 89 </code></pre>
+<pre><code>列除去後のX_matrix次元: 24114 88 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 2: スケーリング実行</span></span>
 <span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== クリーンなデータでスケーリング ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
@@ -1550,7 +1547,7 @@ The following objects are masked from 'package:ggplot2':
 <span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"スケーリング後の次元:"</span>, <span class="fu">dim</span>(X_scaled), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>スケーリング後の次元: 24114 89 </code></pre>
+<pre><code>スケーリング後の次元: 24114 88 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"スケーリング後のNA数:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -1582,7 +1579,7 @@ The following objects are masked from 'package:ggplot2':
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"X_scaled次元:"</span>, <span class="fu">dim</span>(X_scaled), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>X_scaled次元: 24114 89 </code></pre>
+<pre><code>X_scaled次元: 24114 88 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"X_scaledのNA数:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
@@ -1616,11 +1613,11 @@ LASSO実行成功！</code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"最適λ (lambda.min):"</span>, cv_model<span class="sc">$</span>lambda.min, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>最適λ (lambda.min): 0.001559054 </code></pre>
+<pre><code>最適λ (lambda.min): 0.001420552 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"1se λ (lambda.1se):"</span>, cv_model<span class="sc">$</span>lambda<span class="fl">.1</span>se, <span class="st">"</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>1se λ (lambda.1se): 0.004761126 </code></pre>
+<pre><code>1se λ (lambda.1se): 0.002990126 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 選択された変数の抽出</span></span>
 <span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>coef_min <span class="ot">&lt;-</span> <span class="fu">coef</span>(cv_model, <span class="at">s =</span> <span class="st">"lambda.min"</span>)</span>
@@ -1633,7 +1630,7 @@ LASSO実行成功！</code></pre>
 <span id="cb69-9"><a href="#cb69-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb69-10"><a href="#cb69-10" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"LASSO選択変数数:"</span>, <span class="fu">length</span>(selected_vars), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>LASSO選択変数数: 62 </code></pre>
+<pre><code>LASSO選択変数数: 63 </code></pre>
 </div>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb71"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">length</span>(selected_vars) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
 <span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"選択された変数:</span><span class="sc">\n</span><span class="st">"</span>)</span>
@@ -1679,55 +1676,56 @@ LASSO実行成功！</code></pre>
 11 : year2009 
 12 : year2010 
 13 : year2011 
-14 : year2014 
-15 : year2015 
-16 : year2016 
-17 : rc_edu_acceptable 
-18 : rc_litr 
-19 : rc_media_none 
-20 : rc_occup 
-21 : rc_agri 
-22 : rc_hins_any 
-23 : rc_tobc_smk_any 
-24 : ch_below_2p5 
-25 : nt_bf_start_1hr 
-26 : nt_bf_start_1day 
-27 : nt_bf_prelac_nobirthrecord 
-28 : nt_bottle 
-29 : nt_formula 
-30 : nt_liquids 
-31 : nt_grains 
-32 : nt_frtveg 
-33 : nt_root 
-34 : nt_nuts 
-35 : nt_eggs 
-36 : nt_dairy 
-37 : nt_fed_milk 
-38 : nt_mdd 
-39 : nt_mmf 
-40 : ms_mar_stat 
-41 : ms_afm_15 
-42 : ms_afs_15 
-43 : ms_afs_18 
-44 : ms_afs_25 
-45 : ch_stool_safe 
-46 : dm_children_under12 
-47 : dm_cooking_fuel 
-48 : dm_dvjustify_argue 
-49 : dm_dvjustify_neglect 
-50 : dm_justify_refusesex 
-51 : dm_town 
-52 : dm_capital 
-53 : dm_poorest 
-54 : dm_poorer 
-55 : dm_richer 
-56 : dm_richest 
-57 : dm_ag_land_ha 
-58 : dm_cattle_own 
-59 : dm_goat_own 
-60 : dm_sheep_own 
-61 : dm_refrigerator 
-62 : dm_age_of_hh_head </code></pre>
+14 : year2012 
+15 : year2014 
+16 : year2015 
+17 : year2016 
+18 : rc_edu_acceptable 
+19 : rc_litr 
+20 : rc_media_none 
+21 : rc_occup 
+22 : rc_agri 
+23 : rc_hins_any 
+24 : rc_tobc_smk_any 
+25 : ch_ari 
+26 : nt_bf_start_1hr 
+27 : nt_bf_start_1day 
+28 : nt_bf_prelac_nobirthrecord 
+29 : nt_bottle 
+30 : nt_ageapp_bf 
+31 : nt_formula 
+32 : nt_liquids 
+33 : nt_grains 
+34 : nt_frtveg 
+35 : nt_root 
+36 : nt_nuts 
+37 : nt_eggs 
+38 : nt_dairy 
+39 : nt_fed_milk 
+40 : nt_mmf 
+41 : ms_mar_stat 
+42 : ms_afm_15 
+43 : ms_afm_22 
+44 : ms_afs_15 
+45 : ms_afs_18 
+46 : ms_afs_25 
+47 : ch_stool_safe 
+48 : dm_children_under12 
+49 : dm_cooking_fuel 
+50 : dm_dvjustify_argue 
+51 : dm_justify_refusesex 
+52 : dm_town 
+53 : dm_capital 
+54 : dm_poorest 
+55 : dm_poorer 
+56 : dm_richer 
+57 : dm_richest 
+58 : dm_ag_land_ha 
+59 : dm_cattle_own 
+60 : dm_goat_own 
+61 : dm_sheep_own 
+62 : dm_refrigerator 
+63 : dm_age_of_hh_head </code></pre>
 </div>
 <div class="cell-output-display">
 <div id="qrwwcuyfmt" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
@@ -2196,52 +2194,52 @@ LASSO実行成功！</code></pre>
 <tbody class="gt_table_body">
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">rh_anc_pvskill</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0148</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0172</td>
 <td class="gt_row gt_left" headers="labels.y">Skilled assistance during ANC</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">rh_anc_4vs</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0065</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0179</td>
 <td class="gt_row gt_left" headers="labels.y">Attended 4+ ANC visits</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">rh_anc_4mo</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0166</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0179</td>
 <td class="gt_row gt_left" headers="labels.y">Attended ANC &lt;4 months of pregnancy</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">rh_anc_iron</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0003</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0025</td>
 <td class="gt_row gt_left" headers="labels.y">Took iron tablet/syrup during pregnancy of last birth</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">rh_anc_parast</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0082</td>
 <td class="gt_row gt_left" headers="labels.y">Took intestinal parasite drugs during pregnancy of last birth</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">rh_prob_permit</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0142</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0152</td>
 <td class="gt_row gt_left" headers="labels.y">Problem health care access: permission to go</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">rh_prob_dist</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0058</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0059</td>
 <td class="gt_row gt_left" headers="labels.y">Problem health care access: distance to facility</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">rh_prob_minone</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0128</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0149</td>
 <td class="gt_row gt_left" headers="labels.y">At least one problem in accessing health care</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">year2007</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0295</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0279</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">year2008</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0323</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0293</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="odd">
@@ -2251,257 +2249,262 @@ LASSO実行成功！</code></pre>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">year2010</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0165</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0176</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">year2011</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0251</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0238</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="even">
+<td class="gt_row gt_left" headers="labels">year2012</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0002</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">year2014</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0144</td>
-<td class="gt_row gt_left" headers="labels.y">NA</td>
-</tr>
-<tr class="odd">
-<td class="gt_row gt_left" headers="labels">year2015</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0213</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0148</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="labels">year2016</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0410</td>
+<td class="gt_row gt_left" headers="labels">year2015</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0227</td>
 <td class="gt_row gt_left" headers="labels.y">NA</td>
 </tr>
 <tr class="odd">
+<td class="gt_row gt_left" headers="labels">year2016</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0431</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">rc_edu_acceptable</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0755</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0767</td>
 <td class="gt_row gt_left" headers="labels.y">Attended or completed at least secondary education</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">rc_litr</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0415</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0432</td>
 <td class="gt_row gt_left" headers="labels.y">Literate - higher than secondary or can read part or whole sentence</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">rc_media_none</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0115</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0135</td>
 <td class="gt_row gt_left" headers="labels.y">Accesses none of the three media at least once a week</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">rc_occup</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0067</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0056</td>
 <td class="gt_row gt_left" headers="labels.y">Occupation among those employed in the past 12 months</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">rc_agri</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0269</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0292</td>
 <td class="gt_row gt_left" headers="labels.y">Work in agriculture in the past 12 months</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">rc_hins_any</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0104</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0128</td>
 <td class="gt_row gt_left" headers="labels.y">Have any health insurance</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">rc_tobc_smk_any</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0139</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0136</td>
 <td class="gt_row gt_left" headers="labels.y">Smokes any type of tobacco</td>
 </tr>
-<tr class="even">
-<td class="gt_row gt_left" headers="labels">ch_below_2p5</td>
-<td class="gt_row gt_right" headers="lambda.min">0.1341</td>
-<td class="gt_row gt_left" headers="labels.y">Birth weight less than 2.5 kg</td>
-</tr>
 <tr class="odd">
+<td class="gt_row gt_left" headers="labels">ch_ari</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0026</td>
+<td class="gt_row gt_left" headers="labels.y">ARI symptoms in the 2 weeks before the survey</td>
+</tr>
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_bf_start_1hr</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0225</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0179</td>
 <td class="gt_row gt_left" headers="labels.y">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_bf_start_1day</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0320</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0684</td>
 <td class="gt_row gt_left" headers="labels.y">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_bf_prelac_nobirthrecord</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0026</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0034</td>
 <td class="gt_row gt_left" headers="labels.y">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_bottle</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0261</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0265</td>
 <td class="gt_row gt_left" headers="labels.y">Drank from a bottle with a nipple yesterday - under 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_ageapp_bf</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0010</td>
+<td class="gt_row gt_left" headers="labels.y">Age-appropriately breastfed - last-born under 2 years</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_formula</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0011</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0074</td>
 <td class="gt_row gt_left" headers="labels.y">Child given infant formula in day/night before survey - last-born under 2 years</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_liquids</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0050</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0069</td>
 <td class="gt_row gt_left" headers="labels.y">Child given other liquids in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_grains</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0132</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0135</td>
 <td class="gt_row gt_left" headers="labels.y">Child given grains in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_frtveg</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0095</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0093</td>
 <td class="gt_row gt_left" headers="labels.y">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_root</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0086</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0080</td>
 <td class="gt_row gt_left" headers="labels.y">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_nuts</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0054</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0079</td>
 <td class="gt_row gt_left" headers="labels.y">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_eggs</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0073</td>
 <td class="gt_row gt_left" headers="labels.y">Child given eggs in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">nt_dairy</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0200</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0192</td>
 <td class="gt_row gt_left" headers="labels.y">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_fed_milk</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0570</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0576</td>
 <td class="gt_row gt_left" headers="labels.y">Child given milk or milk products- last-born 6-23 months</td>
 </tr>
 <tr class="even">
-<td class="gt_row gt_left" headers="labels">nt_mdd</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0010</td>
-<td class="gt_row gt_left" headers="labels.y">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
-</tr>
-<tr class="odd">
 <td class="gt_row gt_left" headers="labels">nt_mmf</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0062</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0086</td>
 <td class="gt_row gt_left" headers="labels.y">Child with minimum meal frequency- last-born 6-23 months</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">ms_mar_stat</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0063</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0049</td>
 <td class="gt_row gt_left" headers="labels.y">Current marital status</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">ms_afm_15</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0093</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0103</td>
 <td class="gt_row gt_left" headers="labels.y">First marriage by age 15</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">ms_afm_22</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0003</td>
+<td class="gt_row gt_left" headers="labels.y">First marriage by age 22</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">ms_afs_15</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0029</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0031</td>
 <td class="gt_row gt_left" headers="labels.y">First sex by age 15</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">ms_afs_18</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0087</td>
 <td class="gt_row gt_left" headers="labels.y">First sex by age 18</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">ms_afs_25</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0014</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0008</td>
 <td class="gt_row gt_left" headers="labels.y">First sex by age 25</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">ch_stool_safe</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0061</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0055</td>
 <td class="gt_row gt_left" headers="labels.y">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_children_under12</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0805</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0815</td>
 <td class="gt_row gt_left" headers="labels.y">Number of children under 12 years old</td>
 </tr>
 <tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_cooking_fuel</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0097</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0108</td>
 <td class="gt_row gt_left" headers="labels.y">type of cooking fuel</td>
 </tr>
 <tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_dvjustify_argue</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0007</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0018</td>
 <td class="gt_row gt_left" headers="labels.y">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
 </tr>
 <tr class="odd">
-<td class="gt_row gt_left" headers="labels">dm_dvjustify_neglect</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0001</td>
-<td class="gt_row gt_left" headers="labels.y">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
-</tr>
-<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_justify_refusesex</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0091</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0113</td>
 <td class="gt_row gt_left" headers="labels.y">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_town</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0111</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0129</td>
 <td class="gt_row gt_left" headers="labels.y">living in small town</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_capital</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0364</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0394</td>
 <td class="gt_row gt_left" headers="labels.y">living in capital city</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_poorest</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0951</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0966</td>
 <td class="gt_row gt_left" headers="labels.y">poorest wealth quintile</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_poorer</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0277</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0289</td>
 <td class="gt_row gt_left" headers="labels.y">poorer wealth quintile</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_richer</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0536</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0576</td>
 <td class="gt_row gt_left" headers="labels.y">richer wealth quintile</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_richest</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0904</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0930</td>
 <td class="gt_row gt_left" headers="labels.y">richest wealth quintile</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_ag_land_ha</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0040</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0042</td>
 <td class="gt_row gt_left" headers="labels.y">agricultural land (hectare)</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_cattle_own</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0170</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0167</td>
 <td class="gt_row gt_left" headers="labels.y">owns cattle</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_goat_own</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0025</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0030</td>
 <td class="gt_row gt_left" headers="labels.y">owns goats</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_sheep_own</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0500</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0499</td>
 <td class="gt_row gt_left" headers="labels.y">owns sheep</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td class="gt_row gt_left" headers="labels">dm_refrigerator</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0595</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0582</td>
 <td class="gt_row gt_left" headers="labels.y">owns refrigerator</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td class="gt_row gt_left" headers="labels">dm_age_of_hh_head</td>
-<td class="gt_row gt_right" headers="lambda.min">0.0237</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0243</td>
 <td class="gt_row gt_left" headers="labels.y">Age of head of household</td>
 </tr>
 </tbody>
