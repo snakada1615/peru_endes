@@ -31,8 +31,8 @@ library(fixest)   # 回帰分析の推定結果から係数表（推定値、標
 rm(list = ls(all = TRUE))
 
 # デバッグモードフラグ
-debug_mode = TRUE  # デバッグモード
-# debug_mode = FALSE # 通常モード
+# debug_mode = TRUE  # デバッグモード
+debug_mode = FALSE # 通常モード
 
 # 自作関数読み込み
 source("../myTools.R")
@@ -73,7 +73,7 @@ var_labels$varname <- names(df_org)
 
 ```
 
-## 2. LASSO用データ前処理
+## 2. データ前処理（LASSO用）
 
 ```{r}
 # ================================================================================
@@ -273,10 +273,15 @@ for(i in 1:length(coef_min)) {
 
 cat("LASSO選択変数数:", length(selected_vars), "\n")
 if(length(selected_vars) > 0) {
-  cat("選択された変数:\n")
-  for(i in 1:length(selected_vars)) {
-    cat(i, ":", selected_vars[i], "\n")
+  # ********** デバッグ用 **********
+  if (debug_mode) {
+    cat("選択された変数:\n")
+    for(i in 1:length(selected_vars)) {
+      cat(i, ":", selected_vars[i], "\n")
+    }
   }
+  # ********** デバッグ用 **********
+  
   # 変数の重要度確認
   coef_importance <- abs(as.matrix(coef(cv_model, s = "lambda.min")[[1]]))
   top_vars <- head(sort(coef_importance[,1], decreasing = TRUE), 20)
@@ -394,7 +399,7 @@ df_stability %>%
 
 ```
 
-# 5. 変数を上位20個に絞り込んだ上で、GLM実行
+# 5. GLMによる検証
 ```{r}
 library(survey)
 
@@ -447,9 +452,13 @@ final_formula <- as.formula(
         paste(selected_predictors, collapse = " + "),
         "+ as.factor(year)")
 )
-print("Final formula:")
-print(final_formula)
-
+# ********** デバッグ用 **********
+if (debug_mode) {
+  cat("=== デバッグモード: 最終モデルの確認 ===\n")
+  cat("最終モデルの式:\n")
+  print(final_formula)
+}
+# ********** デバッグ用 **********
 
 # Survey-weighted GLM
 final_model_svy <- svyglm(
@@ -458,7 +467,225 @@ final_model_svy <- svyglm(
   family = binomial
 )
 
-# 5. モデル診断
-summary(final_model_svy)
+# 5. 結果出力
+library(gtsummary)
+library(broom.helpers)
+# gtsummaryを使用してgtテーブルを作成
+final_model_svy %>%
+  tbl_regression(
+    exponentiate = TRUE,  # オッズ比を表示したい場合
+    intercept = TRUE,     # 切片を表示したい場合
+    pvalue_fun = function(x) style_pvalue(
+      x, digits = 3, stars = TRUE
+    )
+  ) %>%
+  add_significance_stars() %>%
+  as_gt() %>%
+  gt::tab_header(
+    title    = "Survey-weighted Logistic Regression",
+    subtitle = "※ *p<0.05, **p<0.01, ***p<0.001"
+  )
+
+```
+
+## 6. メディエーション分析
+
+```{r}
+# メディエーション分析（データフレーム変換版）
+library(mediation)
+
+# tibbleをdata.frameに変換
+df_lasso_df <- as.data.frame(df_lasso)
+
+# メディエーション分析用の候補変数
+mediator_candidates <- c(
+  "rc_litr",           # 母親識字率
+  "nt_fed_milk",       # ミルク摂食
+  "rh_anc_4mo",        # 産前ケア
+  "nt_bf_start_1day",  # 早期授乳開始
+  "nt_frtveg"          # 果物野菜摂取
+)
+
+# 介入変数と結果変数を定義
+treatment_var <- "treatment_binary"
+outcome_var <- "nt_ch_stunt"
+
+# 各メディエーターの分析
+mediation_results <- list()
+
+for (mediator in mediator_candidates) {
+  if (mediator %in% names(df_lasso_df)) {
+    
+    # 共変量（メディエーター以外の選択変数）
+    covariates_list <- setdiff(selected_predictors, mediator_candidates)
+    covariates_formula <- paste(covariates_list, collapse = " + ")
+    
+    cat("=== メディエーター:", mediator, "の分析 ===\n")
+    
+    # 欠損値を除外したサブセット作成
+    analysis_vars <- c(mediator, treatment_var, outcome_var, covariates_list, "year")
+    df_complete <- df_lasso_df[complete.cases(df_lasso_df[analysis_vars]), ]
+    
+    # サンプルサイズチェック
+    if (nrow(df_complete) < 100) {
+      cat("サンプルサイズが不足しています:", nrow(df_complete), "観測値\n\n")
+      next
+    }
+    
+    # (1) Mediatorモデル (M ~ X + covariates)
+    mediator_formula_text <- paste(mediator, "~", treatment_var, "+", covariates_formula, "+ as.factor(year)")
+    mediator_formula <- as.formula(mediator_formula_text)
+    
+    model_M <- glm(mediator_formula, 
+                   data = df_complete,
+                   family = binomial)
+    
+    # (2) Outcomeモデル (Y ~ X + M + covariates)
+    outcome_formula_text <- paste(outcome_var, "~", treatment_var, "+", mediator, "+", 
+                                 covariates_formula, "+ as.factor(year)")
+    outcome_formula <- as.formula(outcome_formula_text)
+    
+    model_Y <- glm(outcome_formula,
+                   data = df_complete,
+                   family = binomial)
+    
+    # モデルの収束チェック
+    if (!model_M$converged || !model_Y$converged) {
+      cat("モデルが収束しませんでした。", mediator, "をスキップします。\n\n")
+      next
+    }
+    
+    # 係数のNAチェック
+    if (any(is.na(coef(model_M))) || any(is.na(coef(model_Y)))) {
+      cat("モデル推定に問題があります。", mediator, "をスキップします。\n\n")
+      next
+    }
+    
+    # (3) メディエーション分析
+    tryCatch({
+      med_out <- mediate(
+        model_M, model_Y,
+        treat = treatment_var, 
+        mediator = mediator,
+        data = df_complete,  # 明示的にデータを指定
+        control.value = 0,
+        treat.value = 1,
+        boot = FALSE,        # まずはブートストラップなしで試行
+        sims = 1000         # quasi-Bayesian simulation
+      )
+      
+      # 結果保存
+      mediation_results[[mediator]] <- med_out
+      
+      # 結果表示
+      cat("ACME (間接効果):", round(med_out$d0, 4), 
+          "95% CI: [", round(med_out$d0.ci[1], 4), ", ", round(med_out$d0.ci[2], 4), "]",
+          " p =", round(med_out$d0.p, 4), "\n")
+      cat("ADE (直接効果):", round(med_out$z0, 4), 
+          "95% CI: [", round(med_out$z0.ci[1], 4), ", ", round(med_out$z0.ci[2], 4), "]",
+          " p =", round(med_out$z0.p, 4), "\n")
+      cat("Total Effect:", round(med_out$tau.coef, 4), 
+          "95% CI: [", round(med_out$tau.ci[1], 4), ", ", round(med_out$tau.ci[2], 4), "]",
+          " p =", round(med_out$tau.p, 4), "\n")
+      cat("Proportion Mediated:", round(med_out$n0, 4), 
+          " p =", round(med_out$n0.p, 4), "\n\n")
+      
+    }, error = function(e) {
+      cat("エラーが発生しました:", mediator, "\n")
+      cat("エラー内容:", e$message, "\n\n")
+    })
+    
+  } else {
+    cat("変数", mediator, "はデータに存在しません。スキップします。\n")
+  }
+}
+
+# 成功した場合、ブートストラップ版も試行
+if (length(mediation_results) > 0) {
+  cat("=== ブートストラップ版の試行 ===\n")
+  
+  # 最初の成功したメディエーターでブートストラップを試行
+  first_mediator <- names(mediation_results)[1]
+  cat("ブートストラップ試行対象:", first_mediator, "\n")
+  
+  # 同じデータとモデルでブートストラップ版
+  tryCatch({
+    # 再度モデル構築（簡単のため）
+    analysis_vars <- c(first_mediator, treatment_var, outcome_var, 
+                      setdiff(selected_predictors, mediator_candidates), "year")
+    df_boot <- df_lasso_df[complete.cases(df_lasso_df[analysis_vars]), ]
+    
+    mediator_formula <- as.formula(paste(first_mediator, "~", treatment_var, "+", 
+                                        paste(setdiff(selected_predictors, mediator_candidates), collapse = " + "),
+                                        "+ as.factor(year)"))
+    outcome_formula <- as.formula(paste(outcome_var, "~", treatment_var, "+", first_mediator, "+",
+                                       paste(setdiff(selected_predictors, mediator_candidates), collapse = " + "),
+                                       "+ as.factor(year)"))
+    
+    model_M_boot <- glm(mediator_formula, data = df_boot, family = binomial)
+    model_Y_boot <- glm(outcome_formula, data = df_boot, family = binomial)
+    
+    med_boot <- mediate(
+      model_M_boot, model_Y_boot,
+      treat = treatment_var, 
+      mediator = first_mediator,
+      data = df_boot,
+      control.value = 0,
+      treat.value = 1,
+      boot = TRUE,
+      sims = 100  # 少数で試行
+    )
+    
+    cat("ブートストラップ成功!\n")
+    print(summary(med_boot))
+    
+  }, error = function(e) {
+    cat("ブートストラップでもエラー:", e$message, "\n")
+  })
+}
+
+    
+```
+
+# 7. 結果の表示
+
+```{r}
+# 結果をまとめて表示
+summary_results <- data.frame(
+  mediator = c("rc_litr", "nt_fed_milk", "rh_anc_4mo", "nt_bf_start_1day", "nt_frtveg"),
+  japanese_name = c("母親識字率", "ミルク摂食", "産前ケア", "早期授乳開始", "果物野菜摂取"),
+  acme = c(0.0074, 0.0000, 0.0004, 0.0008, 0.0001),
+  acme_p = c(0.000, 0.966, 0.030, 0.004, 0.634),
+  prop_mediated = c(0.0649, -0.0001, 0.0036, 0.0066, 0.0008),
+  significance = c("***", "n.s.", "*", "**", "n.s."),
+  interpretation = c(
+    "最重要：教育アクセス悪化",
+    "媒介効果なし",
+    "軽微：保健サービス減少", 
+    "中程度：母子ケア実践阻害",
+    "媒介効果なし"
+  )
+)
+
+# print(summary_results)
+summary_results %>%
+  gt() %>%
+  cols_width(
+    1 ~ pct(15),
+    2 ~ pct(25),
+    3 ~ pct(15),
+    4 ~ pct(10),
+    5 ~ pct(15),
+    6 ~ pct(10),
+    7 ~ pct(10)
+  ) %>%
+  fmt_number(
+    columns = c("acme", "prop_mediated"),
+    decimals = 4  # 小数点以下4桁
+  ) %>%
+  tab_header(
+    title = "メディエーション分析結果のまとめ",
+    subtitle = "※ n.s.: 有意差なし, *p<0.05, **p<0.01, ***p<0.001"
+  )
 
 ```
