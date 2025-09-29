@@ -2,15 +2,7 @@
 title: "lasso_psm_analysis"
 author: "nakada shunichi"
 format:
-  pdf:
-    pdf-engine: lualatex
-    keep-tex: false
-    mainfont: "IPAexMincho"     # 日本語本文用明朝体
-    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
-    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
-    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
-    sansfontoptions: "Scale=MatchLowercase"
-    monofontoptions: "Scale=MatchLowercase"
+  html: default
 editor: 
   markdown: 
     wrap: 72
@@ -149,8 +141,7 @@ covariate_names_label %>%
   cols_width(
     1 ~ pct(80),
     2 ~ pct(20)
-  ) %>%
-  print()
+  ) 
 
 # ********** デバッグ用 **********
 if (debug_mode) {
@@ -301,8 +292,7 @@ if(length(selected_vars) > 0) {
     fmt_number(
       columns = c("lambda.min"),
       decimals = 4  # 小数点以下4桁
-    ) %>%
-  print()    
+    )     
 } else {
   stop("変数が選択されませんでした。λの値を調整してください。")
 }

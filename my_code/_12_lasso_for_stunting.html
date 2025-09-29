@@ -1,0 +1,2922 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.24">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="nakada shunichi">
+
+<title>lasso_psm_analysis</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="_12_lasso_for_stunting_files/libs/clipboard/clipboard.min.js"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/popper.min.js"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="_12_lasso_for_stunting_files/libs/quarto-html/anchor.min.js"></script>
+<link href="_12_lasso_for_stunting_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="_12_lasso_for_stunting_files/libs/quarto-html/quarto-syntax-highlighting-dc55a5b9e770e841cd82e46aadbfb9b0.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="_12_lasso_for_stunting_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="_12_lasso_for_stunting_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="_12_lasso_for_stunting_files/libs/bootstrap/bootstrap-d6a003b94517c951b2d65075d42fb01b.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="fullcontent quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">lasso_psm_analysis</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>nakada shunichi </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="データ読み込み" class="level2">
+<h2 class="anchored" data-anchor-id="データ読み込み">1. データ読み込み</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 0. 初期設定・パッケージ読み込み</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tinytex)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(here)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>here() starts at /Users/snakada/Documents/univ/Peru_work/code_endes</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(haven)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmnet)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Warning: package 'glmnet' was built under R version 4.5.1</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: Matrix</code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loaded glmnet 4.1-10</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.1.4     ✔ readr     2.1.5
+✔ forcats   1.0.0     ✔ stringr   1.5.1
+✔ ggplot2   3.5.2     ✔ tibble    3.2.1
+✔ lubridate 1.9.4     ✔ tidyr     1.3.1
+✔ purrr     1.0.4     </code></pre>
+</div>
+<div class="cell-output cell-output-stderr">
+<pre><code>── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ tidyr::expand() masks Matrix::expand()
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+✖ tidyr::pack()   masks Matrix::pack()
+✖ tidyr::unpack() masks Matrix::unpack()
+ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># library(fastDummies)</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(nnet)      <span class="co"># 多項ロジスティック回帰</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(survey)    <span class="co"># 重み付き統計解析</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>Loading required package: grid
+Loading required package: survival
+
+Attaching package: 'survey'
+
+The following object is masked from 'package:graphics':
+
+    dotchart</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(did)       <span class="co"># Staggered DID用（必要に応じて）</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sjlabelled)　<span class="co"># ラベル付きデータ処理用</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'sjlabelled'
+
+The following object is masked from 'package:forcats':
+
+    as_factor
+
+The following object is masked from 'package:dplyr':
+
+    as_label
+
+The following object is masked from 'package:ggplot2':
+
+    as_label
+
+The following objects are masked from 'package:haven':
+
+    as_factor, read_sas, read_spss, read_stata, write_sas, zap_labels</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tableone)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(fixest)   <span class="co"># 回帰分析の推定結果から係数表（推定値、標準誤差、t値、p値など）を抽出</span></span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="co"># オブジェクトクリア</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a><span class="fu">rm</span>(<span class="at">list =</span> <span class="fu">ls</span>(<span class="at">all =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a><span class="co"># デバッグモードフラグ</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>debug_mode <span class="ot">=</span> <span class="cn">TRUE</span>  <span class="co"># デバッグモード</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a><span class="co"># debug_mode = FALSE # 通常モード</span></span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a><span class="co"># 自作関数読み込み</span></span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"../myTools.R"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stderr">
+<pre><code>
+Attaching package: 'psych'
+
+The following object is masked from 'package:did':
+
+    sim
+
+The following objects are masked from 'package:ggplot2':
+
+    %+%, alpha</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. データ読み込み</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a><span class="co"># DHSデータのルートフォルダを指定</span></span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>gdrive_dir <span class="ot">&lt;-</span> <span class="st">"/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 結果保存先</span></span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>save_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(gdrive_dir, <span class="st">"output"</span>, <span class="st">"lasso_stunting"</span>)</span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>df_org <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">file.path</span>(gdrive_dir, <span class="st">"output"</span>,<span class="st">"all_data_merged.rds"</span>)</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">%&gt;%</span> <span class="fu">filter</span>(<span class="sc">!</span><span class="fu">is.na</span>(nt_ch_stunt))</span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a><span class="co"># データベース一覧</span></span>
+<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>endes_list <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="fu">file.path</span>(gdrive_dir, <span class="st">"output"</span>,<span class="st">"endes_data_list.rds"</span>))</span>
+<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a><span class="co"># 変数ラベル一覧</span></span>
+<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a>endes_var_labels <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="fu">file.path</span>(gdrive_dir, <span class="st">"output"</span>, <span class="st">"endes_var_labels.rds"</span>))</span>
+<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a><span class="co"># 介入群グループ化</span></span>
+<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>df_org <span class="ot">&lt;-</span> df_org <span class="sc">%&gt;%</span></span>
+<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">treatment_group =</span> <span class="fu">case_when</span>(</span>
+<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>      treatment_start <span class="sc">==</span> <span class="st">"2009"</span> <span class="sc">~</span> <span class="dv">1</span>,  <span class="co"># 早期介入</span></span>
+<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>      treatment_start <span class="sc">==</span> <span class="st">"2011"</span> <span class="sc">~</span> <span class="dv">2</span>,  <span class="co"># 後期介入</span></span>
+<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>      <span class="cn">TRUE</span> <span class="sc">~</span> <span class="dv">0</span>                        <span class="co"># コントロール</span></span>
+<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">treatment_group =</span> <span class="fu">as.factor</span>(treatment_group)</span>
+<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a><span class="co"># 変数ラベル取得</span></span>
+<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>var_labels <span class="ot">&lt;-</span> df_org <span class="sc">%&gt;%</span> get_label <span class="sc">%&gt;%</span> <span class="fu">as_tibble</span>() <span class="sc">%&gt;%</span> <span class="fu">rename</span>(<span class="at">labels =</span> value)</span>
+<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>var_labels<span class="sc">$</span>varname <span class="ot">&lt;-</span> <span class="fu">names</span>(df_org)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="lasso用データ前処理" class="level2">
+<h2 class="anchored" data-anchor-id="lasso用データ前処理">2. LASSO用データ前処理</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="co"># 2. LASSO用データ前処理（介入前データのみ）</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="co"># 除外変数定義(初期値)</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a>drop_cols_init <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="st">"b3"</span>,<span class="st">"b4"</span>,<span class="st">"b5"</span>,<span class="st">"b9"</span>,<span class="st">"bidx"</span>,<span class="st">"caseid"</span>,<span class="st">"hc27"</span>,<span class="st">"hhid"</span>,<span class="st">"m1"</span>,<span class="st">"m13"</span>,<span class="st">"m14"</span>,<span class="st">"m15"</span>,<span class="st">"m1d"</span>,</span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a><span class="st">"m2a"</span>,<span class="st">"m2b"</span>,<span class="st">"m2c"</span>,<span class="st">"m2d"</span>,<span class="st">"m2e"</span>,<span class="st">"m2f"</span>,<span class="st">"m2g"</span>,<span class="st">"m2h"</span>,<span class="st">"m2i"</span>,<span class="st">"m2j"</span>,<span class="st">"m2k"</span>,<span class="st">"m2l"</span>,<span class="st">"m2m"</span>,</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a><span class="st">"m3a"</span>,<span class="st">"m3b"</span>,<span class="st">"m3c"</span>,<span class="st">"m3d"</span>,<span class="st">"m3e"</span>,<span class="st">"m3f"</span>,<span class="st">"m3g"</span>,<span class="st">"m3h"</span>,<span class="st">"m3i"</span>,<span class="st">"m3j"</span>,<span class="st">"m3k"</span>,<span class="st">"m3l"</span>,<span class="st">"m3m"</span>,</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a><span class="st">"m3n"</span>,<span class="st">"m42c"</span>,<span class="st">"m42d"</span>,<span class="st">"m42e"</span>,<span class="st">"m43"</span>,<span class="st">"m45"</span>,<span class="st">"m60"</span>,<span class="st">"m61"</span>,<span class="st">"v001"</span>,<span class="st">"v002"</span>,<span class="st">"v003"</span>,<span class="st">"v005"</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a><span class="st">"v008"</span>,<span class="st">"v012"</span>,<span class="st">"v013"</span>,<span class="st">"v021"</span>,<span class="st">"v022"</span>,<span class="st">"v024"</span>,<span class="st">"v025"</span>,<span class="st">"v026"</span>,<span class="st">"v106"</span>,<span class="st">"v190"</span>,<span class="st">"v208"</span>,</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a><span class="st">"v467b"</span>,<span class="st">"v467c"</span>,<span class="st">"v467d"</span>,<span class="st">"v467f"</span>,</span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a><span class="st">"wt"</span>,<span class="st">"state"</span>,<span class="st">"age"</span>,<span class="st">"treated_status"</span>,<span class="st">"treatment_start"</span>,<span class="st">"year_treated"</span>,</span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a><span class="st">"ch_report_bw"</span>,<span class="st">"ch_report_bw"</span>,<span class="st">"ch_size_birth"</span>,<span class="st">"dm_cooking_fuel_traditional"</span>,<span class="st">"dm_cooking_fuel_traditional"</span>,<span class="st">"dm_rural"</span>,<span class="st">"dm_weath_index"</span>,<span class="st">"ms_mar_never"</span>,<span class="st">"ms_mar_union"</span>,<span class="st">"ms_sex_recent"</span>,<span class="st">"nt_bf_status"</span>,<span class="st">"nt_milk"</span>,<span class="st">"period"</span>,<span class="st">"rc_edu"</span>,<span class="st">"rc_empl"</span>,<span class="st">"rc_hins_other"</span>,<span class="st">"rc_hins_priv"</span>,<span class="st">"rc_litr_cats"</span>,<span class="st">"rc_media_allthree"</span>,<span class="st">"rc_media_newsp"</span>,<span class="st">"rc_media_radio"</span>,<span class="st">"rc_media_tv"</span>,<span class="st">"rc_tobc_cig"</span>,<span class="st">"rc_tobc_cig"</span>,<span class="st">"rc_tobc_other"</span>,</span>
+<span id="cb17-16"><a href="#cb17-16" aria-hidden="true" tabindex="-1"></a><span class="st">"rh_anc_bldpres"</span>,<span class="st">"rh_anc_median"</span>,<span class="st">"rh_anc_bldsamp"</span>,<span class="st">"rh_anc_median"</span>,<span class="st">"rh_anc_numvs"</span>,<span class="st">"rh_anc_numvsrh_anc_moprg"</span>,<span class="st">"rh_anc_prgcomp"</span>,<span class="st">"rh_anc_pv"</span>,<span class="st">"rh_anc_toxinj"</span>,<span class="st">"rh_anc_urine"</span></span>
+<span id="cb17-17"><a href="#cb17-17" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb17-18"><a href="#cb17-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-19"><a href="#cb17-19" aria-hidden="true" tabindex="-1"></a><span class="co"># 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)</span></span>
+<span id="cb17-20"><a href="#cb17-20" aria-hidden="true" tabindex="-1"></a>y_var_all <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"nt_ch_stunt"</span>, <span class="st">"nt_ch_sev_stunt"</span>, <span class="st">"nt_ch_haz"</span>, <span class="st">"nt_ch_sev_wast"</span>, <span class="st">"nt_ch_wast"</span>, <span class="st">"nt_ch_whz"</span>, <span class="st">"nt_ch_ovwt_ht"</span>, <span class="st">"nt_ch_ovwt_age"</span>, <span class="st">"nt_ch_underwt"</span>, <span class="st">"nt_ch_sev_underwt"</span>, <span class="st">"nt_ch_any_anem"</span>, <span class="st">"nt_ch_mod_anem"</span>, <span class="st">"nt_ch_sev_anem"</span>)</span>
+<span id="cb17-21"><a href="#cb17-21" aria-hidden="true" tabindex="-1"></a>y_var <span class="ot">&lt;-</span> <span class="st">"nt_ch_stunt"</span></span>
+<span id="cb17-22"><a href="#cb17-22" aria-hidden="true" tabindex="-1"></a>y_var_drop <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(y_var_all, y_var)</span>
+<span id="cb17-23"><a href="#cb17-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-24"><a href="#cb17-24" aria-hidden="true" tabindex="-1"></a><span class="co"># 除外変数定義(最終値)</span></span>
+<span id="cb17-25"><a href="#cb17-25" aria-hidden="true" tabindex="-1"></a>drop_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(drop_cols_init, y_var_all)</span>
+<span id="cb17-26"><a href="#cb17-26" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-27"><a href="#cb17-27" aria-hidden="true" tabindex="-1"></a><span class="co"># ID・管理用変数</span></span>
+<span id="cb17-28"><a href="#cb17-28" aria-hidden="true" tabindex="-1"></a>grouping_cols <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"caseid"</span>, <span class="st">"state"</span>,<span class="st">"treated_status"</span>, <span class="st">"treatment_start"</span>,<span class="st">"group_treated"</span>,</span>
+<span id="cb17-29"><a href="#cb17-29" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"wt"</span>, <span class="st">"treatment_group"</span>, y_var)</span>
+<span id="cb17-30"><a href="#cb17-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-31"><a href="#cb17-31" aria-hidden="true" tabindex="-1"></a><span class="co"># 1. LASSO用のデータセット定義</span></span>
+<span id="cb17-32"><a href="#cb17-32" aria-hidden="true" tabindex="-1"></a>df_lasso <span class="ot">&lt;-</span> df_org</span>
+<span id="cb17-33"><a href="#cb17-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-34"><a href="#cb17-34" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"介入前データの群別サンプル数:</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>介入前データの群別サンプル数:</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(<span class="fu">table</span>(df_lasso<span class="sc">$</span>treatment_group))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+    0     1     2 
+24737  3543  3792 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 4. NAの多い列を除去（10%以上NA）</span></span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>initial_cols <span class="ot">&lt;-</span> <span class="fu">ncol</span>(df_lasso)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>keep_cols <span class="ot">&lt;-</span> <span class="fu">names</span>(df_lasso)[<span class="fu">sapply</span>(df_lasso, <span class="cf">function</span>(x) <span class="fu">sum</span>(<span class="fu">is.na</span>(x)) <span class="sc">&lt;=</span> <span class="fu">nrow</span>(df_lasso) <span class="sc">*</span> <span class="fl">0.1</span>)]</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>df_lasso <span class="ot">&lt;-</span> df_lasso[, keep_cols]</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA値の多い列を"</span>, initial_cols <span class="sc">-</span> <span class="fu">ncol</span>(df_lasso), <span class="st">"個削除しました</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>NA値の多い列を 139 個削除しました</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 5. 共変量名の再定義（NA除去後）</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>all_drop_cols <span class="ot">&lt;-</span> <span class="fu">intersect</span>(drop_cols, <span class="fu">names</span>(df_lasso))</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>grouping_cols <span class="ot">&lt;-</span> <span class="fu">intersect</span>(grouping_cols, <span class="fu">names</span>(df_lasso))</span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>covariate_names <span class="ot">&lt;-</span> <span class="fu">setdiff</span>(<span class="fu">names</span>(df_lasso), <span class="fu">c</span>(all_drop_cols, grouping_cols))</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co"># 6. 共変量のNAがある行を除去</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a><span class="co"># df_lasso &lt;- df_lasso[, covariate_names]</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a>complete_idx <span class="ot">&lt;-</span> <span class="fu">complete.cases</span>(df_lasso)</span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a>initial_rows <span class="ot">&lt;-</span> <span class="fu">nrow</span>(df_lasso)</span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>df_lasso <span class="ot">&lt;-</span> df_lasso[complete_idx, ]</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"NA値を含む行を"</span>, initial_rows <span class="sc">-</span> <span class="fu">nrow</span>(df_lasso), <span class="st">"行削除しました</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>NA値を含む行を 7958 行削除しました</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"最終的な介入前データサイズ:"</span>, <span class="fu">nrow</span>(df_lasso), <span class="st">"行 ×"</span>, <span class="fu">ncol</span>(df_lasso), <span class="st">"列</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>最終的な介入前データサイズ: 24114 行 × 182 列</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 共変量のラベル保存</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>covariate_names_label <span class="ot">&lt;-</span> var_labels <span class="sc">%&gt;%</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(varname <span class="sc">%in%</span> covariate_names)</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a><span class="co"># print文の代替</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>covariate_names_label <span class="sc">%&gt;%</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">gt</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cols_width</span>(</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>    <span class="dv">1</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">80</span>),</span>
+<span id="cb27-9"><a href="#cb27-9" aria-hidden="true" tabindex="-1"></a>    <span class="dv">2</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">20</span>)</span>
+<span id="cb27-10"><a href="#cb27-10" aria-hidden="true" tabindex="-1"></a>  ) </span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div id="oenyfzlngy" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#oenyfzlngy table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#oenyfzlngy thead, #oenyfzlngy tbody, #oenyfzlngy tfoot, #oenyfzlngy tr, #oenyfzlngy td, #oenyfzlngy th {
+  border-style: none;
+}
+
+#oenyfzlngy p {
+  margin: 0;
+  padding: 0;
+}
+
+#oenyfzlngy .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#oenyfzlngy .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#oenyfzlngy .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#oenyfzlngy .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#oenyfzlngy .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#oenyfzlngy .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#oenyfzlngy .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#oenyfzlngy .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#oenyfzlngy .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#oenyfzlngy .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#oenyfzlngy .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#oenyfzlngy .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#oenyfzlngy .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#oenyfzlngy .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#oenyfzlngy .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#oenyfzlngy .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#oenyfzlngy .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#oenyfzlngy .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#oenyfzlngy .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#oenyfzlngy .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#oenyfzlngy .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#oenyfzlngy .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#oenyfzlngy .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#oenyfzlngy .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#oenyfzlngy .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#oenyfzlngy .gt_left {
+  text-align: left;
+}
+
+#oenyfzlngy .gt_center {
+  text-align: center;
+}
+
+#oenyfzlngy .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#oenyfzlngy .gt_font_normal {
+  font-weight: normal;
+}
+
+#oenyfzlngy .gt_font_bold {
+  font-weight: bold;
+}
+
+#oenyfzlngy .gt_font_italic {
+  font-style: italic;
+}
+
+#oenyfzlngy .gt_super {
+  font-size: 65%;
+}
+
+#oenyfzlngy .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#oenyfzlngy .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#oenyfzlngy .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#oenyfzlngy .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#oenyfzlngy .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#oenyfzlngy .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#oenyfzlngy .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#oenyfzlngy .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#oenyfzlngy div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<colgroup>
+<col style="width: 80%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="gt_col_headings header">
+<th id="labels" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">labels</th>
+<th id="varname" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">varname</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Skilled assistance during ANC</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_pvskill</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Attended 4+ ANC visits</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_4vs</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Number of months pregnant at time of first ANC visit</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_moprg</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Attended ANC &lt;4 months of pregnancy</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_4mo</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Took iron tablet/syrup during pregnancy of last birth</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_iron</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Took intestinal parasite drugs during pregnancy of last birth</td>
+<td class="gt_row gt_left" headers="varname">rh_anc_parast</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Problem health care access: permission to go</td>
+<td class="gt_row gt_left" headers="varname">rh_prob_permit</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Problem health care access: getting money</td>
+<td class="gt_row gt_left" headers="varname">rh_prob_money</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Problem health care access: distance to facility</td>
+<td class="gt_row gt_left" headers="varname">rh_prob_dist</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Problem health care access: not wanting to go alone</td>
+<td class="gt_row gt_left" headers="varname">rh_prob_alone</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">At least one problem in accessing health care</td>
+<td class="gt_row gt_left" headers="varname">rh_prob_minone</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels"></td>
+<td class="gt_row gt_left" headers="varname">year</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Attended or completed at least secondary education</td>
+<td class="gt_row gt_left" headers="varname">rc_edu_acceptable</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Literate - higher than secondary or can read part or whole sentence</td>
+<td class="gt_row gt_left" headers="varname">rc_litr</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Accesses none of the three media at least once a week</td>
+<td class="gt_row gt_left" headers="varname">rc_media_none</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Occupation among those employed in the past 12 months</td>
+<td class="gt_row gt_left" headers="varname">rc_occup</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Work in agriculture in the past 12 months</td>
+<td class="gt_row gt_left" headers="varname">rc_agri</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Have any health insurance</td>
+<td class="gt_row gt_left" headers="varname">rc_hins_any</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Smokes any type of tobacco</td>
+<td class="gt_row gt_left" headers="varname">rc_tobc_smk_any</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Birth weight less than 2.5 kg</td>
+<td class="gt_row gt_left" headers="varname">ch_below_2p5</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">ARI symptoms in the 2 weeks before the survey</td>
+<td class="gt_row gt_left" headers="varname">ch_ari</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Fever symptoms in the 2 weeks before the survey</td>
+<td class="gt_row gt_left" headers="varname">ch_fever</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_bf_start_1hr</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_bf_start_1day</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
+<td class="gt_row gt_left" headers="varname">nt_bf_prelac_nobirthrecord</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Drank from a bottle with a nipple yesterday - under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_bottle</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Age-appropriately breastfed - last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_ageapp_bf</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given infant formula in day/night before survey - last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_formula</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given other liquids in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_liquids</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given fortified baby food in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_bbyfood</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given grains in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_grains</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given vitamin A rich food in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_vita</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_frtveg</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_root</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_nuts</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given meat, fish, shellfish, or poultry in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_meatfish</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given eggs in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_eggs</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_dairy</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child given any solid or semisolid food in day/night before survey- last-born under 2 years</td>
+<td class="gt_row gt_left" headers="varname">nt_solids</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child given milk or milk products- last-born 6-23 months</td>
+<td class="gt_row gt_left" headers="varname">nt_fed_milk</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
+<td class="gt_row gt_left" headers="varname">nt_mdd</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child with minimum meal frequency- last-born 6-23 months</td>
+<td class="gt_row gt_left" headers="varname">nt_mmf</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Child with minimum acceptable diet- last-born 6-23 months</td>
+<td class="gt_row gt_left" headers="varname">nt_mad</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Youngest children age 6-23 mos living with mother given Vit A rich food</td>
+<td class="gt_row gt_left" headers="varname">nt_ch_micro_vaf</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Current marital status</td>
+<td class="gt_row gt_left" headers="varname">ms_mar_stat</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">First marriage by age 15</td>
+<td class="gt_row gt_left" headers="varname">ms_afm_15</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">First marriage by age 18</td>
+<td class="gt_row gt_left" headers="varname">ms_afm_18</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">First marriage by age 20</td>
+<td class="gt_row gt_left" headers="varname">ms_afm_20</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">First marriage by age 22</td>
+<td class="gt_row gt_left" headers="varname">ms_afm_22</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">First marriage by age 25</td>
+<td class="gt_row gt_left" headers="varname">ms_afm_25</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels"></td>
+<td class="gt_row gt_left" headers="varname">ms_age</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Never had sex</td>
+<td class="gt_row gt_left" headers="varname">ms_sex_never</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">First sex by age 15</td>
+<td class="gt_row gt_left" headers="varname">ms_afs_15</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">First sex by age 18</td>
+<td class="gt_row gt_left" headers="varname">ms_afs_18</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">First sex by age 20</td>
+<td class="gt_row gt_left" headers="varname">ms_afs_20</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">First sex by age 22</td>
+<td class="gt_row gt_left" headers="varname">ms_afs_22</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">First sex by age 25</td>
+<td class="gt_row gt_left" headers="varname">ms_afs_25</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
+<td class="gt_row gt_left" headers="varname">ch_stool_safe</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Number of children under 12 years old</td>
+<td class="gt_row gt_left" headers="varname">dm_children_under12</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">type of cooking fuel</td>
+<td class="gt_row gt_left" headers="varname">dm_cooking_fuel</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she burns food</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_burn</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_argue</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she goes out without telling him</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_goout</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_neglect</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife if she refuses to have sexual intercourse with him</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_refusesex</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Agree that husband is justified in hitting or beating his wife for at least one of the reasons</td>
+<td class="gt_row gt_left" headers="varname">dm_dvjustify_onereas</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
+<td class="gt_row gt_left" headers="varname">dm_justify_refusesex</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">living in small town</td>
+<td class="gt_row gt_left" headers="varname">dm_town</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">living in medium city</td>
+<td class="gt_row gt_left" headers="varname">dm_city</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">living in capital city</td>
+<td class="gt_row gt_left" headers="varname">dm_capital</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">poorest wealth quintile</td>
+<td class="gt_row gt_left" headers="varname">dm_poorest</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">poorer wealth quintile</td>
+<td class="gt_row gt_left" headers="varname">dm_poorer</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">middle wealth quintile</td>
+<td class="gt_row gt_left" headers="varname">dm_middle</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">richer wealth quintile</td>
+<td class="gt_row gt_left" headers="varname">dm_richer</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">richest wealth quintile</td>
+<td class="gt_row gt_left" headers="varname">dm_richest</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">agricultural land (hectare)</td>
+<td class="gt_row gt_left" headers="varname">dm_ag_land_ha</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">owns cattle</td>
+<td class="gt_row gt_left" headers="varname">dm_cattle_own</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">owns goats</td>
+<td class="gt_row gt_left" headers="varname">dm_goat_own</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">owns sheep</td>
+<td class="gt_row gt_left" headers="varname">dm_sheep_own</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">owns poultry</td>
+<td class="gt_row gt_left" headers="varname">dm_poultry_own</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">owns refrigerator</td>
+<td class="gt_row gt_left" headers="varname">dm_refrigerator</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">female headed household</td>
+<td class="gt_row gt_left" headers="varname">dm_female_headed</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">Age of head of household</td>
+<td class="gt_row gt_left" headers="varname">dm_age_of_hh_head</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">Mild anemia - child 6-59 months</td>
+<td class="gt_row gt_left" headers="varname">nt_ch_mild_anem</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ********** デバッグ用 **********</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> (debug_mode) {</span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"=== デバッグモード: 変数の詳細確認 ===</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"共変量数:"</span>, <span class="fu">length</span>(covariate_names), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"共変量:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="co"># ダミーでない変数を抽出</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  non_dummy <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  temp <span class="ot">&lt;-</span> df_lasso[, covariate_names]</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (var <span class="cf">in</span> <span class="fu">names</span>(temp)) {</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is_dummy_var</span>(temp[[var]])) {</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>      non_dummy <span class="ot">&lt;-</span> <span class="fu">append</span>(non_dummy, var)</span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>    } <span class="cf">else</span> {</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cat</span>(<span class="st">"ダミー変数:"</span>, var)</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>      <span class="fu">print</span>(<span class="fu">table</span>(temp[[var]], <span class="at">useNA =</span> <span class="st">"always"</span>))</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>      <span class="fu">cat</span>(<span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>    }</span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"ダミー変数でない変数数:"</span>, <span class="fu">length</span>(non_dummy), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"ダミー変数でない変数:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(non_dummy)</span>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== デバッグモード: 変数の詳細確認 ===
+共変量数: 84 
+共変量:
+ダミー変数: rh_anc_pvskill
+    0     1  &lt;NA&gt; 
+14163  9951     0 
+
+ダミー変数: rh_anc_4vs
+    0     1  &lt;NA&gt; 
+  817 23297     0 
+
+ダミー変数: rh_anc_4mo
+    0     1  &lt;NA&gt; 
+ 5689 18425     0 
+
+ダミー変数: rh_anc_iron
+    0     1  &lt;NA&gt; 
+ 2519 21595     0 
+
+ダミー変数: rh_anc_parast
+    0     1  &lt;NA&gt; 
+23482   632     0 
+
+ダミー変数: rh_prob_permit
+    0     1  &lt;NA&gt; 
+21098  3016     0 
+
+ダミー変数: rh_prob_money
+    0     1  &lt;NA&gt; 
+ 9638 14476     0 
+
+ダミー変数: rh_prob_dist
+    0     1  &lt;NA&gt; 
+14029 10085     0 
+
+ダミー変数: rh_prob_alone
+    0     1  &lt;NA&gt; 
+14905  9209     0 
+
+ダミー変数: rh_prob_minone
+    0     1  &lt;NA&gt; 
+ 5642 18472     0 
+
+ダミー変数: rc_edu_acceptable
+    0     1  &lt;NA&gt; 
+10833 13281     0 
+
+ダミー変数: rc_litr
+    0     1  &lt;NA&gt; 
+ 1186 22928     0 
+
+ダミー変数: rc_media_none
+    0     1  &lt;NA&gt; 
+20481  3633     0 
+
+ダミー変数: rc_agri
+    0     1  &lt;NA&gt; 
+20018  4096     0 
+
+ダミー変数: rc_hins_any
+    0     1  &lt;NA&gt; 
+ 5660 18454     0 
+
+ダミー変数: rc_tobc_smk_any
+    0     1  &lt;NA&gt; 
+23677   437     0 
+
+ダミー変数: ch_below_2p5
+    0     1  &lt;NA&gt; 
+22637  1477     0 
+
+ダミー変数: ch_ari
+    0     1  &lt;NA&gt; 
+22501  1613     0 
+
+ダミー変数: ch_fever
+    0     1  &lt;NA&gt; 
+17596  6518     0 
+
+ダミー変数: nt_bf_start_1hr
+    0     1  &lt;NA&gt; 
+10560 13554     0 
+
+ダミー変数: nt_bf_start_1day
+    0     1  &lt;NA&gt; 
+ 1747 22367     0 
+
+ダミー変数: nt_bf_prelac_nobirthrecord
+    0     1  &lt;NA&gt; 
+ 6127 17987     0 
+
+ダミー変数: nt_bottle
+    0     1  &lt;NA&gt; 
+12186 11928     0 
+
+ダミー変数: nt_ageapp_bf
+    0     1  &lt;NA&gt; 
+  113 24001     0 
+
+ダミー変数: nt_formula
+    0     1  &lt;NA&gt; 
+21147  2967     0 
+
+ダミー変数: nt_liquids
+    0     1  &lt;NA&gt; 
+ 6251 17863     0 
+
+ダミー変数: nt_bbyfood
+    0  &lt;NA&gt; 
+24114     0 
+
+ダミー変数: nt_grains
+    0     1  &lt;NA&gt; 
+ 2620 21494     0 
+
+ダミー変数: nt_vita
+    0     1  &lt;NA&gt; 
+ 5530 18584     0 
+
+ダミー変数: nt_frtveg
+    0     1  &lt;NA&gt; 
+ 7177 16937     0 
+
+ダミー変数: nt_root
+    0     1  &lt;NA&gt; 
+ 4822 19292     0 
+
+ダミー変数: nt_nuts
+    0     1  &lt;NA&gt; 
+13504 10610     0 
+
+ダミー変数: nt_meatfish
+    0     1  &lt;NA&gt; 
+ 4144 19970     0 
+
+ダミー変数: nt_eggs
+    0     1  &lt;NA&gt; 
+10086 14028     0 
+
+ダミー変数: nt_dairy
+    0     1  &lt;NA&gt; 
+14105 10009     0 
+
+ダミー変数: nt_solids
+    1  &lt;NA&gt; 
+24114     0 
+
+ダミー変数: nt_fed_milk
+    0     1  &lt;NA&gt; 
+ 3488 20626     0 
+
+ダミー変数: nt_mdd
+    0     1  &lt;NA&gt; 
+ 5285 18829     0 
+
+ダミー変数: nt_mmf
+    0     1  &lt;NA&gt; 
+ 1709 22405     0 
+
+ダミー変数: nt_mad
+    0     1  &lt;NA&gt; 
+ 7861 16253     0 
+
+ダミー変数: nt_ch_micro_vaf
+    1  &lt;NA&gt; 
+24114     0 
+
+ダミー変数: ms_afm_15
+    0     1  &lt;NA&gt; 
+22967  1147     0 
+
+ダミー変数: ms_afm_18
+    0     1  &lt;NA&gt; 
+16921  7193     0 
+
+ダミー変数: ms_afm_20
+    0     1  &lt;NA&gt; 
+11971 12143     0 
+
+ダミー変数: ms_afm_22
+    0     1  &lt;NA&gt; 
+ 8297 15817     0 
+
+ダミー変数: ms_afm_25
+    0     1  &lt;NA&gt; 
+ 4983 19131     0 
+
+ダミー変数: ms_sex_never
+    0  &lt;NA&gt; 
+24114     0 
+
+ダミー変数: ms_afs_15
+    0     1  &lt;NA&gt; 
+21295  2819     0 
+
+ダミー変数: ms_afs_18
+    0     1  &lt;NA&gt; 
+10943 13171     0 
+
+ダミー変数: ms_afs_20
+    0     1  &lt;NA&gt; 
+ 5333 18781     0 
+
+ダミー変数: ms_afs_22
+    0     1  &lt;NA&gt; 
+ 2655 21459     0 
+
+ダミー変数: ms_afs_25
+    0     1  &lt;NA&gt; 
+ 1047 23067     0 
+
+ダミー変数: ch_stool_safe
+    0     1  &lt;NA&gt; 
+19002  5112     0 
+
+ダミー変数: dm_dvjustify_burn
+    0     1  &lt;NA&gt; 
+23901   213     0 
+
+ダミー変数: dm_dvjustify_argue
+    0     1  &lt;NA&gt; 
+23931   183     0 
+
+ダミー変数: dm_dvjustify_goout
+    0     1  &lt;NA&gt; 
+23832   282     0 
+
+ダミー変数: dm_dvjustify_neglect
+    0     1  &lt;NA&gt; 
+23549   565     0 
+
+ダミー変数: dm_dvjustify_refusesex
+    0     1  &lt;NA&gt; 
+23965   149     0 
+
+ダミー変数: dm_dvjustify_onereas
+    0     1  &lt;NA&gt; 
+23257   857     0 
+
+ダミー変数: dm_justify_refusesex
+    0     1  &lt;NA&gt; 
+  985 23129     0 
+
+ダミー変数: dm_town
+    0     1  &lt;NA&gt; 
+18197  5917     0 
+
+ダミー変数: dm_city
+    0     1  &lt;NA&gt; 
+16137  7977     0 
+
+ダミー変数: dm_capital
+    0     1  &lt;NA&gt; 
+21705  2409     0 
+
+ダミー変数: dm_poorest
+    0     1  &lt;NA&gt; 
+18934  5180     0 
+
+ダミー変数: dm_poorer
+    0     1  &lt;NA&gt; 
+17189  6925     0 
+
+ダミー変数: dm_middle
+    0     1  &lt;NA&gt; 
+18364  5750     0 
+
+ダミー変数: dm_richer
+    0     1  &lt;NA&gt; 
+20237  3877     0 
+
+ダミー変数: dm_richest
+    0     1  &lt;NA&gt; 
+21732  2382     0 
+
+ダミー変数: dm_cattle_own
+    0     1  &lt;NA&gt; 
+21280  2834     0 
+
+ダミー変数: dm_goat_own
+    0     1  &lt;NA&gt; 
+23603   511     0 
+
+ダミー変数: dm_sheep_own
+    0     1  &lt;NA&gt; 
+21701  2413     0 
+
+ダミー変数: dm_poultry_own
+    0     1  &lt;NA&gt; 
+14395  9719     0 
+
+ダミー変数: dm_refrigerator
+    0     1  &lt;NA&gt; 
+14429  9685     0 
+
+ダミー変数: dm_female_headed
+    0     1  &lt;NA&gt; 
+19954  4160     0 
+
+ダミー変数: nt_ch_mild_anem
+    0     1  &lt;NA&gt; 
+16585  7529     0 
+
+ダミー変数でない変数数: 9 
+ダミー変数でない変数:
+[[1]]
+[1] "rh_anc_moprg"
+
+[[2]]
+[1] "year"
+
+[[3]]
+[1] "rc_occup"
+
+[[4]]
+[1] "ms_mar_stat"
+
+[[5]]
+[1] "ms_age"
+
+[[6]]
+[1] "dm_children_under12"
+
+[[7]]
+[1] "dm_cooking_fuel"
+
+[[8]]
+[1] "dm_ag_land_ha"
+
+[[9]]
+[1] "dm_age_of_hh_head"</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="co"># ********** デバッグ用 **********</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="lassoによる変数選択" class="level2">
+<h2 class="anchored" data-anchor-id="lassoによる変数選択">3. LASSOによる変数選択</h2>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(gt)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="co"># 3. LASSO変数選択（介入前データ）</span></span>
+<span id="cb31-4"><a href="#cb31-4" aria-hidden="true" tabindex="-1"></a><span class="co"># ================================================================================</span></span>
+<span id="cb31-5"><a href="#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="co"># 完全に一から再開</span></span>
+<span id="cb31-6"><a href="#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== データ処理を再開 ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== データ処理を再開 ===</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"df_lasso の次元:"</span>, <span class="fu">dim</span>(df_lasso), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>df_lasso の次元: 24114 182 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"covariate_names の数:"</span>, <span class="fu">length</span>(covariate_names), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>covariate_names の数: 84 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 1: model.matrix作成</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Step 1: model.matrix作成中...</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Step 1: model.matrix作成中...</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>X_matrix <span class="ot">&lt;-</span> <span class="fu">model.matrix</span>(<span class="sc">~</span> . <span class="sc">-</span> <span class="dv">1</span>, <span class="at">data =</span> df_lasso[, covariate_names, <span class="at">drop=</span><span class="cn">FALSE</span>])</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>Y <span class="ot">&lt;-</span> df_lasso<span class="sc">$</span>nt_ch_stunt</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== 問題列の除去 ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== 問題列の除去 ===</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 1: 標準偏差が0の列を特定・除去</span></span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>col_sds <span class="ot">&lt;-</span> <span class="fu">apply</span>(X_matrix, <span class="dv">2</span>, sd, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>zero_sd_cols <span class="ot">&lt;-</span> <span class="fu">is.na</span>(col_sds) <span class="sc">|</span> col_sds <span class="sc">==</span> <span class="dv">0</span></span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"除去する定数列の数:"</span>, <span class="fu">sum</span>(zero_sd_cols), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>除去する定数列の数: 4 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">sum</span>(zero_sd_cols) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb43-2"><a href="#cb43-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"除去する列名:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb43-3"><a href="#cb43-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">print</span>(<span class="fu">colnames</span>(X_matrix)[zero_sd_cols])</span>
+<span id="cb43-4"><a href="#cb43-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb43-5"><a href="#cb43-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 定数列を除去</span></span>
+<span id="cb43-6"><a href="#cb43-6" aria-hidden="true" tabindex="-1"></a>  X_matrix_clean <span class="ot">&lt;-</span> X_matrix[, <span class="sc">!</span>zero_sd_cols, drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb43-7"><a href="#cb43-7" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb43-8"><a href="#cb43-8" aria-hidden="true" tabindex="-1"></a>  X_matrix_clean <span class="ot">&lt;-</span> X_matrix</span>
+<span id="cb43-9"><a href="#cb43-9" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>除去する列名:
+[1] "nt_bbyfood"      "nt_solids"       "nt_ch_micro_vaf" "ms_sex_never"   </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb45"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb45-1"><a href="#cb45-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"列除去後のX_matrix次元:"</span>, <span class="fu">dim</span>(X_matrix_clean), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>列除去後のX_matrix次元: 24114 89 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb47"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb47-1"><a href="#cb47-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 2: スケーリング実行</span></span>
+<span id="cb47-2"><a href="#cb47-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== クリーンなデータでスケーリング ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== クリーンなデータでスケーリング ===</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb49"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb49-1"><a href="#cb49-1" aria-hidden="true" tabindex="-1"></a>X_scaled <span class="ot">&lt;-</span> <span class="fu">scale</span>(X_matrix_clean)</span>
+<span id="cb49-2"><a href="#cb49-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"スケーリング後の次元:"</span>, <span class="fu">dim</span>(X_scaled), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>スケーリング後の次元: 24114 89 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb51"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb51-1"><a href="#cb51-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"スケーリング後のNA数:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>スケーリング後のNA数: 0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb53"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb53-1"><a href="#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 3: まだNAがある場合の詳細チェック</span></span>
+<span id="cb53-2"><a href="#cb53-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb53-3"><a href="#cb53-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"=== 残存するNA問題の詳細分析 ===</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb53-4"><a href="#cb53-4" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb53-5"><a href="#cb53-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 各列のNA数をチェック</span></span>
+<span id="cb53-6"><a href="#cb53-6" aria-hidden="true" tabindex="-1"></a>  col_na_counts <span class="ot">&lt;-</span> <span class="fu">apply</span>(X_scaled, <span class="dv">2</span>, <span class="cf">function</span>(x) <span class="fu">sum</span>(<span class="fu">is.na</span>(x)))</span>
+<span id="cb53-7"><a href="#cb53-7" aria-hidden="true" tabindex="-1"></a>  problematic_cols <span class="ot">&lt;-</span> col_na_counts <span class="sc">&gt;</span> <span class="dv">0</span></span>
+<span id="cb53-8"><a href="#cb53-8" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb53-9"><a href="#cb53-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"NA値を含む列数:"</span>, <span class="fu">sum</span>(problematic_cols), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb53-10"><a href="#cb53-10" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span>(<span class="fu">sum</span>(problematic_cols) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb53-11"><a href="#cb53-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"問題のある列:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb53-12"><a href="#cb53-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">print</span>(col_na_counts[problematic_cols])</span>
+<span id="cb53-13"><a href="#cb53-13" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb53-14"><a href="#cb53-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># 問題のある列を除去</span></span>
+<span id="cb53-15"><a href="#cb53-15" aria-hidden="true" tabindex="-1"></a>    X_scaled <span class="ot">&lt;-</span> X_scaled[, <span class="sc">!</span>problematic_cols, drop <span class="ot">=</span> <span class="cn">FALSE</span>]</span>
+<span id="cb53-16"><a href="#cb53-16" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(<span class="st">"問題列除去後の次元:"</span>, <span class="fu">dim</span>(X_scaled), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb53-17"><a href="#cb53-17" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb53-18"><a href="#cb53-18" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb53-19"><a href="#cb53-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb53-20"><a href="#cb53-20" aria-hidden="true" tabindex="-1"></a><span class="co"># Step 4: 最終確認</span></span>
+<span id="cb53-21"><a href="#cb53-21" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"=== 最終確認 ===</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== 最終確認 ===</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb55"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb55-1"><a href="#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"X_scaled次元:"</span>, <span class="fu">dim</span>(X_scaled), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>X_scaled次元: 24114 89 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb57"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb57-1"><a href="#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"X_scaledのNA数:"</span>, <span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>X_scaledのNA数: 0 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb59"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb59-1"><a href="#cb59-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Y長さ:"</span>, <span class="fu">length</span>(Y), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Y長さ: 24114 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb61"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb61-1"><a href="#cb61-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Y分布:"</span>, <span class="fu">table</span>(Y), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Y分布: 19824 4290 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb63"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb63-1"><a href="#cb63-1" aria-hidden="true" tabindex="-1"></a><span class="co"># データが正常な場合のLASSO実行</span></span>
+<span id="cb63-2"><a href="#cb63-2" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">nrow</span>(X_scaled) <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;&amp;</span> <span class="fu">ncol</span>(X_scaled) <span class="sc">&gt;</span> <span class="dv">0</span> <span class="sc">&amp;&amp;</span> <span class="fu">sum</span>(<span class="fu">is.na</span>(X_scaled)) <span class="sc">==</span> <span class="dv">0</span>) {</span>
+<span id="cb63-3"><a href="#cb63-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"=== LASSO実行 ===</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb63-4"><a href="#cb63-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb63-5"><a href="#cb63-5" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb63-6"><a href="#cb63-6" aria-hidden="true" tabindex="-1"></a>  cv_model <span class="ot">&lt;-</span> <span class="fu">cv.glmnet</span>(X_scaled, Y, </span>
+<span id="cb63-7"><a href="#cb63-7" aria-hidden="true" tabindex="-1"></a>                       <span class="at">alpha =</span> <span class="dv">1</span>, </span>
+<span id="cb63-8"><a href="#cb63-8" aria-hidden="true" tabindex="-1"></a>                       <span class="at">family =</span> <span class="st">"multinomial"</span>, </span>
+<span id="cb63-9"><a href="#cb63-9" aria-hidden="true" tabindex="-1"></a>                       <span class="at">nfolds =</span> <span class="dv">3</span>)</span>
+<span id="cb63-10"><a href="#cb63-10" aria-hidden="true" tabindex="-1"></a>  </span>
+<span id="cb63-11"><a href="#cb63-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"LASSO実行成功！</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb63-12"><a href="#cb63-12" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb63-13"><a href="#cb63-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"まだデータに問題があります</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb63-14"><a href="#cb63-14" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>=== LASSO実行 ===
+LASSO実行成功！</code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb65"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb65-1"><a href="#cb65-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"最適λ (lambda.min):"</span>, cv_model<span class="sc">$</span>lambda.min, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>最適λ (lambda.min): 0.001559054 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb67"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb67-1"><a href="#cb67-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"1se λ (lambda.1se):"</span>, cv_model<span class="sc">$</span>lambda<span class="fl">.1</span>se, <span class="st">"</span><span class="sc">\n\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>1se λ (lambda.1se): 0.004761126 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb69"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb69-1"><a href="#cb69-1" aria-hidden="true" tabindex="-1"></a><span class="co"># 選択された変数の抽出</span></span>
+<span id="cb69-2"><a href="#cb69-2" aria-hidden="true" tabindex="-1"></a>coef_min <span class="ot">&lt;-</span> <span class="fu">coef</span>(cv_model, <span class="at">s =</span> <span class="st">"lambda.min"</span>)</span>
+<span id="cb69-3"><a href="#cb69-3" aria-hidden="true" tabindex="-1"></a>selected_vars <span class="ot">&lt;-</span> <span class="fu">c</span>()</span>
+<span id="cb69-4"><a href="#cb69-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(coef_min)) {</span>
+<span id="cb69-5"><a href="#cb69-5" aria-hidden="true" tabindex="-1"></a>  coef_matrix <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(coef_min[[i]])</span>
+<span id="cb69-6"><a href="#cb69-6" aria-hidden="true" tabindex="-1"></a>  class_vars <span class="ot">&lt;-</span> <span class="fu">rownames</span>(coef_matrix)[coef_matrix[,<span class="dv">1</span>] <span class="sc">!=</span> <span class="dv">0</span> <span class="sc">&amp;</span> <span class="fu">rownames</span>(coef_matrix) <span class="sc">!=</span> <span class="st">"(Intercept)"</span>]</span>
+<span id="cb69-7"><a href="#cb69-7" aria-hidden="true" tabindex="-1"></a>  selected_vars <span class="ot">&lt;-</span> <span class="fu">union</span>(selected_vars, class_vars)</span>
+<span id="cb69-8"><a href="#cb69-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb69-9"><a href="#cb69-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb69-10"><a href="#cb69-10" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"LASSO選択変数数:"</span>, <span class="fu">length</span>(selected_vars), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>LASSO選択変数数: 62 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb71"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb71-1"><a href="#cb71-1" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span>(<span class="fu">length</span>(selected_vars) <span class="sc">&gt;</span> <span class="dv">0</span>) {</span>
+<span id="cb71-2"><a href="#cb71-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cat</span>(<span class="st">"選択された変数:</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb71-3"><a href="#cb71-3" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">length</span>(selected_vars)) {</span>
+<span id="cb71-4"><a href="#cb71-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cat</span>(i, <span class="st">":"</span>, selected_vars[i], <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span>
+<span id="cb71-5"><a href="#cb71-5" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb71-6"><a href="#cb71-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 変数の重要度確認</span></span>
+<span id="cb71-7"><a href="#cb71-7" aria-hidden="true" tabindex="-1"></a>  coef_importance <span class="ot">&lt;-</span> <span class="fu">abs</span>(<span class="fu">as.matrix</span>(<span class="fu">coef</span>(cv_model, <span class="at">s =</span> <span class="st">"lambda.min"</span>)[[<span class="dv">1</span>]]))</span>
+<span id="cb71-8"><a href="#cb71-8" aria-hidden="true" tabindex="-1"></a>  top_vars <span class="ot">&lt;-</span> <span class="fu">head</span>(<span class="fu">sort</span>(coef_importance[,<span class="dv">1</span>], <span class="at">decreasing =</span> <span class="cn">TRUE</span>), <span class="dv">20</span>)</span>
+<span id="cb71-9"><a href="#cb71-9" aria-hidden="true" tabindex="-1"></a>  coef_importance <span class="ot">&lt;-</span> coef_importance <span class="sc">%&gt;%</span></span>
+<span id="cb71-10"><a href="#cb71-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">as_tibble</span>(<span class="at">rownames =</span> <span class="st">"labels"</span>) <span class="sc">%&gt;%</span></span>
+<span id="cb71-11"><a href="#cb71-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">filter</span>(labels <span class="sc">%in%</span> selected_vars) <span class="sc">%&gt;%</span></span>
+<span id="cb71-12"><a href="#cb71-12" aria-hidden="true" tabindex="-1"></a>    <span class="fu">left_join</span>(var_labels, <span class="at">by =</span> <span class="fu">join_by</span>(<span class="st">"labels"</span> <span class="sc">==</span> <span class="st">"varname"</span>))</span>
+<span id="cb71-13"><a href="#cb71-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">saveRDS</span>(coef_importance, <span class="fu">file.path</span>(save_path, <span class="st">"lasso_selected_vars_importance.rds"</span>))</span>
+<span id="cb71-14"><a href="#cb71-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb71-15"><a href="#cb71-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># 列幅を指定して結果出力</span></span>
+<span id="cb71-16"><a href="#cb71-16" aria-hidden="true" tabindex="-1"></a>  coef_importance <span class="sc">%&gt;%</span></span>
+<span id="cb71-17"><a href="#cb71-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">gt</span>() <span class="sc">%&gt;%</span></span>
+<span id="cb71-18"><a href="#cb71-18" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cols_width</span>(</span>
+<span id="cb71-19"><a href="#cb71-19" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">15</span>),</span>
+<span id="cb71-20"><a href="#cb71-20" aria-hidden="true" tabindex="-1"></a>      <span class="dv">2</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">15</span>),</span>
+<span id="cb71-21"><a href="#cb71-21" aria-hidden="true" tabindex="-1"></a>      <span class="dv">3</span> <span class="sc">~</span> <span class="fu">pct</span>(<span class="dv">70</span>)</span>
+<span id="cb71-22"><a href="#cb71-22" aria-hidden="true" tabindex="-1"></a>    ) <span class="sc">%&gt;%</span></span>
+<span id="cb71-23"><a href="#cb71-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">fmt_number</span>(</span>
+<span id="cb71-24"><a href="#cb71-24" aria-hidden="true" tabindex="-1"></a>      <span class="at">columns =</span> <span class="fu">c</span>(<span class="st">"lambda.min"</span>),</span>
+<span id="cb71-25"><a href="#cb71-25" aria-hidden="true" tabindex="-1"></a>      <span class="at">decimals =</span> <span class="dv">4</span>  <span class="co"># 小数点以下4桁</span></span>
+<span id="cb71-26"><a href="#cb71-26" aria-hidden="true" tabindex="-1"></a>    )     </span>
+<span id="cb71-27"><a href="#cb71-27" aria-hidden="true" tabindex="-1"></a>} <span class="cf">else</span> {</span>
+<span id="cb71-28"><a href="#cb71-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">stop</span>(<span class="st">"変数が選択されませんでした。λの値を調整してください。"</span>)</span>
+<span id="cb71-29"><a href="#cb71-29" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>選択された変数:
+1 : rh_anc_pvskill 
+2 : rh_anc_4vs 
+3 : rh_anc_4mo 
+4 : rh_anc_iron 
+5 : rh_anc_parast 
+6 : rh_prob_permit 
+7 : rh_prob_dist 
+8 : rh_prob_minone 
+9 : year2007 
+10 : year2008 
+11 : year2009 
+12 : year2010 
+13 : year2011 
+14 : year2014 
+15 : year2015 
+16 : year2016 
+17 : rc_edu_acceptable 
+18 : rc_litr 
+19 : rc_media_none 
+20 : rc_occup 
+21 : rc_agri 
+22 : rc_hins_any 
+23 : rc_tobc_smk_any 
+24 : ch_below_2p5 
+25 : nt_bf_start_1hr 
+26 : nt_bf_start_1day 
+27 : nt_bf_prelac_nobirthrecord 
+28 : nt_bottle 
+29 : nt_formula 
+30 : nt_liquids 
+31 : nt_grains 
+32 : nt_frtveg 
+33 : nt_root 
+34 : nt_nuts 
+35 : nt_eggs 
+36 : nt_dairy 
+37 : nt_fed_milk 
+38 : nt_mdd 
+39 : nt_mmf 
+40 : ms_mar_stat 
+41 : ms_afm_15 
+42 : ms_afs_15 
+43 : ms_afs_18 
+44 : ms_afs_25 
+45 : ch_stool_safe 
+46 : dm_children_under12 
+47 : dm_cooking_fuel 
+48 : dm_dvjustify_argue 
+49 : dm_dvjustify_neglect 
+50 : dm_justify_refusesex 
+51 : dm_town 
+52 : dm_capital 
+53 : dm_poorest 
+54 : dm_poorer 
+55 : dm_richer 
+56 : dm_richest 
+57 : dm_ag_land_ha 
+58 : dm_cattle_own 
+59 : dm_goat_own 
+60 : dm_sheep_own 
+61 : dm_refrigerator 
+62 : dm_age_of_hh_head </code></pre>
+</div>
+<div class="cell-output-display">
+<div id="qrwwcuyfmt" style="padding-left:0px;padding-right:0px;padding-top:10px;padding-bottom:10px;overflow-x:auto;overflow-y:auto;width:auto;height:auto;">
+<style>#qrwwcuyfmt table {
+  font-family: system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#qrwwcuyfmt thead, #qrwwcuyfmt tbody, #qrwwcuyfmt tfoot, #qrwwcuyfmt tr, #qrwwcuyfmt td, #qrwwcuyfmt th {
+  border-style: none;
+}
+
+#qrwwcuyfmt p {
+  margin: 0;
+  padding: 0;
+}
+
+#qrwwcuyfmt .gt_table {
+  display: table;
+  border-collapse: collapse;
+  line-height: normal;
+  margin-left: auto;
+  margin-right: auto;
+  color: #333333;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: normal;
+  background-color: #FFFFFF;
+  width: auto;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #A8A8A8;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #A8A8A8;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_caption {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#qrwwcuyfmt .gt_title {
+  color: #333333;
+  font-size: 125%;
+  font-weight: initial;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-color: #FFFFFF;
+  border-bottom-width: 0;
+}
+
+#qrwwcuyfmt .gt_subtitle {
+  color: #333333;
+  font-size: 85%;
+  font-weight: initial;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-color: #FFFFFF;
+  border-top-width: 0;
+}
+
+#qrwwcuyfmt .gt_heading {
+  background-color: #FFFFFF;
+  text-align: center;
+  border-bottom-color: #FFFFFF;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_bottom_border {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_col_headings {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_col_heading {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+  overflow-x: hidden;
+}
+
+#qrwwcuyfmt .gt_column_spanner_outer {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: normal;
+  text-transform: inherit;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+#qrwwcuyfmt .gt_column_spanner_outer:first-child {
+  padding-left: 0;
+}
+
+#qrwwcuyfmt .gt_column_spanner_outer:last-child {
+  padding-right: 0;
+}
+
+#qrwwcuyfmt .gt_column_spanner {
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: bottom;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  overflow-x: hidden;
+  display: inline-block;
+  width: 100%;
+}
+
+#qrwwcuyfmt .gt_spanner_row {
+  border-bottom-style: hidden;
+}
+
+#qrwwcuyfmt .gt_group_heading {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  text-align: left;
+}
+
+#qrwwcuyfmt .gt_empty_group_heading {
+  padding: 0.5px;
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  vertical-align: middle;
+}
+
+#qrwwcuyfmt .gt_from_md > :first-child {
+  margin-top: 0;
+}
+
+#qrwwcuyfmt .gt_from_md > :last-child {
+  margin-bottom: 0;
+}
+
+#qrwwcuyfmt .gt_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  margin: 10px;
+  border-top-style: solid;
+  border-top-width: 1px;
+  border-top-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 1px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 1px;
+  border-right-color: #D3D3D3;
+  vertical-align: middle;
+  overflow-x: hidden;
+}
+
+#qrwwcuyfmt .gt_stub {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qrwwcuyfmt .gt_stub_row_group {
+  color: #333333;
+  background-color: #FFFFFF;
+  font-size: 100%;
+  font-weight: initial;
+  text-transform: inherit;
+  border-right-style: solid;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+  padding-left: 5px;
+  padding-right: 5px;
+  vertical-align: top;
+}
+
+#qrwwcuyfmt .gt_row_group_first td {
+  border-top-width: 2px;
+}
+
+#qrwwcuyfmt .gt_row_group_first th {
+  border-top-width: 2px;
+}
+
+#qrwwcuyfmt .gt_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qrwwcuyfmt .gt_first_summary_row {
+  border-top-style: solid;
+  border-top-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_first_summary_row.thick {
+  border-top-width: 2px;
+}
+
+#qrwwcuyfmt .gt_last_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_grand_summary_row {
+  color: #333333;
+  background-color: #FFFFFF;
+  text-transform: inherit;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qrwwcuyfmt .gt_first_grand_summary_row {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-top-style: double;
+  border-top-width: 6px;
+  border-top-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_last_grand_summary_row_top {
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 5px;
+  padding-right: 5px;
+  border-bottom-style: double;
+  border-bottom-width: 6px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_striped {
+  background-color: rgba(128, 128, 128, 0.05);
+}
+
+#qrwwcuyfmt .gt_table_body {
+  border-top-style: solid;
+  border-top-width: 2px;
+  border-top-color: #D3D3D3;
+  border-bottom-style: solid;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_footnotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_footnote {
+  margin: 0px;
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qrwwcuyfmt .gt_sourcenotes {
+  color: #333333;
+  background-color: #FFFFFF;
+  border-bottom-style: none;
+  border-bottom-width: 2px;
+  border-bottom-color: #D3D3D3;
+  border-left-style: none;
+  border-left-width: 2px;
+  border-left-color: #D3D3D3;
+  border-right-style: none;
+  border-right-width: 2px;
+  border-right-color: #D3D3D3;
+}
+
+#qrwwcuyfmt .gt_sourcenote {
+  font-size: 90%;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+#qrwwcuyfmt .gt_left {
+  text-align: left;
+}
+
+#qrwwcuyfmt .gt_center {
+  text-align: center;
+}
+
+#qrwwcuyfmt .gt_right {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#qrwwcuyfmt .gt_font_normal {
+  font-weight: normal;
+}
+
+#qrwwcuyfmt .gt_font_bold {
+  font-weight: bold;
+}
+
+#qrwwcuyfmt .gt_font_italic {
+  font-style: italic;
+}
+
+#qrwwcuyfmt .gt_super {
+  font-size: 65%;
+}
+
+#qrwwcuyfmt .gt_footnote_marks {
+  font-size: 75%;
+  vertical-align: 0.4em;
+  position: initial;
+}
+
+#qrwwcuyfmt .gt_asterisk {
+  font-size: 100%;
+  vertical-align: 0;
+}
+
+#qrwwcuyfmt .gt_indent_1 {
+  text-indent: 5px;
+}
+
+#qrwwcuyfmt .gt_indent_2 {
+  text-indent: 10px;
+}
+
+#qrwwcuyfmt .gt_indent_3 {
+  text-indent: 15px;
+}
+
+#qrwwcuyfmt .gt_indent_4 {
+  text-indent: 20px;
+}
+
+#qrwwcuyfmt .gt_indent_5 {
+  text-indent: 25px;
+}
+
+#qrwwcuyfmt .katex-display {
+  display: inline-flex !important;
+  margin-bottom: 0.75em !important;
+}
+
+#qrwwcuyfmt div.Reactable > div.rt-table > div.rt-thead > div.rt-tr.rt-tr-group-header > div.rt-th-group:after {
+  height: 0px !important;
+}
+</style>
+
+<table class="gt_table caption-top table table-sm table-striped small" data-quarto-bootstrap="false">
+<colgroup>
+<col style="width: 15%">
+<col style="width: 15%">
+<col style="width: 70%">
+</colgroup>
+<thead>
+<tr class="gt_col_headings header">
+<th id="labels" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">labels</th>
+<th id="lambda.min" class="gt_col_heading gt_columns_bottom_border gt_right" data-quarto-table-cell-role="th" scope="col">lambda.min</th>
+<th id="labels.y" class="gt_col_heading gt_columns_bottom_border gt_left" data-quarto-table-cell-role="th" scope="col">labels.y</th>
+</tr>
+</thead>
+<tbody class="gt_table_body">
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rh_anc_pvskill</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0148</td>
+<td class="gt_row gt_left" headers="labels.y">Skilled assistance during ANC</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rh_anc_4vs</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0065</td>
+<td class="gt_row gt_left" headers="labels.y">Attended 4+ ANC visits</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rh_anc_4mo</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0166</td>
+<td class="gt_row gt_left" headers="labels.y">Attended ANC &lt;4 months of pregnancy</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rh_anc_iron</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0003</td>
+<td class="gt_row gt_left" headers="labels.y">Took iron tablet/syrup during pregnancy of last birth</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rh_anc_parast</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_left" headers="labels.y">Took intestinal parasite drugs during pregnancy of last birth</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rh_prob_permit</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0142</td>
+<td class="gt_row gt_left" headers="labels.y">Problem health care access: permission to go</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rh_prob_dist</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0058</td>
+<td class="gt_row gt_left" headers="labels.y">Problem health care access: distance to facility</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rh_prob_minone</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0128</td>
+<td class="gt_row gt_left" headers="labels.y">At least one problem in accessing health care</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">year2007</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0295</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">year2008</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0323</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">year2009</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0245</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">year2010</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0165</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">year2011</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0251</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">year2014</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0144</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">year2015</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0213</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">year2016</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0410</td>
+<td class="gt_row gt_left" headers="labels.y">NA</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rc_edu_acceptable</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0755</td>
+<td class="gt_row gt_left" headers="labels.y">Attended or completed at least secondary education</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rc_litr</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0415</td>
+<td class="gt_row gt_left" headers="labels.y">Literate - higher than secondary or can read part or whole sentence</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rc_media_none</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0115</td>
+<td class="gt_row gt_left" headers="labels.y">Accesses none of the three media at least once a week</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rc_occup</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0067</td>
+<td class="gt_row gt_left" headers="labels.y">Occupation among those employed in the past 12 months</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rc_agri</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0269</td>
+<td class="gt_row gt_left" headers="labels.y">Work in agriculture in the past 12 months</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">rc_hins_any</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0104</td>
+<td class="gt_row gt_left" headers="labels.y">Have any health insurance</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">rc_tobc_smk_any</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0139</td>
+<td class="gt_row gt_left" headers="labels.y">Smokes any type of tobacco</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">ch_below_2p5</td>
+<td class="gt_row gt_right" headers="lambda.min">0.1341</td>
+<td class="gt_row gt_left" headers="labels.y">Birth weight less than 2.5 kg</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_bf_start_1hr</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0225</td>
+<td class="gt_row gt_left" headers="labels.y">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_bf_start_1day</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0320</td>
+<td class="gt_row gt_left" headers="labels.y">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_bf_prelac_nobirthrecord</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0026</td>
+<td class="gt_row gt_left" headers="labels.y">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_bottle</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0261</td>
+<td class="gt_row gt_left" headers="labels.y">Drank from a bottle with a nipple yesterday - under 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_formula</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0011</td>
+<td class="gt_row gt_left" headers="labels.y">Child given infant formula in day/night before survey - last-born under 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_liquids</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0050</td>
+<td class="gt_row gt_left" headers="labels.y">Child given other liquids in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_grains</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0132</td>
+<td class="gt_row gt_left" headers="labels.y">Child given grains in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_frtveg</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0095</td>
+<td class="gt_row gt_left" headers="labels.y">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_root</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0086</td>
+<td class="gt_row gt_left" headers="labels.y">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_nuts</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0054</td>
+<td class="gt_row gt_left" headers="labels.y">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_eggs</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_left" headers="labels.y">Child given eggs in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_dairy</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0200</td>
+<td class="gt_row gt_left" headers="labels.y">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_fed_milk</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0570</td>
+<td class="gt_row gt_left" headers="labels.y">Child given milk or milk products- last-born 6-23 months</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">nt_mdd</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0010</td>
+<td class="gt_row gt_left" headers="labels.y">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">nt_mmf</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0062</td>
+<td class="gt_row gt_left" headers="labels.y">Child with minimum meal frequency- last-born 6-23 months</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">ms_mar_stat</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0063</td>
+<td class="gt_row gt_left" headers="labels.y">Current marital status</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">ms_afm_15</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0093</td>
+<td class="gt_row gt_left" headers="labels.y">First marriage by age 15</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">ms_afs_15</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0029</td>
+<td class="gt_row gt_left" headers="labels.y">First sex by age 15</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">ms_afs_18</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0076</td>
+<td class="gt_row gt_left" headers="labels.y">First sex by age 18</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">ms_afs_25</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0014</td>
+<td class="gt_row gt_left" headers="labels.y">First sex by age 25</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">ch_stool_safe</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0061</td>
+<td class="gt_row gt_left" headers="labels.y">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_children_under12</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0805</td>
+<td class="gt_row gt_left" headers="labels.y">Number of children under 12 years old</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_cooking_fuel</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0097</td>
+<td class="gt_row gt_left" headers="labels.y">type of cooking fuel</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_dvjustify_argue</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0007</td>
+<td class="gt_row gt_left" headers="labels.y">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_dvjustify_neglect</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0001</td>
+<td class="gt_row gt_left" headers="labels.y">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_justify_refusesex</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0091</td>
+<td class="gt_row gt_left" headers="labels.y">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_town</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0111</td>
+<td class="gt_row gt_left" headers="labels.y">living in small town</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_capital</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0364</td>
+<td class="gt_row gt_left" headers="labels.y">living in capital city</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_poorest</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0951</td>
+<td class="gt_row gt_left" headers="labels.y">poorest wealth quintile</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_poorer</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0277</td>
+<td class="gt_row gt_left" headers="labels.y">poorer wealth quintile</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_richer</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0536</td>
+<td class="gt_row gt_left" headers="labels.y">richer wealth quintile</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_richest</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0904</td>
+<td class="gt_row gt_left" headers="labels.y">richest wealth quintile</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_ag_land_ha</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0040</td>
+<td class="gt_row gt_left" headers="labels.y">agricultural land (hectare)</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_cattle_own</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0170</td>
+<td class="gt_row gt_left" headers="labels.y">owns cattle</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_goat_own</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0025</td>
+<td class="gt_row gt_left" headers="labels.y">owns goats</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_sheep_own</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0500</td>
+<td class="gt_row gt_left" headers="labels.y">owns sheep</td>
+</tr>
+<tr class="odd">
+<td class="gt_row gt_left" headers="labels">dm_refrigerator</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0595</td>
+<td class="gt_row gt_left" headers="labels.y">owns refrigerator</td>
+</tr>
+<tr class="even">
+<td class="gt_row gt_left" headers="labels">dm_age_of_hh_head</td>
+<td class="gt_row gt_right" headers="lambda.min">0.0237</td>
+<td class="gt_row gt_left" headers="labels.y">Age of head of household</td>
+</tr>
+</tbody>
+</table>
+
+</div>
+</div>
+</div>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
