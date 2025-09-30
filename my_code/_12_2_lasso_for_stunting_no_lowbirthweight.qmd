@@ -31,8 +31,8 @@ library(fixest)   # 回帰分析の推定結果から係数表（推定値、標
 rm(list = ls(all = TRUE))
 
 # デバッグモードフラグ
-# debug_mode = TRUE  # デバッグモード
-debug_mode = FALSE # 通常モード
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
 
 # 自作関数読み込み
 source("../myTools.R")
@@ -414,9 +414,17 @@ year_totals <- df_lasso %>%
   group_by(year) %>%
   summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
 
+# Survey designオブジェクトの作成前に変数を変換
+# Survey designオブジェクトの作成前に変数を変換
+df_lasso <- df_lasso %>%
+  mutate(
+    v021 = as.numeric(v021),                        # Primary Sampling Unit
+    v022 = as.character(haven::as_factor(v022))     #haven_labelledをfactorに変換してからcharacter
+  )
+
 # 正規化済みサンプリングウェイトの作成
 df_lasso <- df_lasso %>%
-  select(-any_of("total_v005")) %>%  # 存在する場合のみ削除
+  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
   left_join(year_totals, by = "year") %>%
   mutate(
     # 元のDHSウェイト
@@ -492,10 +500,17 @@ final_model_svy %>%
 
 ```{r}
 # メディエーション分析（データフレーム変換版）
+# メディエーション分析（エラー修正版）
 library(mediation)
 
 # tibbleをdata.frameに変換
-df_lasso_df <- as.data.frame(df_lasso)
+df_lasso <- as.data.frame(df_lasso)
+
+# デバッグ: 利用可能な変数を確認
+print("=== 利用可能な変数の確認 ===")
+print(paste("データフレームの列数:", ncol(df_lasso)))
+print("列名の最初の20個:")
+print(head(names(df_lasso), 20))
 
 # メディエーション分析用の候補変数
 mediator_candidates <- c(
@@ -507,24 +522,72 @@ mediator_candidates <- c(
 )
 
 # 介入変数と結果変数を定義
-treatment_var <- "treatment_binary"
+treatment_var <- "treatment_group"
 outcome_var <- "nt_ch_stunt"
+
+# selected_predictorsが存在するかチェック
+if (!exists("selected_predictors")) {
+  print("警告: selected_predictors が定義されていません")
+  print("LASSO分析から変数を選択する必要があります")
+  
+  # 代替案: データフレーム内の数値変数を自動選択
+  numeric_vars <- names(df_lasso)[sapply(df_lasso, is.numeric)]
+  # 基本的な共変量を手動選択（例）
+  selected_predictors <- intersect(numeric_vars, c(
+    "ch_age_mon", "mo_age", "mo_edu_years", "hh_size", 
+    "wealth_index", "urban", "region_code"
+  ))
+  print("代替として以下の変数を使用:")
+  print(selected_predictors)
+}
+
+# 存在する変数のみをフィルタリング
+existing_predictors <- intersect(selected_predictors, names(df_lasso))
+print(paste("選択された変数のうち存在するもの:", length(existing_predictors), "/", length(selected_predictors)))
 
 # 各メディエーターの分析
 mediation_results <- list()
 
 for (mediator in mediator_candidates) {
-  if (mediator %in% names(df_lasso_df)) {
-    
-    # 共変量（メディエーター以外の選択変数）
-    covariates_list <- setdiff(selected_predictors, mediator_candidates)
-    covariates_formula <- paste(covariates_list, collapse = " + ")
+  if (mediator %in% names(df_lasso)) {
     
     cat("=== メディエーター:", mediator, "の分析 ===\n")
     
+    # 共変量（メディエーター以外の選択変数）
+    covariates_list <- setdiff(existing_predictors, mediator_candidates)
+    
+    # 空の共変量リストをチェック
+    if (length(covariates_list) == 0) {
+      cat("共変量が見つかりません。", mediator, "をスキップします。\n\n")
+      next
+    }
+    
+    # 必要な変数がすべて存在するかチェック
+    required_vars <- c(mediator, treatment_var, outcome_var)
+    missing_required <- setdiff(required_vars, names(df_lasso))
+    
+    if (length(missing_required) > 0) {
+      cat("必要な変数が不足:", paste(missing_required, collapse = ", "), "\n")
+      cat(mediator, "をスキップします。\n\n")
+      next
+    }
+    
+    # 存在する共変量のみを使用
+    existing_covariates <- intersect(covariates_list, names(df_lasso))
+    
+    # 年変数の存在チェック
+    year_exists <- "year" %in% names(df_lasso)
+    
+    # 分析用変数リスト
+    analysis_vars <- c(mediator, treatment_var, outcome_var, existing_covariates)
+    if (year_exists) {
+      analysis_vars <- c(analysis_vars, "year")
+    }
+    
+    cat("使用する変数数:", length(analysis_vars), "\n")
+    
     # 欠損値を除外したサブセット作成
-    analysis_vars <- c(mediator, treatment_var, outcome_var, covariates_list, "year")
-    df_complete <- df_lasso_df[complete.cases(df_lasso_df[analysis_vars]), ]
+    df_complete <- df_lasso[complete.cases(df_lasso[analysis_vars]), ]
     
     # サンプルサイズチェック
     if (nrow(df_complete) < 100) {
@@ -532,8 +595,16 @@ for (mediator in mediator_candidates) {
       next
     }
     
+    cat("分析用サンプルサイズ:", nrow(df_complete), "観測値\n")
+    
+    # 共変量式の構築
+    covariates_formula <- paste(existing_covariates, collapse = " + ")
+    
     # (1) Mediatorモデル (M ~ X + covariates)
-    mediator_formula_text <- paste(mediator, "~", treatment_var, "+", covariates_formula, "+ as.factor(year)")
+    mediator_formula_text <- paste(mediator, "~", treatment_var, "+", covariates_formula)
+    if (year_exists) {
+      mediator_formula_text <- paste(mediator_formula_text, "+ as.factor(year)")
+    }
     mediator_formula <- as.formula(mediator_formula_text)
     
     model_M <- glm(mediator_formula, 
@@ -542,7 +613,10 @@ for (mediator in mediator_candidates) {
     
     # (2) Outcomeモデル (Y ~ X + M + covariates)
     outcome_formula_text <- paste(outcome_var, "~", treatment_var, "+", mediator, "+", 
-                                 covariates_formula, "+ as.factor(year)")
+                                 covariates_formula)
+    if (year_exists) {
+      outcome_formula_text <- paste(outcome_formula_text, "+ as.factor(year)")
+    }
     outcome_formula <- as.formula(outcome_formula_text)
     
     model_Y <- glm(outcome_formula,
@@ -567,11 +641,11 @@ for (mediator in mediator_candidates) {
         model_M, model_Y,
         treat = treatment_var, 
         mediator = mediator,
-        data = df_complete,  # 明示的にデータを指定
+        data = df_complete,
         control.value = 0,
         treat.value = 1,
-        boot = FALSE,        # まずはブートストラップなしで試行
-        sims = 1000         # quasi-Bayesian simulation
+        boot = FALSE,
+        sims = 1000
       )
       
       # 結果保存
@@ -600,48 +674,11 @@ for (mediator in mediator_candidates) {
   }
 }
 
-# 成功した場合、ブートストラップ版も試行
+# 結果サマリー
+cat("=== 分析結果サマリー ===\n")
+cat("成功したメディエーター数:", length(mediation_results), "\n")
 if (length(mediation_results) > 0) {
-  cat("=== ブートストラップ版の試行 ===\n")
-  
-  # 最初の成功したメディエーターでブートストラップを試行
-  first_mediator <- names(mediation_results)[1]
-  cat("ブートストラップ試行対象:", first_mediator, "\n")
-  
-  # 同じデータとモデルでブートストラップ版
-  tryCatch({
-    # 再度モデル構築（簡単のため）
-    analysis_vars <- c(first_mediator, treatment_var, outcome_var, 
-                      setdiff(selected_predictors, mediator_candidates), "year")
-    df_boot <- df_lasso_df[complete.cases(df_lasso_df[analysis_vars]), ]
-    
-    mediator_formula <- as.formula(paste(first_mediator, "~", treatment_var, "+", 
-                                        paste(setdiff(selected_predictors, mediator_candidates), collapse = " + "),
-                                        "+ as.factor(year)"))
-    outcome_formula <- as.formula(paste(outcome_var, "~", treatment_var, "+", first_mediator, "+",
-                                       paste(setdiff(selected_predictors, mediator_candidates), collapse = " + "),
-                                       "+ as.factor(year)"))
-    
-    model_M_boot <- glm(mediator_formula, data = df_boot, family = binomial)
-    model_Y_boot <- glm(outcome_formula, data = df_boot, family = binomial)
-    
-    med_boot <- mediate(
-      model_M_boot, model_Y_boot,
-      treat = treatment_var, 
-      mediator = first_mediator,
-      data = df_boot,
-      control.value = 0,
-      treat.value = 1,
-      boot = TRUE,
-      sims = 100  # 少数で試行
-    )
-    
-    cat("ブートストラップ成功!\n")
-    print(summary(med_boot))
-    
-  }, error = function(e) {
-    cat("ブートストラップでもエラー:", e$message, "\n")
-  })
+  cat("成功したメディエーター:", paste(names(mediation_results), collapse = ", "), "\n")
 }
 
     
