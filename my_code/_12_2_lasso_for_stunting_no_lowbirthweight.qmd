@@ -476,34 +476,6 @@ final_model_svy <- svyglm(
 )
 
 # **************************************************************************
-# 説明力を評価するためのGLM線形モデル(R2)
-# 従属変数名を確認（実際の変数名に置き換え）
-dependent_var <- "nt_ch_stunt"  
-
-# 従属変数名を確認して変換
-dependent_var <- "nt_ch_sev_stunt"  # 実際の従属変数名に置き換え
-df_lasso_temp <- df_lasso
-
-# 従属変数を数値に変換
-df_lasso_temp[[dependent_var]] <- as.numeric(df_lasso_temp[[dependent_var]])
-
-# サーベイデザインを再作成
-svy_design_fixed <- svydesign(
-  ids = ~v021, 
-  strata = ~v022, 
-  weights = ~sampling_weight_trimmed, 
-  data = df_lasso_temp, 
-  nest = TRUE
-)
-
-# R²計算を再実行
-total_var <- svyvar(as.formula(paste("~", dependent_var)), svy_design_fixed)
-resid_var <- summary(final_model_Linear)$dispersion
-survey_R2 <- 1 - resid_var / as.numeric(total_var)
-
-cat("Survey-weighted R²:", round(survey_R2, 4), "\n"))
-
-# **************************************************************************
 # 説明力を評価するためのnull_model
 null_model_svy <- svyglm(
   nt_ch_stunt ~ 1,
@@ -590,9 +562,13 @@ existing_predictors <- intersect(selected_predictors, names(df_lasso))
 print(paste("選択された変数のうち存在するもの:", length(existing_predictors), "/", length(selected_predictors)))
 
 # 各メディエーターの分析
-mediation_results <- list()
+# mediation_results <- list()
+# 事前にリストのサイズを確保
+n_iterations <- length(mediator_candidates)
+mediation_results <- vector("list", n_iterations)
 
-for (mediator in mediator_candidates) {
+for (i in seq_along(mediator_candidates)) {
+  mediator <- mediator_candidates[i]
   if (mediator %in% names(df_lasso)) {
     
     cat("=== メディエーター:", mediator, "の分析 ===\n")
@@ -693,20 +669,41 @@ for (mediator in mediator_candidates) {
       )
       
       # 結果保存
-      mediation_results[[mediator]] <- med_out
+      # mediation_results[[mediator]] <- med_out
+      mediation_results[[i]] <- data.frame(
+        mediator = mediator,
+        num_obs = nrow(df_complete),
+        num_vars = length(analysis_vars),
+        acme = med_out$d0,
+        acme_p = med_out$d0.p,
+        acme_ci1 = med_out$d0.ci[1],
+        acme_ci2 = med_out$d0.ci[2],
+        ade = med_out$z0,
+        ade_p = med_out$z0.p,
+        ade_ci1 = med_out$z0.ci[1],
+        ade_ci2 = med_out$z0.ci[2],
+        total_effect = med_out$tau.coef,
+        total_effect_p = med_out$tau.p,
+        total_effect_ci1 = med_out$tau.ci[1],
+        total_effect_ci2 = med_out$tau.ci[2],
+        prop_mediated = med_out$n0,
+        prop_mediated_p = med_out$n0.p,
+        prop_mediated_ci1 = med_out$n0.ci[1],
+        prop_mediated_ci2 = med_out$n0.ci[2]
+      )
       
-      # 結果表示
-      cat("ACME (間接効果):", round(med_out$d0, 4), 
-          "95% CI: [", round(med_out$d0.ci[1], 4), ", ", round(med_out$d0.ci[2], 4), "]",
-          " p =", round(med_out$d0.p, 4), "\n")
-      cat("ADE (直接効果):", round(med_out$z0, 4), 
-          "95% CI: [", round(med_out$z0.ci[1], 4), ", ", round(med_out$z0.ci[2], 4), "]",
-          " p =", round(med_out$z0.p, 4), "\n")
-      cat("Total Effect:", round(med_out$tau.coef, 4), 
-          "95% CI: [", round(med_out$tau.ci[1], 4), ", ", round(med_out$tau.ci[2], 4), "]",
-          " p =", round(med_out$tau.p, 4), "\n")
-      cat("Proportion Mediated:", round(med_out$n0, 4), 
-          " p =", round(med_out$n0.p, 4), "\n\n")
+      # # 結果表示
+      # cat("ACME (間接効果):", round(med_out$d0, 4), 
+      #     "95% CI: [", round(med_out$d0.ci[1], 4), ", ", round(med_out$d0.ci[2], 4), "]",
+      #     " p =", round(med_out$d0.p, 4), "\n")
+      # cat("ADE (直接効果):", round(med_out$z0, 4), 
+      #     "95% CI: [", round(med_out$z0.ci[1], 4), ", ", round(med_out$z0.ci[2], 4), "]",
+      #     " p =", round(med_out$z0.p, 4), "\n")
+      # cat("Total Effect:", round(med_out$tau.coef, 4), 
+      #     "95% CI: [", round(med_out$tau.ci[1], 4), ", ", round(med_out$tau.ci[2], 4), "]",
+      #     " p =", round(med_out$tau.p, 4), "\n")
+      # cat("Proportion Mediated:", round(med_out$n0, 4), 
+      #     " p =", round(med_out$n0.p, 4), "\n\n")
       
     }, error = function(e) {
       cat("エラーが発生しました:", mediator, "\n")
@@ -717,6 +714,9 @@ for (mediator in mediator_candidates) {
     cat("変数", mediator, "はデータに存在しません。スキップします。\n")
   }
 }
+
+# 最後に一度だけバインド
+df_mediator <- do.call(rbind, mediation_results)
 
 # 結果サマリー
 cat("=== 分析結果サマリー ===\n")
