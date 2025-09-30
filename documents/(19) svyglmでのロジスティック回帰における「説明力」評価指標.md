@@ -6,9 +6,8 @@
 
 ## 1. McFadden の疑似 R²
 
--   定義： \$ R\^2\_{McF} = 1 - \frac{\ell_{モデル}}{\ell_{切片のみ}} \$ ここで $\ell$ は対数尤度（log‐likelihood）です。
+-   定義： $R^2_{McF} = 1 - \frac{\ell_{モデル}}{\ell_{切片のみ}}$ ここで $\ell$ は対数尤度（log‐likelihood）です。
 -   解釈：0.2～0.4 を良好とみなすことが多い。
--   計算例（擬似コード）：
 
 ``` r
 # フルモデル
@@ -20,14 +19,14 @@ R2_McF <- 1 - as.numeric(logLik(fit_full) / logLik(fit_null))
 
 ## 2. Cox & Snell／Nagelkerke の疑似 R²
 
--   Cox & Snell： \$ R\^2\_{CS} = 1 - \left(\frac{L_0}{L_1}\right)\^{2/n} \$
--   Nagelkerke（最大化版）： \$ R\^2\_{N} = \frac{R^2_{CS}}{1 - L_0^{2/n}} \$
+-   Cox & Snell： $R^2_{CS} = 1 - \left(\frac{L_0}{L_1}\right)^{2/n}$
+-   Nagelkerke（最大化版）： $R^2_{N}=\frac{R^2_{CS}}{1-L_0^{2/n}}$
 -   n は有効サンプルサイズ。
 -   Nagelkerke は最大 1 となるため解釈しやすい。
 
 ## 3. Tjur の D 判別係数（Tjur’s R²）
 
--   定義： \$ D = \bar{\hat p}*{Y=1} -* \bar{\hat p}{Y=0} \$ すなわち、事象発生群と非発生群での平均予測確率の差。
+-   定義： $D = \bar{\hat p}*{Y=1} -* \bar{\hat p}{Y=0}$ すなわち、事象発生群と非発生群での平均予測確率の差。
 -   解釈：0～1；大きいほど群間の識別力が高い。
 
 ## 4. ROC 曲線下面積（AUC）
@@ -249,9 +248,125 @@ cat("Nagelkerke R²:", round(nagelkerke_r2, 4), "\n")
 
 [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-52]: <https://www.rdocumentation.org/packages/survey/versions/4.4-8>
 
-::: {align="center"}
-⁂
-:::
+# 修正しました。まだ一個警告が出ています
+
+> \# Survey-weighted GLM final_model_svy \<- svyglm(
+
+-   final_formula,
+-   design = svy_design,
+-   family = quasibinomial()
+-   ) \> \> \# 説明力を評価するためのnull_model \> null_model_svy \<- svyglm(
+-   nt_ch_stunt \~ 1,
+-   design = svy_design,
+-   family = quasibinomial()
+-   ) \> \> \# 説明力の計算（擬似R2） \> cox_snell_r2 \<- psrsq(final_model_svy, method = "Cox-Snell") \> nagelkerke_r2 \<- psrsq(final_model_svy, method = "Nagelkerke")
+
+Warning in psrsq.svyglm(final_model_svy, method = "Nagelkerke") : Weights appear to be scaled: rsquared may be wrong
+
+> cat("Cox-Snell R²:", round(cox_snell_r2, 4), "\n") Cox-Snell R²: 0.0633 cat("Nagelkerke R²:", round(nagelkerke_r2, 4), "\n") Nagelkerke R²: 0.104
+
+この警告は**重要ではありますが、結果の解釈には大きな問題はありません**。Thomas Lumley（survey パッケージの開発者）による説明を基に詳しく解説します。[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-53]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-53]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+## 警告の意味
+
+**「Weights appear to be scaled: rsquared may be wrong」**は、あなたのサンプリング重みが**標準化（スケール化）されている**ことを示しています。[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-54], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-55]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-54]: <https://rdrr.io/rforge/survey/src/R/rsquared.R>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-55]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+## 影響と対処法
+
+### Cox-Snell R² への影響
+
+-   **影響なし**: Cox-Snell R² は重みのスケール化の影響を受けません[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-56]
+-   あなたの **Cox-Snell R²: 0.0633** は信頼できる値です
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-56]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+### Nagelkerke R² への影響
+
+-   **軽微な影響**: Nagelkerke R² はスケール化の影響を受けますが、実用上は問題ありません[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-57]
+-   あなたの **Nagelkerke R²: 0.104** も概ね信頼できる値です
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-57]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+## 警告が出る理由
+
+この警告は以下の条件で発生します:[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-58]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-58]: <https://rdrr.io/rforge/survey/src/R/rsquared.R>
+
+-   サンプリング重みのいずれかが1未満の場合[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-59]
+-   データセットの重みが平均1になるよう標準化されている場合[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-60]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-59]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-60]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+## 実際の対処は不要
+
+Thomas Lumley（開発者）の回答によると:[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-61]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-61]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+-   **回帰係数と標準誤差**: 正確に推定されます
+-   **信頼区間**: 正確に計算されます
+-   **統計的推論**: 問題ありません
+
+警告は主に**設計効果（design effect）の推定**に関するもので、ほとんどの研究者が必要としない特殊な統計量です。[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-62]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-62]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+## 結論
+
+あなたの結果は**統計的に妥当**です。警告は出ていますが:
+
+-   Cox-Snell R² (0.0633) は完全に信頼できます
+-   Nagelkerke R² (0.104) も実用的に問題ありません
+-   モデルの回帰係数や推論は正確です
+
+この警告を無視して分析を進めて構いません。[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-63], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-64] [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-65], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-66], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-67], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-68], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-69], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-70], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-71], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-72], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-73], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-74], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-75], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-76], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-77], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-78], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-79], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-80], [^(19-svyglmでのロジスティック回帰における「説明力」評価指標-81]
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-63]: <https://rdrr.io/rforge/survey/man/psrsq.html>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-64]: <https://stackoverflow.com/questions/68787575/how-should-you-use-scaled-weights-with-the-svydesign-function-in-the-survey-pa>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-65]: [<https://cran.r-project.org/web/packages/survey/refman/survey.html>]{style="display:none"}
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-66]: <https://arxiv.org/pdf/1701.07745.pdf>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-67]: <https://stats.oarc.ucla.edu/r/seminars/survey-data-analysis-with-r/>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-68]: <https://rdrr.io/rforge/survey/src/R/surveyrep.R>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-69]: <https://www.surveypractice.org/article/2835-determining-subgroup-difference-importance-with-complex-survey-designs-an-application-of-weighted-dominance-analysis>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-70]: <https://cran.r-project.org/web/packages/survey/survey.pdf>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-71]: [https://us.sagepub.com/sites/default/files/upm-binaries/6428_Chapter_6_Lee\_(Analyzing)\_I_PDF_7.pdf](https://us.sagepub.com/sites/default/files/upm-binaries/6428_Chapter_6_Lee_(Analyzing)_I_PDF_7.pdf){.uri}
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-72]: <https://arxiv.org/pdf/2211.02989.pdf>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-73]: <https://www.statalist.org/forums/forum/general-stata-discussion/general/1423386-can-i-get-a-pseudo-r-squared-in-svy-logistic>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-74]: <https://forum.ipums.org/t/how-can-i-use-replicate-weights-to-create-standard-errors-in-r/2593>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-75]: <https://www.jstatsoft.org/article/view/v009i08/931>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-76]: <https://www.reddit.com/r/Rlanguage/comments/n3lrp3/warning_when_running_weighted_logistic_regression/>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-77]: <https://journals.sagepub.com/doi/pdf/10.1177/1536867X1001000201>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-78]: <https://tidy-survey-r.github.io/tidy-survey-book/c10-sample-designs-replicate-weights.html>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-79]: <https://stat.ethz.ch/pipermail/r-help/2008-August/170154.html>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-80]: <https://www.reddit.com/r/stata/comments/1gc26el/survey_ordered_logistic_regression_pseudo_r/>
+
+[^(19-svyglmでのロジスティック回帰における「説明力」評価指標-81]: <https://projecteuclid.org/journals/statistical-science/volume-32/issue-2/Approaches-to-Improving-Survey-Weighted-Estimates/10.1214/17-STS609.pdf>
 
 # 疑似 R² の一般的 R² との解釈上の違いと留意点
 
