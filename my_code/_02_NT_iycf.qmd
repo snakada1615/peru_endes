@@ -232,6 +232,8 @@ go_analysis <- function(my_year){
   # 19. 年をデータフレームに追加
   KRiycf <- KRiycf %>%
     mutate(year = my_year)
+  IRdata <- IRdata %>%
+    mutate(year = my_year)
   print("add year variable")
   
   # 20. 出力用の変数を指定
@@ -241,10 +243,17 @@ go_analysis <- function(my_year){
     append(c("year", "caseid", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
              "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
   
-  print(vars_to_keep)
-  # 順序を保って選択
+  # print(vars_to_keep)
   
+  vars_to_keep_IR<- IRdata %>%
+    dplyr::select(starts_with("nt")) %>%
+    names() %>%
+    append(c("year", "caseid")) # add the variables we need to keep
+  print(vars_to_keep_IR)
+
+  # 順序を保って選択
   KRiycf <- KRiycf[, vars_to_keep]
+  IRdata <- IRdata[, vars_to_keep_IR]
   
   # 21. KRiycfをoutput folderにdta形式で保存
   print("save KRiycf into output folder")

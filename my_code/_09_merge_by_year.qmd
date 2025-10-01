@@ -55,7 +55,7 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
 
 # ファイル名の設定
-files <- c("BRdata-rh","IRdata-rh","IRdata-rc","KRvac","KRdata",
+files <- c("BRdata-rh","IRdata-rh","IRdata-rc","IRdata-nt","KRvac","KRdata",
            "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool", "PRdata")
 
 # RDSファイルを読み込む関数
@@ -70,7 +70,7 @@ open_processed_file <- function(year, filename, select_col = NULL) {
       df <- readRDS(file_path) %>%
         rename_with(~ tolower(.x))
     if (!is.null(select_col)) {
-      df <- df %>% select(all_of(select_col))
+      df <- df %>% dplyr::select(all_of(select_col))
     }
     print("重複チェック")
     if (duplicate_check(df, c("caseid"), filename) == 0) {
@@ -118,9 +118,10 @@ goAnalysis <- function(year){
   }
   
   data_merged <- data_all[["BRdata-rh"]]
+  
   print("Merging with IRdata-rh")
   data_all[["IRdata-rh"]] <- data_all[["IRdata-rh"]] %>% 
-    select(-c(age, wt))
+    dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
     data_all[["IRdata-rh"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
@@ -134,6 +135,13 @@ goAnalysis <- function(year){
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
+  print("Merging with IRdata-nt")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["IRdata-nt"]], by = c("caseid", "year"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
   print("Merging with KRvac")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRvac"]], by = c("caseid" = "caseid", "age", "wt", "year"))
@@ -143,7 +151,7 @@ goAnalysis <- function(year){
   
   print("Merging with KRdata")
   data_all[["KRdata"]] <- data_all[["KRdata"]] %>% 
-    select(-c(age, wt))
+    dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRdata"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
@@ -152,7 +160,7 @@ goAnalysis <- function(year){
   
   print("Merging with KRiycf-nt")
   data_all[["KRiycf-nt"]] <- data_all[["KRiycf-nt"]] %>% 
-    select(-c("b4", "v005", "v022", "v025", "v106", "v190", "age"))
+    dplyr::select(-c("b4", "v005", "v022", "v025", "v106", "v190", "age"))
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRiycf-nt"]], by = c("caseid","year"))
   if (nrow(data_merged) == 0) {
@@ -168,7 +176,7 @@ goAnalysis <- function(year){
   
   print("Merging with KRstool")
   data_all[["KRstool"]] <- data_all[["KRstool"]] %>% 
-    select(-c(age, wt))
+    dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRstool"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {
@@ -177,7 +185,7 @@ goAnalysis <- function(year){
   
   print("Merging with WASHdata-ws")
   data_all[["WASHdata-ws"]] <- data_all[["WASHdata-ws"]] %>% 
-    select(-c(v005, v022, v001, v002))
+    dplyr::select(-c(v005, v022, v001, v002))
   data_merged <- left_join_safe(data_merged, 
     data_all[["WASHdata-ws"]], by = c("caseid", "year"))
   if (nrow(data_merged) == 0) {

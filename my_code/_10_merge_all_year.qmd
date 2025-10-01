@@ -98,7 +98,7 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 
 # 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  select(-c(v026, v024, v005, v021, v022, v025, v001, v002, v003))
+  dplyr::select(-c(v026, v024, v005, v021, v022, v025, v001, v002, v003))
 
 # 共通キーでマージ
 all_data_merged <- all_data_merged %>%
