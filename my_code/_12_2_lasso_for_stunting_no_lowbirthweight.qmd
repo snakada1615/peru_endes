@@ -400,6 +400,7 @@ df_stability %>%
 ```
 
 # 5. GLMによる検証
+
 ```{r}
 library(survey)
 
@@ -415,11 +416,10 @@ year_totals <- df_lasso %>%
   summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
 
 # Survey designオブジェクトの作成前に変数を変換
-# Survey designオブジェクトの作成前に変数を変換
 df_lasso <- df_lasso %>%
   mutate(
     v021 = as.numeric(v021),                        # Primary Sampling Unit
-    v022 = as.character(haven::as_factor(v022))     #haven_labelledをfactorに変換してからcharacter
+    v022 = as.character(haven::as_factor(v022))    #haven_labelledをfactorに変換してからcharacter
   )
 
 # 正規化済みサンプリングウェイトの作成
@@ -466,7 +466,7 @@ if (debug_mode) {
   cat("最終モデルの式:\n")
   print(final_formula)
 }
-# ********** デバッグ用 **********
+# ********** デバッグ用 終**********
 
 # Survey-weighted GLM
 final_model_svy <- svyglm(
@@ -657,21 +657,22 @@ for (i in seq_along(mediator_candidates)) {
     
     # (3) メディエーション分析
     tryCatch({
-      med_out <- mediate(
-        model_M, model_Y,
-        treat = treatment_var, 
-        mediator = mediator,
-        data = df_complete,
-        control.value = 0,
-        treat.value = 1,
-        boot = FALSE,
-        sims = 1000
+      med_out <- mediation::mediate(
+        model_M, 　　　　　　　 # メディエーターモデル
+        model_Y,　　　　　　　　# アウトカムモデル
+        treat = treatment_var,  # 処置変数名（文字列）
+        mediator = mediator,　　# メディエーター変数名（文字列）
+        control.value = 0,　　　# シミュレーション回数
+        treat.value = 1,        # 処置値
+        boot = FALSE,　　　 　　# ブートストラップの使用
+        sims = 1000.            # シミュレーション回数
       )
       
       # 結果保存
       # mediation_results[[mediator]] <- med_out
       mediation_results[[i]] <- data.frame(
         mediator = mediator,
+        label = attr(df_lasso[[mediator]], "label"),
         num_obs = nrow(df_complete),
         num_vars = length(analysis_vars),
         acme = med_out$d0,
