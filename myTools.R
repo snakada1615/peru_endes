@@ -1019,7 +1019,11 @@ save_series_rds <- function(data, root, base, remark=""){
   }
   
   # 最終的なファイル名を作成
-  fname <- sprintf("%s%02d%s.rds", base, next_num, remark)
-  saveRDS(obj, fname)  
+  fname <- file.path(
+    root,
+    sprintf("%s%02d_%s.rds", base, next_num, remark)
+    )
+  saveRDS(data, fname)  
 }
 
+# --- 関数定義ここまで ---

@@ -34,6 +34,7 @@ library(naniar)     # to use replace_with_na function
 library(here)       # to get R project path
 library(fs)         # for file path manipulation
 library(openxlsx) 　# for exporting to excel
+library(purrr)      # for functional programming, e.g., map
 
 
 # 各種の関数セット読み込み
@@ -58,7 +59,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```
 
-## 2. フォルダ設定
+## 2. データ処理
 
 ```{r}
 # 解析を実行する関数(各年ごとに実施)
@@ -77,10 +78,9 @@ go_analysis <- function(my_year){
   # 7. 必要なデータセットの抽出
   print("必要なデータセットを抽出します")
   
+  keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002", "V000", "V003", 
+                    "V013", "V022", "V025", "V026", "V024", "V106", "V190")
   keep_REC21 <- c("B3", "B4", "B5", "B9", "CASEID", "BIDX")
-  keep_rec0111 <- c("V005", "V008", "CASEID", "V001", "V002", "V000", "v003", 
-                    "v013", "v022", "v025", "v026", "v024", "v106", "v190")
-  keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
   keep_REC41 <- c("M4", "MIDX", "M34", "M38", "M39", "M55A", "M55B", "M55C", "M55D", 
                   "M55E", "M55F", "M55G", "M55H", "M55I", "M55J", "M55K", 
                   "M55L", "M55M", "M55N", "M55X", "M55Z", "CASEID", "MIDX")
@@ -90,17 +90,35 @@ go_analysis <- function(my_year){
                   "V414M", "V414N", "V414O", "V414P", "V414Q", "V414R", "V414S", 
                   "V414T", "V414U", "V412", "V412A", "V412B", "V413", "V413A",
                   "V413A", "V413B", "V413C", "V413D", "CASEID")
+  keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
   
-  df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
-    add_missing_columns(keep_REC21) %>% select(all_of(keep_REC21))
+  # addition for womens health status (IRdata)
+  keep_rec0111_women <-c("V005", "V008", "V042")
+  keep_RE223132_women <- c("CASEID","V208","V213")
+  keep_REC21_women <- c("B3", "B9")
+  keep_REC41_women <- c("M45", "M46", "M60")
+  keep_REC42_women <- c("V438", "V445", "V455","V457")
+  keep_IRdata <- c(keep_REC21_women, keep_REC41_women,keep_REC42_women,  
+                   keep_rec0111_women, keep_RE223132_women)
+  
+  keep_rec0111 <- unique(c(keep_rec0111, keep_rec0111_women))
+  keep_RE223132 <- keep_RE223132_women  
+  keep_REC21 <- unique(c(keep_REC21, keep_REC21_women))
+  keep_REC41 <- unique(c(keep_REC41, keep_REC41_women))
+  keep_REC42 <- unique(c(keep_REC42, keep_REC42_women))
+  
   df_rec0111 <- open_endes_file(my_year, "REC0111.SAV") %>%
-    add_missing_columns(keep_rec0111) %>% select(all_of(keep_rec0111))
-  df_REC43 <- open_endes_file(my_year, "REC43.SAV") %>%
-    add_missing_columns(keep_REC43) %>% select(all_of(keep_REC43))
+    add_missing_columns(keep_rec0111) %>% dplyr::select(all_of(keep_rec0111))
+  df_RE223132 <- open_endes_file(my_year, "RE223132.SAV") %>%
+    add_missing_columns(keep_RE223132) %>% dplyr::select(all_of(keep_RE223132))
+  df_REC21 <- open_endes_file(my_year, "REC21.sav") %>%
+    add_missing_columns(keep_REC21) %>% dplyr::select(all_of(keep_REC21))
   df_REC41 <- open_endes_file(my_year, "REC41.SAV") %>%
-    add_missing_columns(keep_REC41) %>% select(all_of(keep_REC41))
+    add_missing_columns(keep_REC41) %>% dplyr::select(all_of(keep_REC41))
   df_REC42 <- open_endes_file(my_year, "REC42.SAV") %>%
-    add_missing_columns(keep_REC42) %>% select(all_of(keep_REC42))
+    add_missing_columns(keep_REC42) %>% dplyr::select(all_of(keep_REC42))
+  df_REC43 <- open_endes_file(my_year, "REC43.SAV") %>%
+    add_missing_columns(keep_REC43) %>% dplyr::select(all_of(keep_REC43))
   
   # 8. レコードの重複チェック(結合のため)
   print("レコードの重複チェックを行います")
@@ -122,12 +140,15 @@ go_analysis <- function(my_year){
   
   duplicate_check(df_REC21, c("CASEID", "BIDX"), "REC21.sav")
   duplicate_check(df_rec0111, c("CASEID"), "REC0111.SAV")
+  duplicate_check(df_RE223132, c("CASEID"), "RE223132.SAV")
   duplicate_check(df_REC43, c("CASEID", "HIDX"), "REC43.SAV")
   duplicate_check(df_REC41, c("CASEID", "MIDX"), "REC41.SAV")
   duplicate_check(df_REC42, c("CASEID"), "REC42.SAV")
   
-  # 9. データセットの結合
+  # 9. データセットの結合(一番若い児童に限定)
   print("データセットを結合します")
+
+  # 児童の健康関連指標
   KRdata <- df_REC21 %>% group_by(CASEID) %>% 
     filter(BIDX == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
     inner_join_safe(df_rec0111, by = "CASEID") %>%
@@ -136,20 +157,38 @@ go_analysis <- function(my_year){
     inner_join_safe(df_REC42, by = "CASEID") %>%
     mutate(midx= BIDX)
   
+  # 女性の健康状態関連指標
+  IRdata <- df_REC21 %>% group_by(CASEID) %>% 
+    filter(BIDX == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
+    inner_join_safe(df_rec0111, by = "CASEID") %>%
+    inner_join_safe(df_RE223132, by = "CASEID") %>%
+    inner_join_safe(df_REC43, by = c("CASEID", "BIDX" = "HIDX")) %>%
+    inner_join_safe(df_REC41, by = c("CASEID", "BIDX" = "MIDX")) %>%
+    inner_join_safe(df_REC42, by = "CASEID") %>%
+    mutate(midx= BIDX) %>%
+    dplyr::select(keep_IRdata)
   
   # 10. 列名の変更(大文字→小文字)
   KRdata <- KRdata %>%
     rename_with(tolower)
+  IRdata <- IRdata %>%
+    rename_with(tolower)
   
   # 11. 再度重複チェック
   duplicate_check(KRdata, c("caseid"), "KRdata")
+  duplicate_check(IRdata, c("caseid"), "IRdata")
   
   print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(KRdata)))
-  
+  print(paste("KRdataレコード数:", nrow(KRdata)))
+  print(paste("IRdataレコード数:", nrow(IRdata)))
   
   # 12. Calculate age of child. use v008 - b3
   KRdata <- KRdata %>%
+    mutate(
+      age = v008 - b3,
+      wt = v005 / 1000000
+    )
+  IRdata <- IRdata %>%
     mutate(
       age = v008 - b3,
       wt = v005 / 1000000
@@ -160,8 +199,11 @@ go_analysis <- function(my_year){
   #create subset of KRfile to select for children for IYCF indicators
   KRdata <- KRdata %>%
     filter(age < 24 & b9==0)
+  IRdata <- IRdata %>%
+    filter(age < 24 & b9==0)
   print("月齢24ヶ月未満の子供に制限しました")
-  print(paste("レコード数:", nrow(KRdata)))
+  print(paste("KRdataレコード数:", nrow(KRdata)))
+  print(paste("IRdataレコード数:", nrow(IRdata)))  
   
   chap <- "Chap11_NT"
   
@@ -169,26 +211,32 @@ go_analysis <- function(my_year){
   source(here(paste0(chap,"/NT_CH_MICRO.R")), local = environment())
   # Purpose: 	Code micronutrient indicators
   
+  
   # 15. 各種の指標計算(NT_BF_INIT)
   source(here(paste0(chap,"/NT_BF_INIT.R")), local = environment())
   # Purpose:   Code initial breastfeeding indicators
   
-  
-  # 16.オリジナルのコードに合わせるためデータファイルの名称変更
+  # 16. 各種の指標計算(NT_WM_NT)
+  source(here(paste0(chap,"/NT_WM_NUT.R")), local = environment())
+  # Purpose: 	Code women's anthropometric indicators
+
+    
+  # 17.オリジナルのコードに合わせるためデータファイルの名称変更
   KRiycf <- KRdata  # IYCF indicators are calculated on KRdata
   
-  # 17. 各種の指標計算(NT_IYCF)
+  # 18. 各種の指標計算(NT_IYCF)
   source(here(paste0(chap,"/NT_IYCF.R")), local = environment())
   # Purpose: 			Code to compute infant and child feeding indicators
-  
-  # 18. 年をデータフレームに追加
+
+    
+  # 19. 年をデータフレームに追加
   KRiycf <- KRiycf %>%
     mutate(year = my_year)
   print("add year variable")
   
-  # 19. 出力用の変数を指定
+  # 20. 出力用の変数を指定
   vars_to_keep <- KRiycf %>%
-    select(starts_with("nt")) %>%
+    dplyr::select(starts_with("nt")) %>%
     names() %>%
     append(c("year", "caseid", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
              "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
@@ -198,11 +246,14 @@ go_analysis <- function(my_year){
   
   KRiycf <- KRiycf[, vars_to_keep]
   
-  # 20. KRiycfをoutput folderにdta形式で保存
+  # 21. KRiycfをoutput folderにdta形式で保存
   print("save KRiycf into output folder")
   saveRDS(KRiycf, paste0(output_dir, "/KRiycf-nt.rds"))
   print("complete KRiycf into output folder")
   
+  print("save IRdata into output folder")
+  saveRDS(IRdata, paste0(output_dir, "/IRdata-nt.rds"))
+  print("complete IRdata into output folder")
 } 
 
 ```

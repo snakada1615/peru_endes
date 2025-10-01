@@ -289,7 +289,7 @@ if(length(selected_vars) > 0) {
     as_tibble(rownames = "labels") %>%
     filter(labels %in% selected_vars) %>%
     left_join(var_labels, by = join_by("labels" == "varname"))
-  saveRDS(coef_importance, file.path(save_path, "lasso_selected_vars_importance.rds"))
+  save_series_rds(coef_importance, save_path, "lasso_selected_vars", "importance")
 
   # 列幅を指定して結果出力
   coef_importance %>%

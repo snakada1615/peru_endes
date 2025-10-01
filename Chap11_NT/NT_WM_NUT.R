@@ -36,8 +36,8 @@
 # 
 # ----------------------------------------------------------------------------*/
 
-IRdata <- IRdata %>%
-  mutate(wt = v005/1000000)
+# IRdata <- IRdata %>%
+#   mutate(wt = v005/1000000)
 # 
 # *** Anemia indicators ***
 # 
@@ -79,20 +79,20 @@ IRdata <- IRdata %>%
 
 # *** Anthropometry indicators ***
 
-# * age of most recent child
-# age of child. If b19_01 is not available in the data use v008 - b3_01
-if ("TRUE" %in% (!("b19_01" %in% names(IRdata))))
-  IRdata [[paste("b19_01")]] <- NA
-if ("TRUE" %in% all(is.na(IRdata $b19_01)))
-{ b19_included <- 0} else { b19_included <- 1}
-
-if (b19_included==1) {
-  IRdata <- IRdata %>%
-    mutate(age = b19_01)
-} else {
-  IRdata <- IRdata %>%
-    mutate(age = v008 - b3_01)
-}
+# # * age of most recent child
+# # age of child. If b19_01 is not available in the data use v008 - b3_01
+# if ("TRUE" %in% (!("b19_01" %in% names(IRdata))))
+#   IRdata [[paste("b19_01")]] <- NA
+# if ("TRUE" %in% all(is.na(IRdata $b19_01)))
+# { b19_included <- 0} else { b19_included <- 1}
+# 
+# if (b19_included==1) {
+#   IRdata <- IRdata %>%
+#     mutate(age = b19_01)
+# } else {
+#   IRdata <- IRdata %>%
+#     mutate(age = v008 - b3_01)
+# }
 
 # //Height less than 145cm
 IRdata <- IRdata %>%
@@ -103,10 +103,10 @@ IRdata <- IRdata %>%
   set_value_labels(nt_wm_ht = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(nt_wm_ht = "Height under 145cm - women")
 
-# //Mean BMI
-IRdata <- IRdata %>%
-  mutate(bmi = case_when(v445>=1200 & v445<=6000 & v213==0 & (v208==0 | age>=2) ~ v445/100)) 
-IRdata$nt_wm_bmi_mean <- matrixStats::weightedMean(IRdata$bmi, IRdata$wt, idxs = NULL, na.rm = TRUE) 
+# # //Mean BMI
+# IRdata <- IRdata %>%
+#   mutate(bmi = case_when(v445>=1200 & v445<=6000 & v213==0 & (v208==0 | age>=2) ~ v445/100)) 
+# IRdata$nt_wm_bmi_mean <- matrixStats::weightedMean(IRdata$bmi, IRdata$wt, idxs = NULL, na.rm = TRUE) 
  
 
 # //Normal weight
@@ -191,11 +191,11 @@ IRdata <- IRdata %>%
   mutate(nt_wm_micro_iron =
            case_when(
              v208==0 ~ 99,
-             m45_1==0   ~ 0, 
-             m46_1<60  ~ 1, 
-             m46_1>=60 & m46_1<90 ~ 2,
-             m46_1>=90 & m46_1<=300 ~ 3,
-             m46_1>=998 | m45_1>=8 ~ 4)) %>%
+             m45==0   ~ 0, 
+             m46<60  ~ 1, 
+             m46>=60 & m46<90 ~ 2,
+             m46>=90 & m46<=300 ~ 3,
+             m46>=998 | m45>=8 ~ 4)) %>%
   replace_with_na(replace = list(nt_wm_micro_iron = c(99))) %>%
   set_value_labels(nt_wm_micro_iron = c("None"=0, "<60"=1, "60-89"=2, "90+"=3, "Don't know/missing"=4)) %>%
   set_variable_labels(nt_wm_micro_iron = "Number of days women took iron supplements during last pregnancy")
@@ -205,19 +205,19 @@ IRdata <- IRdata %>%
   mutate(nt_wm_micro_dwm =
            case_when(
              v208==0 ~ 99,
-             m60_1!=1   ~ 0, 
-             m60_1==1  ~ 1)) %>%
+             m60!=1   ~ 0, 
+             m60==1  ~ 1)) %>%
   replace_with_na(replace = list(nt_wm_micro_dwm = c(99))) %>%
   set_value_labels(nt_wm_micro_dwm = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(nt_wm_micro_dwm = "Women who took deworming medication during last pregnancy")
 
-# //Woman living in household with iodized salt 
-IRdata <- IRdata %>%
-  mutate(nt_wm_micro_iod =
-           case_when(
-             v208==0 | hv234a>1  ~ 99,
-             hv234a==0   ~ 0, 
-             hv234a==1  ~ 1)) %>%
-  replace_with_na(replace = list(nt_wm_micro_iod = c(99))) %>%
-  set_value_labels(nt_wm_micro_iod = c("Yes" = 1, "No"=0  )) %>%
-  set_variable_labels(nt_wm_micro_iod = "Women living in hh with iodized salt")
+# # //Woman living in household with iodized salt 
+# IRdata <- IRdata %>%
+#   mutate(nt_wm_micro_iod =
+#            case_when(
+#              v208==0 | hv234a>1  ~ 99,
+#              hv234a==0   ~ 0, 
+#              hv234a==1  ~ 1)) %>%
+#   replace_with_na(replace = list(nt_wm_micro_iod = c(99))) %>%
+#   set_value_labels(nt_wm_micro_iod = c("Yes" = 1, "No"=0  )) %>%
+#   set_variable_labels(nt_wm_micro_iod = "Women living in hh with iodized salt")
