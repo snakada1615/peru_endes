@@ -734,38 +734,42 @@ if (length(mediation_results) > 0) {
 ```{r}
 # 結果をまとめて表示
 summary_results <- df_mediator %>%
-  select(mediator, label, acme, acme_p, )
-summary_results <- data.frame(
-  mediator = c("rc_litr", "nt_fed_milk", "rh_anc_4mo", "nt_bf_start_1day", "nt_frtveg"),
-  japanese_name = c("母親識字率", "ミルク摂食", "産前ケア", "早期授乳開始", "果物野菜摂取"),
-  acme = c(0.0074, 0.0000, 0.0004, 0.0008, 0.0001),
-  acme_p = c(0.000, 0.966, 0.030, 0.004, 0.634),
-  prop_mediated = c(0.0649, -0.0001, 0.0036, 0.0066, 0.0008),
-  significance = c("***", "n.s.", "*", "**", "n.s."),
-  interpretation = c(
-    "最重要：教育アクセス悪化",
-    "媒介効果なし",
-    "軽微：保健サービス減少", 
-    "中程度：母子ケア実践阻害",
-    "媒介効果なし"
+  dplyr::select(mediator, 
+         label, 
+         acme, 
+         acme_p, 
+         prop_mediated, 
+         prop_mediated_p
+         ) %>%
+  mutate(
+    acme_with_stars = paste0(
+      formatC(acme, format = "f", digits = 4),
+      case_when(
+        acme_p < 0.001 ~ "***",
+        acme_p < 0.01 ~ "**",
+        acme_p < 0.05 ~ "*",
+        TRUE ~ ""
+      )
+    ),
+    prop_mediated_with_stars = paste0(
+      formatC(prop_mediated, format = "f", digits = 4),
+      case_when(
+        prop_mediated_p < 0.001 ~ "***",
+        prop_mediated_p < 0.01 ~ "**",
+        prop_mediated_p < 0.05 ~ "*",
+        TRUE ~ ""
+      )
+    )
   )
-)
+
 
 # print(summary_results)
 summary_results %>%
+  dplyr::select(mediator, label, acme_with_stars, prop_mediated_with_stars) %>%
   gt() %>%
-  cols_width(
-    1 ~ pct(15),
-    2 ~ pct(25),
-    3 ~ pct(15),
-    4 ~ pct(10),
-    5 ~ pct(15),
-    6 ~ pct(10),
-    7 ~ pct(10)
-  ) %>%
-  fmt_number(
-    columns = c("acme", "prop_mediated"),
-    decimals = 4  # 小数点以下4桁
+  cols_label(
+    acme_with_stars = "ACME",
+    prop_mediated_with_stars = "Prop Mediated"
   ) %>%
   tab_header(
     title = "メディエーション分析結果のまとめ",
