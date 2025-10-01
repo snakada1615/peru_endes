@@ -994,3 +994,32 @@ is_dummy_var <- function(x) {
   all(unique_vals %in% c(0, 1))
 }
 # --- 関数定義ここまで ---
+# ******************************************************************************
+#' @title save_series_rds
+#' @description 指定したルートディレクトリとベース名に基づき、
+#' 連番付きのRDSファイルを保存する関数
+#' @param data 保存するオブジェクト
+#' @param root 文字列。保存先のルートディレクトリ。
+#' @param base 文字列。ファイル名のベース部分。
+#' @param remark 文字列。ファイル名の末尾に付加する文字列。
+#' @return なし。RDSファイルを保存します。
+# ******************************************************************************
+save_series_rds <- function(data, root, base, remark=""){
+  next_num <- 1
+  
+  repeat {
+    # ワイルドカードパターンでマッチするファイルを探す
+    pattern <- file.path(root, sprintf("%s%d*.rds", base, next_num))
+    matching_files <- Sys.glob(pattern)
+    
+    # マッチするファイルが無ければ終了
+    if (length(matching_files) == 0) break
+    
+    next_num <- next_num + 1
+  }
+  
+  # 最終的なファイル名を作成
+  fname <- sprintf("%s%02d%s.rds", base, next_num, remark)
+  saveRDS(obj, fname)  
+}
+
