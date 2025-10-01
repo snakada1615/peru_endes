@@ -733,6 +733,8 @@ if (length(mediation_results) > 0) {
 
 ```{r}
 # 結果をまとめて表示
+summary_results <- df_mediator %>%
+  select(mediator, label, acme, acme_p, )
 summary_results <- data.frame(
   mediator = c("rc_litr", "nt_fed_milk", "rh_anc_4mo", "nt_bf_start_1day", "nt_frtveg"),
   japanese_name = c("母親識字率", "ミルク摂食", "産前ケア", "早期授乳開始", "果物野菜摂取"),
