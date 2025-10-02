@@ -63,7 +63,10 @@ df_org <- df_org %>%
       TRUE ~ 0                        # コントロール
     ),
     treatment_group = as.factor(treatment_group)
-  )
+  ) %>%
+  # CRECER2011以後の対象地域を除外)
+  filter(!state %in% c("ancash", "arequipa", "callao", "cusco", "ica", "junín"))  
+
 # 変数ラベル取得
 var_labels <- df_org %>% get_label %>% as_tibble() %>% rename(labels = value)
 var_labels$varname <- names(df_org)
@@ -282,9 +285,10 @@ if(length(selected_vars) > 0) {
   psm_data <- cbind(
     treatment_group = df_pre$treatment_group,
     psm_covariates,
-    df_pre[, intersect(grouping_cols, names(df_pre))]
+    df_pre[, intersect(grouping_cols, names(df_pre))],
+    nt_ch_stunt = df_pre$nt_ch_stunt  # 介入効果分析用アウトカム変数(didで利用する)
   )
-  
+
   # 多項ロジスティック回帰で傾向スコア推定
   psm_formula <- as.formula(paste("treatment_group ~", paste(selected_vars_final, collapse = " + ")))
   
