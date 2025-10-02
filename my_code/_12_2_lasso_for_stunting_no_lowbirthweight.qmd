@@ -90,7 +90,7 @@ drop_cols_init <- c(
 "v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
 "v467b","v467c","v467d","v467f",
 "wt","state","age","treated_status","treatment_start","year_treated",
-"ch_report_bw","ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
+"ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
 "rh_anc_bldpres","rh_anc_median","rh_anc_bldsamp","rh_anc_median","rh_anc_numvs","rh_anc_numvsrh_anc_moprg","rh_anc_prgcomp","rh_anc_pv","rh_anc_toxinj","rh_anc_urine"
 )
 
@@ -309,7 +309,7 @@ if(length(selected_vars) > 0) {
 
 ```
 
-## 4. 変数を上位20個に絞り込んだ上で、時間不変性を確認
+## 4. 変数の時間不変性を確認（LASSO結果＋安定性）
 
 ```{r}
 # 1. LASSO結果から上位20変数を抽出（年ダミー除外）
@@ -399,7 +399,7 @@ df_stability %>%
 
 ```
 
-# 5. GLMによる検証
+# 5. GLMによる検証(LASSO/年次安定性の結果から上位20変数に絞る)
 
 ```{r}
 library(survey)
