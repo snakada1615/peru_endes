@@ -89,7 +89,11 @@ drop_cols_init <- c(
 "m3n","m42c","m42d","m42e","m43","m45","m60","m61","v001","v002","v003","v005",
 "v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
 "v467b","v467c","v467d","v467f",
-"wt","state","age","treated_status","treatment_start","year_treated",
+"wt","state","age","treated_status","treatment_start","year_treated"
+)
+
+# 除外変数定義(PSMの結果を踏まえながら調整)
+drop_cols_add <- c(
 "ch_report_bw","ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
 "rh_anc_bldpres","rh_anc_median","rh_anc_bldsamp","rh_anc_median","rh_anc_numvs","rh_anc_numvsrh_anc_moprg","rh_anc_prgcomp","rh_anc_pv","rh_anc_toxinj","rh_anc_urine"
 )
@@ -97,80 +101,76 @@ drop_cols_init <- c(
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
 y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
 y_var <- "nt_ch_stunt"
-y_var_drop <- setdiff(y_var_all, y_var)
 
-# 除外変数定義(最終値)
-drop_cols <- c(drop_cols_init, y_var_all)
 
 # ID・管理用変数
 grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated",
                    "wt", "treatment_group", y_var)
 
-# 1. LASSO用のデータセット定義
-df_lasso <- df_org
-
-cat("介入前データの群別サンプル数:\n")
-print(table(df_lasso$treatment_group))
-
-# 4. NAの多い列を除去（10%以上NA）
-initial_cols <- ncol(df_lasso)
-keep_cols <- names(df_lasso)[sapply(df_lasso, function(x) sum(is.na(x)) <= nrow(df_lasso) * 0.1)]
-df_lasso <- df_lasso[, keep_cols]
-cat("NA値の多い列を", initial_cols - ncol(df_lasso), "個削除しました\n")
-
-# 5. 共変量名の再定義（NA除去後）
-all_drop_cols <- intersect(drop_cols, names(df_lasso))
-grouping_cols <- intersect(grouping_cols, names(df_lasso))
-covariate_names <- setdiff(names(df_lasso), c(all_drop_cols, grouping_cols))
-
-
-# 6. 共変量のNAがある行を除去
-# df_lasso <- df_lasso[, covariate_names]
-complete_idx <- complete.cases(df_lasso)
-initial_rows <- nrow(df_lasso)
-df_lasso <- df_lasso[complete_idx, ]
-cat("NA値を含む行を", initial_rows - nrow(df_lasso), "行削除しました\n")
-cat("最終的な介入前データサイズ:", nrow(df_lasso), "行 ×", ncol(df_lasso), "列\n\n")
-
-# 共変量のラベル保存
-covariate_names_label <- var_labels %>%
-  filter(varname %in% covariate_names)
-# print文の代替
-covariate_names_label %>%
-  gt() %>%
-  cols_width(
-    1 ~ pct(80),
-    2 ~ pct(20)
-  ) 
-
-# ********** デバッグ用 **********
-if (debug_mode) {
-  cat("=== デバッグモード: 変数の詳細確認 ===\n")
-  cat("共変量数:", length(covariate_names), "\n")
-  cat("共変量:\n")
+# *******************************************************************************
+# LASSO用データ作成関数
+#' @title create_lasso_data
+#' @description LASSO用のデータセットを作成する関数
+#' @param df 元データフレーム
+#' @param drop_cols_init 除外変数定義(初期値)
+#' @param drop_cols_add 除外変数定義(追加)
+#' @param grouping_cols ID・管理用変数
+#' @param y_var_all 目的変数候補
+#' @param y_var 目的変数
+#' @return リスト(df_lasso, covariate_names)
+# *******************************************************************************
+create_lasso_data <- function(df, 
+          drop_cols_init, 
+          drop_cols_add, 
+          grouping_cols,
+          y_var_all,
+          y_var) {
+  # df: 元データフレーム
+  # drop_cols_init: 除外変数定義(初期値)
+  # drop_cols_add: 除外変数定義(追加)
+  # grouping_cols: ID・管理用変数
+  # y_var_all: 目的変数候補
+  # y_var: 目的変数
   
-  # ダミーでない変数を抽出
-  non_dummy <- list()
-  temp <- df_lasso[, covariate_names]
-  for (var in names(temp)) {
-    if (!is_dummy_var(temp[[var]])) {
-      non_dummy <- append(non_dummy, var)
-    } else {
-      cat("ダミー変数:", var)
-      print(table(temp[[var]], useNA = "always"))
-      cat("\n")
-    }
-  }
-  cat("ダミー変数でない変数数:", length(non_dummy), "\n")
-  cat("ダミー変数でない変数:\n")
-  print(non_dummy)
-  # non_dummy %>%
-  #   gt() %>%
-  #   cols_width(
-  #     1 ~ pct(100)
-  #   )
+  # 除外変数定義(最終値)
+  drop_cols <- c(drop_cols_init, y_var_all, drop_cols_add) %>% unique()
+  y_var_drop <- setdiff(y_var_all, y_var)
+
+  
+  # 1. LASSO用のデータセット定義
+  df_lasso <- df
+  
+  cat("介入前データの群別サンプル数:\n")
+  print(table(df_lasso$treatment_group))
+  
+  # 4. NAの多い列を除去（10%以上NA）
+  initial_cols <- ncol(df_lasso)
+  keep_cols <- names(df_lasso)[sapply(df_lasso, function(x) sum(is.na(x)) <= nrow(df_lasso) * 0.1)]
+  df_lasso <- df_lasso[, keep_cols]
+  cat("NA値の多い列を", initial_cols - ncol(df_lasso), "個削除しました\n")
+  
+  # 5. 共変量名の再定義（NA除去後）
+  all_drop_cols <- intersect(drop_cols, names(df_lasso))
+  grouping_cols <- intersect(grouping_cols, names(df_lasso))
+  covariate_names <- setdiff(names(df_lasso), c(all_drop_cols, grouping_cols))
+  
+  
+  # 6. 共変量のNAがある行を除去
+  # df_lasso <- df_lasso[, covariate_names]
+  complete_idx <- complete.cases(df_lasso)
+  initial_rows <- nrow(df_lasso)
+  df_lasso <- df_lasso[complete_idx, ]
+  cat("NA値を含む行を", initial_rows - nrow(df_lasso), "行削除しました\n")
+  cat("最終的な介入前データサイズ:", nrow(df_lasso), "行 ×", ncol(df_lasso), "列\n\n")
+  
+  return(list(df_lasso = df_lasso, covariate_names = covariate_names))
 }
-# ********** デバッグ用 **********
+# --- 関数ここまで ------------------------------------------------------------
+
+# LASSO用データ作成
+df_lasso_data <- create_lasso_data(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var)
+df_lasso <- df_lasso_data$df_lasso
+covariate_names <- df_lasso_data$covariate_names
 
 
 ```

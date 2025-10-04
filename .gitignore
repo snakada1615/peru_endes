@@ -44,3 +44,4 @@ po/*~
 # database files
 *.dta
 *.sav
+*.rds
