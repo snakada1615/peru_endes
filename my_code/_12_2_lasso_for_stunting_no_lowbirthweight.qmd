@@ -96,6 +96,7 @@ drop_cols_init <- c(
 # 除外変数定義(PSMの結果を踏まえながら調整)
 drop_cols_add <- c(
 "ch_report_bw","ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
+
 "rh_anc_bldpres","rh_anc_median","rh_anc_bldsamp","rh_anc_median","rh_anc_numvs","rh_anc_numvsrh_anc_moprg","rh_anc_prgcomp","rh_anc_pv","rh_anc_toxinj","rh_anc_urine"
 )
 
@@ -373,8 +374,102 @@ coef_importance <- go_lasso(X_scaled, Y)
 
 ```
 
+<<<<<<< HEAD
 
 # 4. GLMによる検証
+=======
+## 4. 変数の時間不変性を確認（LASSO結果＋安定性）
+
+```{r}
+# 1. LASSO結果から上位20変数を抽出（年ダミー除外）
+selected_predictors <- coef_importance %>%
+  filter(!str_detect(labels, "^year20[0-9]{2}$")) %>%
+  arrange(desc(lambda.min))
+
+df_selected_indicators <- df_lasso[ , c(selected_predictors$labels, "year")]
+  
+
+# 2. 各変数の年次変動を評価する関数
+# ******************************************************************************
+#' @title calculate_temporal_stability
+#' @description 指定された変数について、年別の平均値を計算し、変動係数（CV）を用いて時間不変性を評価します。
+#' @param df データフレーム
+#' @param var_names 評価する変数名のベクトル
+#' @param year_col 年を示す列名（デフォルトは "year"）
+#' @return 各変数の平均値、標準偏差、変動係数、範囲ベースの変動指標、時間安定性の分類を含むデータフレーム
+# ******************************************************************************
+calculate_temporal_stability <- function(df, var_names, year_col = "year") {
+  
+  # 年別平均値を計算
+  yearly_means <- df %>%
+    group_by(!!sym(year_col)) %>%
+    summarise(across(all_of(var_names), ~ mean(.x, na.rm = TRUE)), .groups = "drop")
+  
+  # 各変数の変動係数（CV）と時間安定性指標を計算
+  stability_results <- map_dfr(var_names, function(var) {
+    yearly_values <- yearly_means[[var]]
+    
+    # 基本統計量
+    mean_val <- mean(yearly_values, na.rm = TRUE)
+    sd_val <- sd(yearly_values, na.rm = TRUE)
+    cv_val <- sd_val / mean_val
+    
+    # 範囲ベースの変動指標
+    min_val <- min(yearly_values, na.rm = TRUE)
+    max_val <- max(yearly_values, na.rm = TRUE)
+    range_ratio <- (max_val - min_val) / mean_val
+    
+    # 時間安定性の分類
+    stability_category <- case_when(
+      cv_val < 0.05 ~ "stabilit:very high",
+      cv_val < 0.10 ~ "stabilit: high", 
+      cv_val < 0.20 ~ "stability: moderate",
+      cv_val < 0.50 ~ "stability: low",
+      TRUE ~ "unstable"
+    )
+    
+    tibble(
+      variable = var,
+      mean_across_years = mean_val,
+      sd_across_years = sd_val,
+      cv_coefficient = cv_val,
+      range_ratio = range_ratio,
+      stability_category = stability_category
+    )
+  })
+  
+  # CV昇順でソート
+  stability_results <- stability_results %>%
+    arrange(cv_coefficient)
+  
+  return(stability_results)
+}
+# --- 関数定義ここまで ---
+
+# 3. 関数を用いて選択された変数の時間安定性を評価
+df_stability <- calculate_temporal_stability(df_lasso, selected_predictors$labels)
+
+# 4. 結果を表示
+df_stability %>%
+  gt() %>%
+  cols_width(
+    1 ~ pct(20),
+    2 ~ pct(15),
+    3 ~ pct(15),
+    4 ~ pct(15),
+    5 ~ pct(15),
+    6 ~ pct(20)
+  ) %>%
+  fmt_number(
+    columns = c("mean_across_years", "sd_across_years", "cv_coefficient", "range_ratio"),
+    decimals = 4  # 小数点以下4桁
+  )
+
+
+```
+
+# 5. GLMによる検証(LASSO/年次安定性の結果から上位20変数に絞る)
+>>>>>>> 4b65af201a8c78e29c6a1e5d578d4a463428e2db
 
 ```{r}
 library(survey)
