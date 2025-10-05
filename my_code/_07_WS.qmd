@@ -80,10 +80,10 @@ goAnalysis <- function(year){
   # 設定した年に基づいてファイルを読み込む
   df_REC23 <- open_endes_file(year, "RECH23.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_RECH23) %>% select(all_of(keep_RECH23))
+    add_missing_columns(keep_RECH23) %>% dplyr::select(all_of(keep_RECH23))
   df_REC0 <- open_endes_file(year, "RECH0.sav") %>%
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_RECH0) %>% select(all_of(keep_RECH0))
+    add_missing_columns(keep_RECH0) %>% dplyr::select(all_of(keep_RECH0))
 
   # 重複チェック
   duplicate_check(df_REC23, c("hhid"), "REC23")
@@ -109,7 +109,7 @@ goAnalysis <- function(year){
   
   # WASHdataから必要な変数を選択
   vars_to_keep <- WASHdata %>%
-    select(starts_with("ph")) %>%
+    dplyr::select(starts_with("ph")) %>%
     names() %>%
     append(c("hhid")) # add the variables we need to keep
       

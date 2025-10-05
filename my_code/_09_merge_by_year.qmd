@@ -56,7 +56,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 # ファイル名の設定
 files <- c("BRdata-rh","IRdata-rh","IRdata-rc","IRdata-nt","KRvac","KRdata",
-           "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool", "PRdata")
+           "KRiycf-nt","WASHdata-ws","IRdata-ms","KRstool", "PRdata", "HRdata-dm")
 
 # RDSファイルを読み込む関数
 # year: 年
@@ -72,9 +72,16 @@ open_processed_file <- function(year, filename, select_col = NULL) {
     if (!is.null(select_col)) {
       df <- df %>% dplyr::select(all_of(select_col))
     }
+    # merge_key設定：HRdata-dmのみ結合キーが"hhid"
+    if (filename == "WASHdata-ws") {
+      merge_key <- c("hhid")
+    } else {
+      merge_key <- c("caseid")
+    }
+    
     print("重複チェック")
-    if (duplicate_check(df, c("caseid"), filename) == 0) {
-      duplicate_check_detail(df, c("caseid"), filename)
+    if (duplicate_check(df, merge_key, filename) == 0) {
+      duplicate_check_detail(df, merge_key, filename)
     }
     return(df)
   } else {
@@ -119,7 +126,7 @@ goAnalysis <- function(year){
   
   data_merged <- data_all[["BRdata-rh"]]
   
-  print("Merging with IRdata-rh")
+  print("(2) Merging with IRdata-rh")
   data_all[["IRdata-rh"]] <- data_all[["IRdata-rh"]] %>% 
     dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
@@ -128,71 +135,78 @@ goAnalysis <- function(year){
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with IRdata-rc")
+  print("(3) Merging with IRdata-rc")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-rc"]], by = c("caseid", "year"))
+    data_all[["IRdata-rc"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with IRdata-nt")
+  print("(4) Merging with IRdata-nt")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-nt"]], by = c("caseid", "year"))
+    data_all[["IRdata-nt"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with KRvac")
+  print("(5) Merging with KRvac")
   data_merged <- left_join_safe(data_merged, 
     data_all[["KRvac"]], by = c("caseid" = "caseid", "age", "wt", "year"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with KRdata")
+  print("(6) Merging with KRdata")
   data_all[["KRdata"]] <- data_all[["KRdata"]] %>% 
     dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRdata"]], by = c("caseid", "year"))
+    data_all[["KRdata"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with KRiycf-nt")
+  print("(7) Merging with KRiycf-nt")
   data_all[["KRiycf-nt"]] <- data_all[["KRiycf-nt"]] %>% 
     dplyr::select(-c("b4", "v005", "v022", "v025", "v106", "v190", "age"))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRiycf-nt"]], by = c("caseid","year"))
+    data_all[["KRiycf-nt"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with IRdata-ms")
+  print("(8) Merging with IRdata-ms")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["IRdata-ms"]], by = c("caseid", "year"))
+    data_all[["IRdata-ms"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with KRstool")
+  print("(9) Merging with KRstool")
   data_all[["KRstool"]] <- data_all[["KRstool"]] %>% 
     dplyr::select(-c(age, wt))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["KRstool"]], by = c("caseid", "year"))
+    data_all[["KRstool"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
   
-  print("Merging with WASHdata-ws")
-  data_all[["WASHdata-ws"]] <- data_all[["WASHdata-ws"]] %>% 
+  print("(10) Merging with HRdata-dm")
+  data_all[["HRdata-dm"]] <- data_all[["HRdata-dm"]] %>% 
     dplyr::select(-c(v005, v022, v001, v002))
   data_merged <- left_join_safe(data_merged, 
-    data_all[["WASHdata-ws"]], by = c("caseid", "year"))
+    data_all[["HRdata-dm"]], by = c("caseid"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
-  
-  print("Merging with PRdata")
+    
+  print("(11) Merging with WASHdata-ws")
+  data_merged <- left_join_safe(data_merged, 
+    data_all[["WASHdata-ws"]], by = c("hhid"))
+  if (nrow(data_merged) == 0) {
+    stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+
+  print("(12) Merging with PRdata")
   data_merged <- left_join_safe(data_merged, 
     data_all[["PRdata"]], by = c("caseid", "hhid", "year")) %>%
     filter(age >= 6 & age <= 24)

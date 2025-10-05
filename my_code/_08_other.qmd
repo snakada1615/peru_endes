@@ -109,7 +109,7 @@ load_endes_data <- function(year, filename, keep_vars) {
   df <- open_endes_file(year, filename) %>%
     rename_with(~ tolower(.x)) %>%
     add_missing_columns(keep_vars) %>% 
-    select(all_of(keep_vars))
+    dplyr::select(all_of(keep_vars))
   
   return(df)
 }
@@ -180,7 +180,7 @@ process_cooking_fuel <- function(df_REC0111) {
       dm_cooking_fuel_traditional = ifelse(dm_cooking_fuel < 7, 0, 1),
       dm_cooking_fuel_traditional = ifelse(is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
     ) %>%
-    select(caseid, hhid, dm_cooking_fuel, dm_cooking_fuel_traditional)
+    dplyr::select(caseid, hhid, dm_cooking_fuel, dm_cooking_fuel_traditional)
   
   cat("調理燃料の分布:\n")
   print(table(cooking_fuel$dm_cooking_fuel))
@@ -410,7 +410,7 @@ goAnalysis <- function(year) {
     # # mutate(hhid = paste0(sprintf("%6d", v001), sprintf("%6d", v002))) %>%
     # mutate(hhid = paste0("      ", substr(caseid, 7, 15))) %>%
     add_missing_columns(var_lists$REC0111) %>% 
-    select(all_of(var_lists$REC0111))
+    dplyr::select(all_of(var_lists$REC0111))
   
   # ============================================================================
   # データ処理
@@ -481,11 +481,11 @@ goAnalysis <- function(year) {
 
   # 必要な変数のみ選択
   vars_to_keep <- HRdata %>%
-    select(starts_with("dm")) %>%
+    dplyr::select(starts_with("dm")) %>%
     names() %>%
     append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
 
-  HRdata <- HRdata %>% select(all_of(vars_to_keep))
+  HRdata <- HRdata %>% dplyr::select(all_of(vars_to_keep))
   # 
   # # 最終重複チェック
   duplicate_check(HRdata, c("caseid"), "HRdata")
@@ -511,7 +511,7 @@ goAnalysis <- function(year) {
   # 保存
   # ============================================================================
   cat("## 7. ファイル保存\n")
-  saveRDS(HRdata, paste0(output_dir, "/WASHdata-ws.rds"))
+  saveRDS(HRdata, paste0(output_dir, "/HRdata-dm.rds"))
   cat("WASHdata保存完了:", year, "\n")
   
   cat("============================================================================\n")

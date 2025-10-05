@@ -215,8 +215,6 @@ clean_matrix <- function(mat) {
 }
 # --- 関数ここまで ------------------------------------------------------------
 
-# Step 2: スケーリング実行
-cat("=== クリーンなデータでスケーリング ===\n")
 # **************** スケーリングとNA処理関数 ************************************
 #' @title scaling_cleanup
 #' @description スケーリングとNA処理を行う関数
@@ -330,7 +328,7 @@ go_lasso <- function(mat, y) {
       2 ~ pct(20),
     ) %>%
     fmt_number(
-      columns = c("coefficient", "abs_coefficient"),
+      columns = c("coefficient"),
       decimals = 4  # 小数点以下4桁
     ) %>% print()
   
@@ -356,9 +354,9 @@ Y <- df_lasso$nt_ch_stunt
 # 問題列の除去
 X_matrix_clean <- clean_matrix(X_matrix)
 
-# クリーンなデータでスケーリング
+# Step 2: スケーリング実行
+cat("=== クリーンなデータでスケーリング ===\n")
 X_scaled <- scaling_cleanup(X_matrix_clean)
-
 
 # Step 4: 最終確認
 cat("=== 最終確認 ===\n")
@@ -379,8 +377,12 @@ coef_importance <- go_lasso(X_scaled, Y)
 ```{r}
 library(survey)
 
-# 1. LASSO/年次安定性の結果から上位20変数を抽出（年ダミー除外）
-selected_predictors <- c() # 選択変数リスト初期化
+# 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
+selected_predictors <- coef_importance %>%
+  arrange(desc(abs_coefficient)) %>%
+  slice(-1) %>%  # 切片を除外
+  slice(1:20) %>%  # 上位20変数を選択
+  pull(variable)
 
 # 2. sampling weightの年次補正
 # 年ごとの元 v005 合計を算出
