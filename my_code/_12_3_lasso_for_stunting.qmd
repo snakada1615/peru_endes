@@ -73,7 +73,7 @@ var_labels$varname <- names(df_org)
 
 ```
 
-## 2. データ前処理（LASSO用）
+## 2. データ前処理関数（LASSO用）
 
 ```{r}
 # ================================================================================
@@ -90,18 +90,11 @@ drop_cols_init <- c(
 "m3n","m42c","m42d","m42e","m43","m45","m60","m61","v001","v002","v003","v005",
 "v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
 "v467b","v467c","v467d","v467f",
-"wt","state","age","treated_status","treatment_start","year_treated"
+"wt","state","age","treated_status","treatment_start","year_treated", "dm_poorest", "dm_poorer","dm_middle" ,"dm_richer", "dm_richest"
 )
 
 # 除外変数定義(PSMの結果を踏まえながら調整)
-drop_cols_add <- c(
-"ch_report_bw","ch_report_bw","ch_size_birth","dm_cooking_fuel_traditional","dm_cooking_fuel_traditional","dm_rural","dm_weath_index","ms_mar_never","ms_mar_union","ms_sex_recent","nt_bf_status","nt_milk","period","rc_edu","rc_empl","rc_hins_other","rc_hins_priv","rc_litr_cats","rc_media_allthree","rc_media_newsp","rc_media_radio","rc_media_tv","rc_tobc_cig","rc_tobc_cig","rc_tobc_other",
-"rh_anc_bldpres","rh_anc_median","rh_anc_bldsamp","rh_anc_median","rh_anc_numvs","rh_anc_numvsrh_anc_moprg","rh_anc_prgcomp","rh_anc_pv","rh_anc_toxinj","rh_anc_urine"
-)
-
-drop_cols_add <- c(
-  "dm_poorest", "dm_poorer","dm_middle" ,"dm_richer", "dm_richest"
-  )
+drop_cols_add <- c()
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
 y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
@@ -172,16 +165,10 @@ create_lasso_data <- function(df,
 }
 # --- 関数ここまで ------------------------------------------------------------
 
-# LASSO用データ作成
-df_lasso_data <- create_lasso_data(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var)
-df_lasso <- df_lasso_data$df_lasso
-covariate_names <- df_lasso_data$covariate_names
-
-cat("LASSO用データの次元:", dim(df_lasso), "\n")
 
 ```
 
-## 3. LASSOによる変数選択
+## 3-1. LASSOによる変数選択
 
 ```{r}
 library(gt)
@@ -255,7 +242,10 @@ scaling_cleanup <- function(mat) {
 #' @param y 目的変数
 #' @return LASSO結果のデータフレーム
 #' *****************************************************************************
-go_lasso <- function(mat, y) {
+go_lasso <- function(mat, y, save_path = ".") {
+  # パッケージの明示的読み込み
+  library(dplyr)
+  library(gt)
   
   # データ準備
   x <- mat  # 説明変数（スケーリング済み）
@@ -316,27 +306,40 @@ go_lasso <- function(mat, y) {
   cat("=== LASSO変数選択結果 ===\n")
   cat(sprintf("選択された変数数: %d\n", nrow(df_selected_vars) - 1))
 
+  # 結果をファイルで保存
   saveRDS(df_results, file.path(save_path, "lasso_selected_vars"))
-
+  write.xlsx(df_results, file.path(save_path, "lasso_selected_vars.xlsx"), overwrite = TRUE)
+  
   # 列幅を指定して結果出力
-  df_results %>% filter(coefficient != 0) %>%
-    arrange(desc(abs_coefficient)) %>%
-    dplyr::select(labels, coefficient) %>%
-    gt() %>%
-    cols_width(
-      1 ~ pct(80),
-      2 ~ pct(20),
-    ) %>%
-    fmt_number(
-      columns = c("coefficient"),
-      decimals = 4  # 小数点以下4桁
-    ) %>% print()
+  # table_result <- df_results %>% 
+  #   dplyr::filter(coefficient != 0) %>%
+  #   dplyr::arrange(desc(abs_coefficient)) %>%
+  #   dplyr::select(labels, coefficient) %>%
+  #   gt() %>%
+  #   cols_width(
+  #     labels ~ pct(80),
+  #     coefficient ~ pct(20)
+  #   ) %>%
+  #   fmt_number(
+  #     columns = "coefficient",
+  #     decimals = 4  # 小数点以下4桁
+  #   )
+  print(df_results) 
   
   return(df_results)
 }
 # --- 関数ここまで ------------------------------------------------------------
 
 # *****　メインループ　*********************************************************
+
+# LASSO用データ作成
+df_lasso_data <- create_lasso_data(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var)
+df_lasso <- df_lasso_data$df_lasso
+covariate_names <- df_lasso_data$covariate_names
+rm(df_lasso_data)
+
+cat("LASSO用データの次元:", dim(df_lasso), "\n")
+
 
 cat("=== 問題列の除去 ===\n")
 # Step 1: 標準偏差が0の列を特定・除去
@@ -367,21 +370,20 @@ cat("Y分布:", table(Y), "\n")
 
 # Step 5.LASSO実行
 # データが正常な場合のLASSO実行
-coef_importance <- go_lasso(X_scaled, Y)
+coef_importance <- go_lasso(X_scaled, Y, save_path)
 
 ```
 
-
-# 4. GLMによる検証
+## 3-2. GLMによる検証
 
 ```{r}
 library(survey)
 
 # 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
 selected_predictors <- coef_importance %>%
+  filter(variable != "(Intercept)" & !grepl("year", variable)) %>%
   arrange(desc(abs_coefficient)) %>%
-  slice(-1) %>%  # 切片を除外
-  slice(1:20) %>%  # 上位20変数を選択
+  slice_head(n = 20) %>%
   pull(variable)
 
 # 2. sampling weightの年次補正
@@ -435,13 +437,161 @@ final_formula <- as.formula(
         paste(selected_predictors, collapse = " + "),
         "+ as.factor(year)")
 )
-# ********** デバッグ用 **********
-if (debug_mode) {
-  cat("=== デバッグモード: 最終モデルの確認 ===\n")
-  cat("最終モデルの式:\n")
-  print(final_formula)
-}
-# ********** デバッグ用 終**********
+
+# Survey-weighted GLM
+final_model_svy <- svyglm(
+  final_formula,
+  design = svy_design,
+  family = quasibinomial()
+)
+
+# **************************************************************************
+# 説明力を評価するためのnull_model
+null_model_svy <- svyglm(
+  nt_ch_stunt ~ 1,
+  design = svy_design,
+  family = quasibinomial()
+)
+
+# 説明力の計算（擬似R2）
+cox_snell_r2 <- psrsq(final_model_svy, method = "Cox-Snell")
+nagelkerke_r2 <- psrsq(final_model_svy, method = "Nagelkerke")
+
+cat("Cox-Snell R²:", round(cox_snell_r2, 4), "\n")
+cat("Nagelkerke R²:", round(nagelkerke_r2, 4), "\n")
+# **************************************************************************
+
+# 5. 結果出力
+library(gtsummary)
+library(broom.helpers)
+# gtsummaryを使用してgtテーブルを作成
+final_model_svy %>%
+  tbl_regression(
+    exponentiate = TRUE,  # オッズ比を表示したい場合
+    intercept = TRUE,     # 切片を表示したい場合
+    pvalue_fun = function(x) style_pvalue(
+      x, digits = 3, stars = TRUE
+    )
+  ) %>%
+  add_significance_stars() %>%
+  as_gt() %>%
+  gt::tab_header(
+    title    = "Survey-weighted Logistic Regression",
+    subtitle = "※ *p<0.05, **p<0.01, ***p<0.001"
+  )
+
+```
+
+## 4-1. LASSOによる変数選択(その2: WASH変数の整理)
+
+```{r}
+# *****　メインループ　*********************************************************
+
+drop_cols_add <- c("ph_wtr_trt_boil", "ph_wtr_trt_chlor", "ph_wtr_trt_cloth","ph_wtr_trt_filt","ph_wtr_trt_solar","ph_wtr_trt_stand","ph_wtr_trt_other","ph_wtr_trt_none", "ph_wtr_basic", "ph_wtr_source",  "ph_wtr_improve", "ph_sani_type", "ph_sani_basic", "ph_sani_improve")
+
+# LASSO用データ作成
+df_lasso_data <- create_lasso_data(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var)
+df_lasso <- df_lasso_data$df_lasso
+covariate_names <- df_lasso_data$covariate_names
+rm(df_lasso_data)
+
+cat("LASSO用データの次元:", dim(df_lasso), "\n")
+
+
+cat("=== 問題列の除去 ===\n")
+# Step 1: 標準偏差が0の列を特定・除去
+
+# 完全に一から再開
+cat("=== データ処理を再開 ===\n")
+cat("df_lasso の次元:", dim(df_lasso), "\n")
+cat("covariate_names の数:", length(covariate_names), "\n")
+
+# Step 2: model.matrix作成
+cat("Step 1: model.matrix作成中...\n")
+X_matrix <- model.matrix(~ . - 1, data = df_lasso[, covariate_names, drop=FALSE])
+Y <- df_lasso$nt_ch_stunt
+
+# 問題列の除去
+X_matrix_clean <- clean_matrix(X_matrix)
+
+# Step 2: スケーリング実行
+cat("=== クリーンなデータでスケーリング ===\n")
+X_scaled <- scaling_cleanup(X_matrix_clean)
+
+# Step 4: 最終確認
+cat("=== 最終確認 ===\n")
+cat("X_scaled次元:", dim(X_scaled), "\n")
+cat("X_scaledのNA数:", sum(is.na(X_scaled)), "\n")
+cat("Y長さ:", length(Y), "\n")
+cat("Y分布:", table(Y), "\n")
+
+# Step 5.LASSO実行
+# データが正常な場合のLASSO実行
+coef_importance <- go_lasso(X_scaled, Y, save_path)
+
+
+```
+
+## 4-2. GLMによる検証
+
+```{r}
+library(survey)
+
+# 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
+selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "nt_fed_milk", "rc_agri", "dm_refrigerator", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "nt_dairy", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_mdd"
+)
+
+# 2. sampling weightの年次補正
+# 年ごとの元 v005 合計を算出
+year_totals <- df_lasso %>%
+  group_by(year) %>%
+  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
+
+# Survey designオブジェクトの作成前に変数を変換
+df_lasso <- df_lasso %>%
+  mutate(
+    v021 = as.numeric(v021),                        # Primary Sampling Unit
+    v022 = as.character(haven::as_factor(v022))    #haven_labelledをfactorに変換してからcharacter
+  )
+
+# 正規化済みサンプリングウェイトの作成
+df_lasso <- df_lasso %>%
+  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
+  left_join(year_totals, by = "year") %>%
+  mutate(
+    # 元のDHSウェイト
+    dhs_weight = v005 / 1e6,
+    # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
+    year_norm = total_v005 / sum(year_totals$total_v005),
+    # 正規化済みウェイト
+    sampling_weight_norm = dhs_weight / year_norm,
+    # 極端値トリミング
+    sampling_weight_trimmed = pmax(
+      pmin(sampling_weight_norm,
+           quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
+      quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
+    )
+  )
+
+# 3. surveydesignオブジェクトの作成
+# Survey designオブジェクトの作成
+svy_design <- svydesign(
+  ids = ~v021,          # Primary Sampling Unit (クラスター)
+  strata = ~v022,       # 層化変数
+  weights = ~sampling_weight_trimmed,
+  data = df_lasso,
+  nest = TRUE           # 入れ子構造
+)
+# 孤立PSUの処理
+options(survey.lonely.psu = "adjust")
+
+# 4. GLMの実施（ロジスティク）
+# GLMによるモデル再構築
+final_formula <- as.formula(
+  paste("nt_ch_stunt ~", 
+        paste(selected_predictors, collapse = " + "),
+        "+ as.factor(year)")
+)
 
 # Survey-weighted GLM
 final_model_svy <- svyglm(
@@ -491,8 +641,14 @@ final_model_svy %>%
 
 ```{r}
 # メディエーション分析（データフレーム変換版）
-# メディエーション分析（エラー修正版）
 library(mediation)
+
+# グルーピング変数を追加
+df_lasso <- df_lasso %>% 
+  mutate(treated_status2 = case_when(
+    treated_status == "late_treated" | treated_status == "early_treated" ~ 1,
+    TRUE ~ 0
+  ))
 
 # tibbleをdata.frameに変換
 df_lasso <- as.data.frame(df_lasso)
@@ -505,31 +661,21 @@ print(head(names(df_lasso), 20))
 
 # メディエーション分析用の候補変数
 mediator_candidates <- c(
-  "rc_litr",           # 母親識字率
-  "nt_fed_milk",       # ミルク摂食
-  "rh_anc_4mo",        # 産前ケア
-  "nt_bf_start_1day",  # 早期授乳開始
-  "nt_frtveg"          # 果物野菜摂取
+  "rc_edu",          
+  "rh_anc_pvskill",    
+  "dm_weath_index",    
+  "ph_wtr_trt_cloth", 
+  "nt_mdd"         
 )
 
 # 介入変数と結果変数を定義
-treatment_var <- "treatment_group"
+treatment_var <- "treated_status2"
 outcome_var <- "nt_ch_stunt"
 
 # selected_predictorsが存在するかチェック
 if (!exists("selected_predictors")) {
   print("警告: selected_predictors が定義されていません")
-  print("LASSO分析から変数を選択する必要があります")
-  
-  # 代替案: データフレーム内の数値変数を自動選択
-  numeric_vars <- names(df_lasso)[sapply(df_lasso, is.numeric)]
-  # 基本的な共変量を手動選択（例）
-  selected_predictors <- intersect(numeric_vars, c(
-    "ch_age_mon", "mo_age", "mo_edu_years", "hh_size", 
-    "wealth_index", "urban", "region_code"
-  ))
-  print("代替として以下の変数を使用:")
-  print(selected_predictors)
+  stop("LASSO分析から変数を選択する必要があります")
 }
 
 # 存在する変数のみをフィルタリング
@@ -600,11 +746,15 @@ for (i in seq_along(mediator_candidates)) {
     if (year_exists) {
       mediator_formula_text <- paste(mediator_formula_text, "+ as.factor(year)")
     }
+    # formulaの構築
     mediator_formula <- as.formula(mediator_formula_text)
+
+    # モデルの種類を設定
+    fam_M <- if (all(df_complete[[mediator]] %in% c(0,1))) binomial else gaussian
     
     model_M <- glm(mediator_formula, 
                    data = df_complete,
-                   family = binomial)
+                   family = fam_M)
     
     # (2) Outcomeモデル (Y ~ X + M + covariates)
     outcome_formula_text <- paste(outcome_var, "~", treatment_var, "+", mediator, "+", 
@@ -667,19 +817,6 @@ for (i in seq_along(mediator_candidates)) {
         prop_mediated_ci1 = med_out$n0.ci[1],
         prop_mediated_ci2 = med_out$n0.ci[2]
       )
-      
-      # # 結果表示
-      # cat("ACME (間接効果):", round(med_out$d0, 4), 
-      #     "95% CI: [", round(med_out$d0.ci[1], 4), ", ", round(med_out$d0.ci[2], 4), "]",
-      #     " p =", round(med_out$d0.p, 4), "\n")
-      # cat("ADE (直接効果):", round(med_out$z0, 4), 
-      #     "95% CI: [", round(med_out$z0.ci[1], 4), ", ", round(med_out$z0.ci[2], 4), "]",
-      #     " p =", round(med_out$z0.p, 4), "\n")
-      # cat("Total Effect:", round(med_out$tau.coef, 4), 
-      #     "95% CI: [", round(med_out$tau.ci[1], 4), ", ", round(med_out$tau.ci[2], 4), "]",
-      #     " p =", round(med_out$tau.p, 4), "\n")
-      # cat("Proportion Mediated:", round(med_out$n0, 4), 
-      #     " p =", round(med_out$n0.p, 4), "\n\n")
       
     }, error = function(e) {
       cat("エラーが発生しました:", mediator, "\n")
