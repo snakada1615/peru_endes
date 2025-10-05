@@ -20,9 +20,10 @@
 # 	
 # 	ph_sani_type		  "Type of sanitation facility"
 # 	ph_sani_improve		"Access to improved sanitation"
+# 	ph_sani_improve_dummy	"Access to unimproved sanitation"(ダミー変数追加)
 # 	ph_sani_basic		  "Basic or limited sanitation facility"
 # 	ph_sani_location	"Location of sanitation facility"
-# 		
+# 	ph_sani_open		  "Open defecation"(新たに追加)
 # 
 # NOTE: 
 # STANDARD CATEGORIES FOR SANITATION SOURCE BY IMPROVED/UNIMPROVED
@@ -1145,6 +1146,29 @@ WASHdata <- WASHdata %>% mutate(ph_sani_improve = case_when(
                      "unimproved sanitation" = 2,
                      "open defecation" = 3)) %>%
   set_variable_labels(ph_sani_improve = "Improved sanitation")
+
+# create improved sanitation dummy variable
+WASHdata <- WASHdata %>% mutate(
+  ph_sani_improve_dummy = case_when(
+    ph_sani_improve == 1 ~ 1,
+    TRUE ~ 0
+  )) %>%
+  set_value_labels(ph_sani_improve_dummy = 
+                   c("improved sanitation" = 1,
+                     "not improved sanitation" = 0)) %>%
+  set_variable_labels(ph_sani_improve_dummy = "Improved sanitation (dummy)")
+
+# create open defecation dummy variable
+WASHdata <- WASHdata %>% mutate(
+  ph_sani_open = case_when(
+    ph_sani_improve == 3 ~ 1,
+    TRUE ~ 0
+  )) %>%
+  set_value_labels(ph_sani_open = 
+                   c("open defecation" = 1,
+                     "not open defecation" = 0)) %>%
+  set_variable_labels(ph_sani_open = "Open defecation (dummy)")
+  
 
 # NOTE: an older definition of improved sanitation checked to see if there was a shared toilet [hv225==1]
 
