@@ -73,7 +73,7 @@ var_labels$varname <- names(df_org)
 
 ```
 
-## 2. データ前処理関数（LASSO用）
+## 2. 各種データ前処理関数（LASSO-mediation）
 
 ```{r}
 # ================================================================================
@@ -164,18 +164,6 @@ create_lasso_data <- function(df,
   return(list(df_lasso = df_lasso, covariate_names = covariate_names))
 }
 # --- 関数ここまで ------------------------------------------------------------
-
-
-```
-
-## 3-1. LASSOによる変数選択
-
-```{r}
-library(gt)
-# ================================================================================
-# 3. LASSO変数選択（介入前データ）
-# ================================================================================
-
 # **************** 定数列除去関数 *********************************************
 #' @title clean_matrix
 #' @description 標準偏差が0の列を除去する関数
@@ -310,8 +298,8 @@ go_lasso <- function(mat, y, save_path = ".") {
   saveRDS(df_results, file.path(save_path, "lasso_selected_vars"))
   write.xlsx(df_results, file.path(save_path, "lasso_selected_vars.xlsx"), overwrite = TRUE)
   
-  # 列幅を指定して結果出力
-  # table_result <- df_results %>% 
+  # # 列幅を指定して結果出力
+  # table_result <- df_results %>%
   #   dplyr::filter(coefficient != 0) %>%
   #   dplyr::arrange(desc(abs_coefficient)) %>%
   #   dplyr::select(labels, coefficient) %>%
@@ -329,6 +317,18 @@ go_lasso <- function(mat, y, save_path = ".") {
   return(df_results)
 }
 # --- 関数ここまで ------------------------------------------------------------
+
+
+```
+
+## 3-1. LASSOによる変数選択
+
+```{r}
+library(gt)
+# ================================================================================
+# 3. LASSO変数選択（介入前データ）
+# ================================================================================
+
 
 # *****　メインループ　*********************************************************
 
@@ -529,6 +529,21 @@ cat("Y分布:", table(Y), "\n")
 # データが正常な場合のLASSO実行
 coef_importance <- go_lasso(X_scaled, Y, save_path)
 
+# 列幅を指定して結果出力
+table_result <- coef_importance %>%
+  dplyr::filter(coefficient != 0) %>%
+  dplyr::arrange(desc(abs_coefficient)) %>%
+  dplyr::select(labels, coefficient) %>%
+  gt() %>%
+  cols_width(
+    labels ~ pct(80),
+    coefficient ~ pct(20)
+  ) %>%
+  fmt_number(
+    columns = "coefficient",
+    decimals = 4  # 小数点以下4桁
+  ) %>% print()
+
 
 ```
 
@@ -634,6 +649,8 @@ final_model_svy %>%
     title    = "Survey-weighted Logistic Regression",
     subtitle = "※ *p<0.05, **p<0.01, ***p<0.001"
   )
+
+
 
 ```
 
@@ -884,8 +901,8 @@ summary_results %>%
     prop_mediated_with_stars = "Prop Mediated"
   ) %>%
   tab_header(
-    title = "メディエーション分析結果のまとめ",
-    subtitle = "※ n.s.: 有意差なし, *p<0.05, **p<0.01, ***p<0.001"
+    title = "summary of mediation analysis",
+    subtitle = "※ :  *p<0.05, **p<0.01, ***p<0.001"
   )
 
 ```
