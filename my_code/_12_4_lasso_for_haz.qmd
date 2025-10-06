@@ -56,7 +56,7 @@ drop_cols_add <- c()
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
 y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
-y_var <- "nt_ch_stunt"
+y_var <- "nt_ch_haz"
 
 
 # ID・管理用変数
@@ -71,7 +71,7 @@ grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_stunting2")
+save_path <- file.path(gdrive_dir, "output", "lasso_haz")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
