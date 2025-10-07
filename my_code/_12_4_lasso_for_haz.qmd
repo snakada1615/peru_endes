@@ -334,6 +334,60 @@ save_lasso_result <- function(df_results, save_path = ".") {
   
   return(TRUE)
 }
+# --- 関数ここまで ------------------------------------------------------------
+# **************** svyGLM(gausian)出力関数 *************************************
+#' @title show_summary_glm
+#' @description svyGLMの結果をgtsummaryで表示する関数
+#' # gtsummaryを使用してgtテーブルを作成
+#  # より詳細な統計情報を含むテーブル
+#  # 調整済みR²も計算
+#' @param final_model_svy svyGLMモデルオブジェクト
+#' @return gtsummaryテーブル
+#' **************************************************************************
+show_svyglm_gausian <- function(final_model_svy){
+  library(gtsummary)
+  library(broom.helpers)
+  
+  n <- nobs(final_model_svy)
+  p <- length(coef(final_model_svy)) - 1  # 切片を除く変数数
+  R2_adj <- 1 - (1 - R2_weighted) * (n - 1) / (n - p - 1)
+  
+  final_table <- final_model_svy %>%
+    tbl_regression(
+      exponentiate = FALSE,
+      intercept = TRUE,
+      pvalue_fun = function(x) style_pvalue(
+        x, digits = 3, stars = TRUE
+      )
+    ) %>%
+    add_significance_stars() %>%
+    add_global_p() %>%  # カテゴリー変数の全体P値を追加
+    add_glance_source_note(
+      include = c(AIC, BIC, nobs, deviance),
+      label = list(
+        AIC ~ "AIC",
+        BIC ~ "BIC",
+        nobs ~ "N", 
+        deviance ~ "Deviance"
+      )
+    ) %>%
+    as_gt() %>%
+    gt::tab_header(
+      title = "Survey-weighted Linear Regression Results",
+      subtitle = "※ *p<0.05, **p<0.01, ***p<0.001"
+    ) %>%
+    # 複数のソースノートを追加
+    gt::tab_source_note(
+      source_note = paste0("Survey-weighted R² = ", round(R2_weighted, 3))
+    ) %>%
+    gt::tab_source_note(
+      source_note = paste0("Adjusted R² = ", round(R2_adj, 3))
+    )
+  
+  return(final_table)
+}
+# --- 関数ここまで ------------------------------------------------------------
+
 
 
 ```
@@ -450,7 +504,7 @@ svy_design <- svydesign(
 # 孤立PSUの処理
 options(survey.lonely.psu = "adjust")
 
-# 4. GLMの実施（ロジスティク）
+# 4. GLMの実施
 # GLMによるモデル再構築
 final_formula <- as.formula(
   paste(y_var, " ~", 
@@ -462,43 +516,16 @@ final_formula <- as.formula(
 final_model_svy <- svyglm(
   final_formula,
   design = svy_design,
-  family = quasibinomial()
+  family = gaussian()
 )
 
-# **************************************************************************
-# 説明力を評価するためのnull_model
-null_model_svy <- svyglm(
-  paste(y_var, " ~ 1"),
-  design = svy_design,
-  family = quasibinomial()
-)
-
-# 説明力の計算（擬似R2）
-cox_snell_r2 <- psrsq(final_model_svy, method = "Cox-Snell")
-nagelkerke_r2 <- psrsq(final_model_svy, method = "Nagelkerke")
-
-cat("Cox-Snell R²:", round(cox_snell_r2, 4), "\n")
-cat("Nagelkerke R²:", round(nagelkerke_r2, 4), "\n")
-# **************************************************************************
 
 # 5. 結果出力
-library(gtsummary)
-library(broom.helpers)
-# gtsummaryを使用してgtテーブルを作成
-final_model_svy %>%
-  tbl_regression(
-    exponentiate = TRUE,  # オッズ比を表示したい場合
-    intercept = TRUE,     # 切片を表示したい場合
-    pvalue_fun = function(x) style_pvalue(
-      x, digits = 3, stars = TRUE
-    )
-  ) %>%
-  add_significance_stars() %>%
-  as_gt() %>%
-  gt::tab_header(
-    title    = "Survey-weighted Logistic Regression",
-    subtitle = "※ *p<0.05, **p<0.01, ***p<0.001"
-  )
+
+# 結果表示
+summary_table <- show_svyglm_gausian(final_model_svy)
+summary_table
+
 
 ```
 
