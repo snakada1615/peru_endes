@@ -693,7 +693,7 @@ summary_table
 
 ```
 
-## 5. メディエーション分析
+-## 5. メディエーション分析
 
 ```{r}
 # メディエーション分析（データフレーム変換版）
@@ -807,12 +807,12 @@ for (i in seq_along(mediator_candidates)) {
 
     # モデルの種類を設定
     fam_M <- if (all(df_complete[[mediator]] %in% c(0,1))) binomial else gaussian
-    
     model_M <- glm(mediator_formula, 
                    data = df_complete,
                    family = fam_M)
     
     # (2) Outcomeモデル (Y ~ X + M + covariates)
+    fam_O <- if (all(df_complete[[outcome_var]] %in% c(0,1))) binomial else gaussian
     outcome_formula_text <- paste(outcome_var, "~", treatment_var, "+", mediator, "+", 
                                  covariates_formula)
     if (year_exists) {
@@ -822,7 +822,7 @@ for (i in seq_along(mediator_candidates)) {
     
     model_Y <- glm(outcome_formula,
                    data = df_complete,
-                   family = binomial)
+                   family = fam_O)
     
     # モデルの収束チェック
     if (!model_M$converged || !model_Y$converged) {
