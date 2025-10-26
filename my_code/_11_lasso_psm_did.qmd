@@ -82,8 +82,13 @@ var_labels$varname <- names(df_org)
 
 # 除外変数定義
 drop_cols <- c(
-  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other"
+  "age", "b3", "b4", "b5", "b9", "bidx", "caseid", "hc27", "hhid", "m1", "m13", "m14", "m15", "m1d", "m2a", "m2b", "m2c", "m2d", "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n", "m42c", "m42d", "m42e", "m43", "m45", "m60", "m61", "period", "treated_status", "treatment_start", "v001", "v002", "v003", "v005", "v008", "v012", "v013", "v021", "v022", "v024", "v025", "v026", "v106", "v190", "v208", "v467b", "v467c", "v467d", "v467f", "wt", "year_treated", "ms_sex_never", "rc_tobc_cig", "ch_report_bw", "rh_anc_median", "nt_milk", "dm_cooking_fuel_traditional", "dm_rural", "rc_hins_other", "dm_poolest", "dm_poorer", "dm_middle", "dm_richer", "dm_richest", "dm_weath_index", "treatment_group"
 )
+
+drop_cols <- c(
+  drop_cols,
+  names(df_org)[str_detect(names(df_org), "^enase_")]
+  )
 
 
 # ID・管理用変数
@@ -285,8 +290,8 @@ if(length(selected_vars) > 0) {
   psm_data <- cbind(
     treatment_group = df_pre$treatment_group,
     psm_covariates,
-    df_pre[, intersect(grouping_cols, names(df_pre))],
-    nt_ch_stunt = df_pre$nt_ch_stunt  # 介入効果分析用アウトカム変数(didで利用する)
+    df_pre[, intersect(grouping_cols, names(df_pre))]
+    # nt_ch_stunt = df_pre$nt_ch_stunt  # 介入効果分析用アウトカム変数(didで利用する)
   )
 
   # 多項ロジスティック回帰で傾向スコア推定
@@ -593,15 +598,15 @@ print(post_balance, smd = TRUE)
 df_pre_for_did <- psm_data %>%
   mutate(
     post = 0,                    # 介入前期間
-    period = "pre",
-    final_weight = final_weight  # 介入前で計算した重み使用
+    period = "pre"
+    # final_weight = final_weight  # 介入前で計算した重み使用
   )
 
 df_post_for_did <- df_post %>%
   mutate(
-    post = 1,                         # 介入後期間
-    period = "post",
-    final_weight = w_combined_capped  # 介入後で計算した重み使用
+    post = 1                         # 介入後期間
+    # period = "post
+    # final_weight = w_combined_capped  # 介入後で計算した重み使用
   )
 
 # Step 2: 共通変数の確認と調整

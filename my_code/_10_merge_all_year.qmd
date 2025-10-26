@@ -132,7 +132,13 @@ df_food_consumption_org <- read_rds(file.path(gdrive_enaho_dir,
     enase_dairy = dairy_log1p_se,
     enase_ASF = ASF_log1p_se,
     enase_oilfat = oilfat_log1p_se
-    )
+    )　%>%
+  select(department, 
+         dm_rural, 
+         inc_quintile,
+         starts_with("ena_"),
+         starts_with("enase_")
+         )
 
 
 # マージ実行(dep, rural, incomeで結合)
