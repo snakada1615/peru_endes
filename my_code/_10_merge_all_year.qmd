@@ -53,6 +53,10 @@ yearlist <- c("2007", "2008", "2009", "2010", "2011",
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
+# ENAHOデータのルートフォルダ指定
+gdrive_enaho_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho/output"
+
+
 # データベース一覧
 
 endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
@@ -106,6 +110,22 @@ all_data_merged <- all_data_merged %>%
 
 # 重複チェック
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
+
+
+# ******************************************************************************
+# 食品摂取量データの統合（キー：department*urban*income）
+# ******************************************************************************
+# 食品群消費データの読み込み
+df_food_consumption_org <- read_rds(file.path(gdrive_enaho_dir,
+        "food_consumption_by_area_income.rds"))
+
+# マージ実行
+all_data_merged <- all_data_merged %>%
+  left_join_safe(temp_area, c("v024" = "department", "dm_rural" = "dm_rural",
+                              "dm_income_quintile" = "income_quintile"))
+
+# データ結合後、temp_areaは不要になるので削除
+rm(temp_area)
 
 # ファイルをRDSで保存
 saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", "all_data_merged.rds"))

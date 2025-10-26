@@ -752,188 +752,188 @@ covariate_names_label %>%
 </style>
   <table class="gt_table" style="table-layout:fixed;width:100%;" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
 <colgroup>
-  <col style="width:80%;"/>
-  <col style="width:20%;"/>
+<col style="width:80%;"/>
+<col style="width:20%;"/>
 </colgroup>
 <thead>
-  <tr class="gt_col_headings">
-    <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels">labels</th>
-    <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="varname">varname</th>
-  </tr>
+<tr class="gt_col_headings">
+  <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels">labels</th>
+  <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="varname">varname</th>
+</tr>
 </thead>
 <tbody class="gt_table_body">
-  <tr><td headers="labels" class="gt_row gt_left">Skilled assistance during ANC</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_pvskill</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Attended 4+ ANC visits</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_4vs</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Number of months pregnant at time of first ANC visit</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_moprg</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Attended ANC &lt;4 months of pregnancy</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_4mo</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Took iron tablet/syrup during pregnancy of last birth</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_iron</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Took intestinal parasite drugs during pregnancy of last birth</td>
-    <td headers="varname" class="gt_row gt_left">rh_anc_parast</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Problem health care access: permission to go</td>
-    <td headers="varname" class="gt_row gt_left">rh_prob_permit</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Problem health care access: getting money</td>
-    <td headers="varname" class="gt_row gt_left">rh_prob_money</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Problem health care access: distance to facility</td>
-    <td headers="varname" class="gt_row gt_left">rh_prob_dist</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Problem health care access: not wanting to go alone</td>
-    <td headers="varname" class="gt_row gt_left">rh_prob_alone</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">At least one problem in accessing health care</td>
-    <td headers="varname" class="gt_row gt_left">rh_prob_minone</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left"></td>
-    <td headers="varname" class="gt_row gt_left">year</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Attended or completed at least secondary education</td>
-    <td headers="varname" class="gt_row gt_left">rc_edu_acceptable</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Literate - higher than secondary or can read part or whole sentence</td>
-    <td headers="varname" class="gt_row gt_left">rc_litr</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Accesses none of the three media at least once a week</td>
-    <td headers="varname" class="gt_row gt_left">rc_media_none</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Occupation among those employed in the past 12 months</td>
-    <td headers="varname" class="gt_row gt_left">rc_occup</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Work in agriculture in the past 12 months</td>
-    <td headers="varname" class="gt_row gt_left">rc_agri</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Have any health insurance</td>
-    <td headers="varname" class="gt_row gt_left">rc_hins_any</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Smokes any type of tobacco</td>
-    <td headers="varname" class="gt_row gt_left">rc_tobc_smk_any</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Birth weight less than 2.5 kg</td>
-    <td headers="varname" class="gt_row gt_left">ch_below_2p5</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ARI symptoms in the 2 weeks before the survey</td>
-    <td headers="varname" class="gt_row gt_left">ch_ari</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Fever symptoms in the 2 weeks before the survey</td>
-    <td headers="varname" class="gt_row gt_left">ch_fever</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_bf_start_1hr</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_bf_start_1day</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
-    <td headers="varname" class="gt_row gt_left">nt_bf_prelac_nobirthrecord</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Drank from a bottle with a nipple yesterday - under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_bottle</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Age-appropriately breastfed - last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_ageapp_bf</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given infant formula in day/night before survey - last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_formula</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given other liquids in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_liquids</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given fortified baby food in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_bbyfood</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given grains in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_grains</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given vitamin A rich food in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_vita</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_frtveg</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_root</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_nuts</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given meat, fish, shellfish, or poultry in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_meatfish</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given eggs in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_eggs</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_dairy</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given any solid or semisolid food in day/night before survey- last-born under 2 years</td>
-    <td headers="varname" class="gt_row gt_left">nt_solids</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child given milk or milk products- last-born 6-23 months</td>
-    <td headers="varname" class="gt_row gt_left">nt_fed_milk</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
-    <td headers="varname" class="gt_row gt_left">nt_mdd</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child with minimum meal frequency- last-born 6-23 months</td>
-    <td headers="varname" class="gt_row gt_left">nt_mmf</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child with minimum acceptable diet- last-born 6-23 months</td>
-    <td headers="varname" class="gt_row gt_left">nt_mad</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Youngest children age 6-23 mos living with mother given Vit A rich food</td>
-    <td headers="varname" class="gt_row gt_left">nt_ch_micro_vaf</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Current marital status</td>
-    <td headers="varname" class="gt_row gt_left">ms_mar_stat</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First marriage by age 15</td>
-    <td headers="varname" class="gt_row gt_left">ms_afm_15</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First marriage by age 18</td>
-    <td headers="varname" class="gt_row gt_left">ms_afm_18</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First marriage by age 20</td>
-    <td headers="varname" class="gt_row gt_left">ms_afm_20</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First marriage by age 22</td>
-    <td headers="varname" class="gt_row gt_left">ms_afm_22</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First marriage by age 25</td>
-    <td headers="varname" class="gt_row gt_left">ms_afm_25</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left"></td>
-    <td headers="varname" class="gt_row gt_left">ms_age</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Never had sex</td>
-    <td headers="varname" class="gt_row gt_left">ms_sex_never</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First sex by age 15</td>
-    <td headers="varname" class="gt_row gt_left">ms_afs_15</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First sex by age 18</td>
-    <td headers="varname" class="gt_row gt_left">ms_afs_18</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First sex by age 20</td>
-    <td headers="varname" class="gt_row gt_left">ms_afs_20</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First sex by age 22</td>
-    <td headers="varname" class="gt_row gt_left">ms_afs_22</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">First sex by age 25</td>
-    <td headers="varname" class="gt_row gt_left">ms_afs_25</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
-    <td headers="varname" class="gt_row gt_left">ch_stool_safe</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Number of children under 12 years old</td>
-    <td headers="varname" class="gt_row gt_left">dm_children_under12</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">type of cooking fuel</td>
-    <td headers="varname" class="gt_row gt_left">dm_cooking_fuel</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she burns food</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_burn</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_argue</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she goes out without telling him</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_goout</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_neglect</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she refuses to have sexual intercourse with him</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_refusesex</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife for at least one of the reasons</td>
-    <td headers="varname" class="gt_row gt_left">dm_dvjustify_onereas</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
-    <td headers="varname" class="gt_row gt_left">dm_justify_refusesex</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">living in small town</td>
-    <td headers="varname" class="gt_row gt_left">dm_town</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">living in medium city</td>
-    <td headers="varname" class="gt_row gt_left">dm_city</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">living in capital city</td>
-    <td headers="varname" class="gt_row gt_left">dm_capital</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">poorest wealth quintile</td>
-    <td headers="varname" class="gt_row gt_left">dm_poorest</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">poorer wealth quintile</td>
-    <td headers="varname" class="gt_row gt_left">dm_poorer</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">middle wealth quintile</td>
-    <td headers="varname" class="gt_row gt_left">dm_middle</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">richer wealth quintile</td>
-    <td headers="varname" class="gt_row gt_left">dm_richer</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">richest wealth quintile</td>
-    <td headers="varname" class="gt_row gt_left">dm_richest</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">agricultural land (hectare)</td>
-    <td headers="varname" class="gt_row gt_left">dm_ag_land_ha</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">owns cattle</td>
-    <td headers="varname" class="gt_row gt_left">dm_cattle_own</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">owns goats</td>
-    <td headers="varname" class="gt_row gt_left">dm_goat_own</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">owns sheep</td>
-    <td headers="varname" class="gt_row gt_left">dm_sheep_own</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">owns poultry</td>
-    <td headers="varname" class="gt_row gt_left">dm_poultry_own</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">owns refrigerator</td>
-    <td headers="varname" class="gt_row gt_left">dm_refrigerator</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">female headed household</td>
-    <td headers="varname" class="gt_row gt_left">dm_female_headed</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Age of head of household</td>
-    <td headers="varname" class="gt_row gt_left">dm_age_of_hh_head</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">Mild anemia - child 6-59 months</td>
-    <td headers="varname" class="gt_row gt_left">nt_ch_mild_anem</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Skilled assistance during ANC</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_pvskill</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Attended 4+ ANC visits</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_4vs</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Number of months pregnant at time of first ANC visit</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_moprg</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Attended ANC &lt;4 months of pregnancy</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_4mo</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Took iron tablet/syrup during pregnancy of last birth</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_iron</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Took intestinal parasite drugs during pregnancy of last birth</td>
+  <td headers="varname" class="gt_row gt_left">rh_anc_parast</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Problem health care access: permission to go</td>
+  <td headers="varname" class="gt_row gt_left">rh_prob_permit</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Problem health care access: getting money</td>
+  <td headers="varname" class="gt_row gt_left">rh_prob_money</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Problem health care access: distance to facility</td>
+  <td headers="varname" class="gt_row gt_left">rh_prob_dist</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Problem health care access: not wanting to go alone</td>
+  <td headers="varname" class="gt_row gt_left">rh_prob_alone</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">At least one problem in accessing health care</td>
+  <td headers="varname" class="gt_row gt_left">rh_prob_minone</td></tr>
+<tr><td headers="labels" class="gt_row gt_left"></td>
+  <td headers="varname" class="gt_row gt_left">year</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Attended or completed at least secondary education</td>
+  <td headers="varname" class="gt_row gt_left">rc_edu_acceptable</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Literate - higher than secondary or can read part or whole sentence</td>
+  <td headers="varname" class="gt_row gt_left">rc_litr</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Accesses none of the three media at least once a week</td>
+  <td headers="varname" class="gt_row gt_left">rc_media_none</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Occupation among those employed in the past 12 months</td>
+  <td headers="varname" class="gt_row gt_left">rc_occup</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Work in agriculture in the past 12 months</td>
+  <td headers="varname" class="gt_row gt_left">rc_agri</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Have any health insurance</td>
+  <td headers="varname" class="gt_row gt_left">rc_hins_any</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Smokes any type of tobacco</td>
+  <td headers="varname" class="gt_row gt_left">rc_tobc_smk_any</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Birth weight less than 2.5 kg</td>
+  <td headers="varname" class="gt_row gt_left">ch_below_2p5</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ARI symptoms in the 2 weeks before the survey</td>
+  <td headers="varname" class="gt_row gt_left">ch_ari</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Fever symptoms in the 2 weeks before the survey</td>
+  <td headers="varname" class="gt_row gt_left">ch_fever</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Started breastfeeding within one hour of birth - last-born in the past 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_bf_start_1hr</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Started breastfeeding within one day of birth - last-born in the past 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_bf_start_1day</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td>
+  <td headers="varname" class="gt_row gt_left">nt_bf_prelac_nobirthrecord</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Drank from a bottle with a nipple yesterday - under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_bottle</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Age-appropriately breastfed - last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_ageapp_bf</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given infant formula in day/night before survey - last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_formula</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given other liquids in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_liquids</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given fortified baby food in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_bbyfood</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given grains in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_grains</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given vitamin A rich food in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_vita</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_frtveg</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given roots or tubers in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_root</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given legumes or nuts in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_nuts</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given meat, fish, shellfish, or poultry in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_meatfish</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given eggs in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_eggs</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_dairy</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given any solid or semisolid food in day/night before survey- last-born under 2 years</td>
+  <td headers="varname" class="gt_row gt_left">nt_solids</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child given milk or milk products- last-born 6-23 months</td>
+  <td headers="varname" class="gt_row gt_left">nt_fed_milk</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td>
+  <td headers="varname" class="gt_row gt_left">nt_mdd</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child with minimum meal frequency- last-born 6-23 months</td>
+  <td headers="varname" class="gt_row gt_left">nt_mmf</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child with minimum acceptable diet- last-born 6-23 months</td>
+  <td headers="varname" class="gt_row gt_left">nt_mad</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Youngest children age 6-23 mos living with mother given Vit A rich food</td>
+  <td headers="varname" class="gt_row gt_left">nt_ch_micro_vaf</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Current marital status</td>
+  <td headers="varname" class="gt_row gt_left">ms_mar_stat</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First marriage by age 15</td>
+  <td headers="varname" class="gt_row gt_left">ms_afm_15</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First marriage by age 18</td>
+  <td headers="varname" class="gt_row gt_left">ms_afm_18</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First marriage by age 20</td>
+  <td headers="varname" class="gt_row gt_left">ms_afm_20</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First marriage by age 22</td>
+  <td headers="varname" class="gt_row gt_left">ms_afm_22</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First marriage by age 25</td>
+  <td headers="varname" class="gt_row gt_left">ms_afm_25</td></tr>
+<tr><td headers="labels" class="gt_row gt_left"></td>
+  <td headers="varname" class="gt_row gt_left">ms_age</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Never had sex</td>
+  <td headers="varname" class="gt_row gt_left">ms_sex_never</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First sex by age 15</td>
+  <td headers="varname" class="gt_row gt_left">ms_afs_15</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First sex by age 18</td>
+  <td headers="varname" class="gt_row gt_left">ms_afs_18</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First sex by age 20</td>
+  <td headers="varname" class="gt_row gt_left">ms_afs_20</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First sex by age 22</td>
+  <td headers="varname" class="gt_row gt_left">ms_afs_22</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">First sex by age 25</td>
+  <td headers="varname" class="gt_row gt_left">ms_afs_25</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td>
+  <td headers="varname" class="gt_row gt_left">ch_stool_safe</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Number of children under 12 years old</td>
+  <td headers="varname" class="gt_row gt_left">dm_children_under12</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">type of cooking fuel</td>
+  <td headers="varname" class="gt_row gt_left">dm_cooking_fuel</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she burns food</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_burn</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she argues with him</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_argue</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she goes out without telling him</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_goout</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she neglects the children</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_neglect</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she refuses to have sexual intercourse with him</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_refusesex</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife for at least one of the reasons</td>
+  <td headers="varname" class="gt_row gt_left">dm_dvjustify_onereas</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td>
+  <td headers="varname" class="gt_row gt_left">dm_justify_refusesex</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">living in small town</td>
+  <td headers="varname" class="gt_row gt_left">dm_town</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">living in medium city</td>
+  <td headers="varname" class="gt_row gt_left">dm_city</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">living in capital city</td>
+  <td headers="varname" class="gt_row gt_left">dm_capital</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">poorest wealth quintile</td>
+  <td headers="varname" class="gt_row gt_left">dm_poorest</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">poorer wealth quintile</td>
+  <td headers="varname" class="gt_row gt_left">dm_poorer</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">middle wealth quintile</td>
+  <td headers="varname" class="gt_row gt_left">dm_middle</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">richer wealth quintile</td>
+  <td headers="varname" class="gt_row gt_left">dm_richer</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">richest wealth quintile</td>
+  <td headers="varname" class="gt_row gt_left">dm_richest</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">agricultural land (hectare)</td>
+  <td headers="varname" class="gt_row gt_left">dm_ag_land_ha</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">owns cattle</td>
+  <td headers="varname" class="gt_row gt_left">dm_cattle_own</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">owns goats</td>
+  <td headers="varname" class="gt_row gt_left">dm_goat_own</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">owns sheep</td>
+  <td headers="varname" class="gt_row gt_left">dm_sheep_own</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">owns poultry</td>
+  <td headers="varname" class="gt_row gt_left">dm_poultry_own</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">owns refrigerator</td>
+  <td headers="varname" class="gt_row gt_left">dm_refrigerator</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">female headed household</td>
+  <td headers="varname" class="gt_row gt_left">dm_female_headed</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Age of head of household</td>
+  <td headers="varname" class="gt_row gt_left">dm_age_of_hh_head</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">Mild anemia - child 6-59 months</td>
+  <td headers="varname" class="gt_row gt_left">nt_ch_mild_anem</td></tr>
 </tbody>
 
 
-    </table>
+  </table>
 </div>
 ```
 :::
@@ -2123,208 +2123,208 @@ if(length(selected_vars) > 0) {
 </style>
   <table class="gt_table" style="table-layout:fixed;width:100%;" data-quarto-disable-processing="false" data-quarto-bootstrap="false">
 <colgroup>
-  <col style="width:15%;"/>
-  <col style="width:15%;"/>
-  <col style="width:70%;"/>
+<col style="width:15%;"/>
+<col style="width:15%;"/>
+<col style="width:70%;"/>
 </colgroup>
 <thead>
-  <tr class="gt_col_headings">
-    <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels">labels</th>
-    <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="lambda.min">lambda.min</th>
-    <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels.y">labels.y</th>
-  </tr>
+<tr class="gt_col_headings">
+  <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels">labels</th>
+  <th class="gt_col_heading gt_columns_bottom_border gt_right" rowspan="1" colspan="1" scope="col" id="lambda.min">lambda.min</th>
+  <th class="gt_col_heading gt_columns_bottom_border gt_left" rowspan="1" colspan="1" scope="col" id="labels.y">labels.y</th>
+</tr>
 </thead>
 <tbody class="gt_table_body">
-  <tr><td headers="labels" class="gt_row gt_left">rh_anc_pvskill</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0148</td>
-    <td headers="labels.y" class="gt_row gt_left">Skilled assistance during ANC</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_anc_4vs</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0065</td>
-    <td headers="labels.y" class="gt_row gt_left">Attended 4+ ANC visits</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_anc_4mo</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0166</td>
-    <td headers="labels.y" class="gt_row gt_left">Attended ANC &lt;4 months of pregnancy</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_anc_iron</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0003</td>
-    <td headers="labels.y" class="gt_row gt_left">Took iron tablet/syrup during pregnancy of last birth</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_anc_parast</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
-    <td headers="labels.y" class="gt_row gt_left">Took intestinal parasite drugs during pregnancy of last birth</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_prob_permit</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0142</td>
-    <td headers="labels.y" class="gt_row gt_left">Problem health care access: permission to go</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_prob_dist</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0058</td>
-    <td headers="labels.y" class="gt_row gt_left">Problem health care access: distance to facility</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rh_prob_minone</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0128</td>
-    <td headers="labels.y" class="gt_row gt_left">At least one problem in accessing health care</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2007</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0295</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2008</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0323</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2009</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0245</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2010</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0165</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2011</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0251</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2014</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0144</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2015</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0213</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">year2016</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0410</td>
-    <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_edu_acceptable</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0755</td>
-    <td headers="labels.y" class="gt_row gt_left">Attended or completed at least secondary education</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_litr</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0415</td>
-    <td headers="labels.y" class="gt_row gt_left">Literate - higher than secondary or can read part or whole sentence</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_media_none</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0115</td>
-    <td headers="labels.y" class="gt_row gt_left">Accesses none of the three media at least once a week</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_occup</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0067</td>
-    <td headers="labels.y" class="gt_row gt_left">Occupation among those employed in the past 12 months</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_agri</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0269</td>
-    <td headers="labels.y" class="gt_row gt_left">Work in agriculture in the past 12 months</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_hins_any</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0104</td>
-    <td headers="labels.y" class="gt_row gt_left">Have any health insurance</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">rc_tobc_smk_any</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0139</td>
-    <td headers="labels.y" class="gt_row gt_left">Smokes any type of tobacco</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ch_below_2p5</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.1341</td>
-    <td headers="labels.y" class="gt_row gt_left">Birth weight less than 2.5 kg</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_bf_start_1hr</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0225</td>
-    <td headers="labels.y" class="gt_row gt_left">Started breastfeeding within one hour of birth - last-born in the past 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_bf_start_1day</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0320</td>
-    <td headers="labels.y" class="gt_row gt_left">Started breastfeeding within one day of birth - last-born in the past 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_bf_prelac_nobirthrecord</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0026</td>
-    <td headers="labels.y" class="gt_row gt_left">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_bottle</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0261</td>
-    <td headers="labels.y" class="gt_row gt_left">Drank from a bottle with a nipple yesterday - under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_formula</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0011</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given infant formula in day/night before survey - last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_liquids</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0050</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given other liquids in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_grains</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0132</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given grains in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_frtveg</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0095</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_root</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0086</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given roots or tubers in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_nuts</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0054</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given legumes or nuts in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_eggs</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given eggs in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_dairy</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0200</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_fed_milk</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0570</td>
-    <td headers="labels.y" class="gt_row gt_left">Child given milk or milk products- last-born 6-23 months</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_mdd</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0010</td>
-    <td headers="labels.y" class="gt_row gt_left">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">nt_mmf</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0062</td>
-    <td headers="labels.y" class="gt_row gt_left">Child with minimum meal frequency- last-born 6-23 months</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ms_mar_stat</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0063</td>
-    <td headers="labels.y" class="gt_row gt_left">Current marital status</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ms_afm_15</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0093</td>
-    <td headers="labels.y" class="gt_row gt_left">First marriage by age 15</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ms_afs_15</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0029</td>
-    <td headers="labels.y" class="gt_row gt_left">First sex by age 15</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ms_afs_18</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
-    <td headers="labels.y" class="gt_row gt_left">First sex by age 18</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ms_afs_25</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0014</td>
-    <td headers="labels.y" class="gt_row gt_left">First sex by age 25</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">ch_stool_safe</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0061</td>
-    <td headers="labels.y" class="gt_row gt_left">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_children_under12</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0805</td>
-    <td headers="labels.y" class="gt_row gt_left">Number of children under 12 years old</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_cooking_fuel</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0097</td>
-    <td headers="labels.y" class="gt_row gt_left">type of cooking fuel</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_dvjustify_argue</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0007</td>
-    <td headers="labels.y" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she argues with him</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_dvjustify_neglect</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0001</td>
-    <td headers="labels.y" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she neglects the children</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_justify_refusesex</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0091</td>
-    <td headers="labels.y" class="gt_row gt_left">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_town</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0111</td>
-    <td headers="labels.y" class="gt_row gt_left">living in small town</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_capital</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0364</td>
-    <td headers="labels.y" class="gt_row gt_left">living in capital city</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_poorest</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0951</td>
-    <td headers="labels.y" class="gt_row gt_left">poorest wealth quintile</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_poorer</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0277</td>
-    <td headers="labels.y" class="gt_row gt_left">poorer wealth quintile</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_richer</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0536</td>
-    <td headers="labels.y" class="gt_row gt_left">richer wealth quintile</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_richest</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0904</td>
-    <td headers="labels.y" class="gt_row gt_left">richest wealth quintile</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_ag_land_ha</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0040</td>
-    <td headers="labels.y" class="gt_row gt_left">agricultural land (hectare)</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_cattle_own</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0170</td>
-    <td headers="labels.y" class="gt_row gt_left">owns cattle</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_goat_own</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0025</td>
-    <td headers="labels.y" class="gt_row gt_left">owns goats</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_sheep_own</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0500</td>
-    <td headers="labels.y" class="gt_row gt_left">owns sheep</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_refrigerator</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0595</td>
-    <td headers="labels.y" class="gt_row gt_left">owns refrigerator</td></tr>
-  <tr><td headers="labels" class="gt_row gt_left">dm_age_of_hh_head</td>
-    <td headers="lambda.min" class="gt_row gt_right">0.0237</td>
-    <td headers="labels.y" class="gt_row gt_left">Age of head of household</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_anc_pvskill</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0148</td>
+  <td headers="labels.y" class="gt_row gt_left">Skilled assistance during ANC</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_anc_4vs</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0065</td>
+  <td headers="labels.y" class="gt_row gt_left">Attended 4+ ANC visits</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_anc_4mo</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0166</td>
+  <td headers="labels.y" class="gt_row gt_left">Attended ANC &lt;4 months of pregnancy</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_anc_iron</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0003</td>
+  <td headers="labels.y" class="gt_row gt_left">Took iron tablet/syrup during pregnancy of last birth</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_anc_parast</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
+  <td headers="labels.y" class="gt_row gt_left">Took intestinal parasite drugs during pregnancy of last birth</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_prob_permit</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0142</td>
+  <td headers="labels.y" class="gt_row gt_left">Problem health care access: permission to go</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_prob_dist</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0058</td>
+  <td headers="labels.y" class="gt_row gt_left">Problem health care access: distance to facility</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rh_prob_minone</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0128</td>
+  <td headers="labels.y" class="gt_row gt_left">At least one problem in accessing health care</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2007</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0295</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2008</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0323</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2009</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0245</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2010</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0165</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2011</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0251</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2014</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0144</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2015</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0213</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">year2016</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0410</td>
+  <td headers="labels.y" class="gt_row gt_left">NA</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_edu_acceptable</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0755</td>
+  <td headers="labels.y" class="gt_row gt_left">Attended or completed at least secondary education</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_litr</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0415</td>
+  <td headers="labels.y" class="gt_row gt_left">Literate - higher than secondary or can read part or whole sentence</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_media_none</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0115</td>
+  <td headers="labels.y" class="gt_row gt_left">Accesses none of the three media at least once a week</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_occup</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0067</td>
+  <td headers="labels.y" class="gt_row gt_left">Occupation among those employed in the past 12 months</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_agri</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0269</td>
+  <td headers="labels.y" class="gt_row gt_left">Work in agriculture in the past 12 months</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_hins_any</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0104</td>
+  <td headers="labels.y" class="gt_row gt_left">Have any health insurance</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">rc_tobc_smk_any</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0139</td>
+  <td headers="labels.y" class="gt_row gt_left">Smokes any type of tobacco</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ch_below_2p5</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.1341</td>
+  <td headers="labels.y" class="gt_row gt_left">Birth weight less than 2.5 kg</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_bf_start_1hr</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0225</td>
+  <td headers="labels.y" class="gt_row gt_left">Started breastfeeding within one hour of birth - last-born in the past 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_bf_start_1day</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0320</td>
+  <td headers="labels.y" class="gt_row gt_left">Started breastfeeding within one day of birth - last-born in the past 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_bf_prelac_nobirthrecord</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0026</td>
+  <td headers="labels.y" class="gt_row gt_left">Received a prelacteal feed - last-born in the past 2 years ever breast fed (without birth record data)</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_bottle</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0261</td>
+  <td headers="labels.y" class="gt_row gt_left">Drank from a bottle with a nipple yesterday - under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_formula</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0011</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given infant formula in day/night before survey - last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_liquids</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0050</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given other liquids in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_grains</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0132</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given grains in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_frtveg</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0095</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given other fruits or vegetables in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_root</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0086</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given roots or tubers in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_nuts</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0054</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given legumes or nuts in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_eggs</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given eggs in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_dairy</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0200</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given cheese, yogurt, or other milk products in day/night before survey- last-born under 2 years</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_fed_milk</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0570</td>
+  <td headers="labels.y" class="gt_row gt_left">Child given milk or milk products- last-born 6-23 months</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_mdd</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0010</td>
+  <td headers="labels.y" class="gt_row gt_left">Child with minimum dietary diversity, 5 out of 8 food groups- last-born 6-23 months</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">nt_mmf</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0062</td>
+  <td headers="labels.y" class="gt_row gt_left">Child with minimum meal frequency- last-born 6-23 months</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ms_mar_stat</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0063</td>
+  <td headers="labels.y" class="gt_row gt_left">Current marital status</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ms_afm_15</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0093</td>
+  <td headers="labels.y" class="gt_row gt_left">First marriage by age 15</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ms_afs_15</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0029</td>
+  <td headers="labels.y" class="gt_row gt_left">First sex by age 15</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ms_afs_18</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0076</td>
+  <td headers="labels.y" class="gt_row gt_left">First sex by age 18</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ms_afs_25</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0014</td>
+  <td headers="labels.y" class="gt_row gt_left">First sex by age 25</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">ch_stool_safe</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0061</td>
+  <td headers="labels.y" class="gt_row gt_left">Child's stool was disposed of appropriately among youngest children under age 2 living with mother</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_children_under12</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0805</td>
+  <td headers="labels.y" class="gt_row gt_left">Number of children under 12 years old</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_cooking_fuel</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0097</td>
+  <td headers="labels.y" class="gt_row gt_left">type of cooking fuel</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_dvjustify_argue</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0007</td>
+  <td headers="labels.y" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she argues with him</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_dvjustify_neglect</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0001</td>
+  <td headers="labels.y" class="gt_row gt_left">Agree that husband is justified in hitting or beating his wife if she neglects the children</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_justify_refusesex</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0091</td>
+  <td headers="labels.y" class="gt_row gt_left">Believe a woman is justified to refuse sex with her husband if she knows he's having sex with other women</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_town</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0111</td>
+  <td headers="labels.y" class="gt_row gt_left">living in small town</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_capital</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0364</td>
+  <td headers="labels.y" class="gt_row gt_left">living in capital city</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_poorest</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0951</td>
+  <td headers="labels.y" class="gt_row gt_left">poorest wealth quintile</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_poorer</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0277</td>
+  <td headers="labels.y" class="gt_row gt_left">poorer wealth quintile</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_richer</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0536</td>
+  <td headers="labels.y" class="gt_row gt_left">richer wealth quintile</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_richest</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0904</td>
+  <td headers="labels.y" class="gt_row gt_left">richest wealth quintile</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_ag_land_ha</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0040</td>
+  <td headers="labels.y" class="gt_row gt_left">agricultural land (hectare)</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_cattle_own</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0170</td>
+  <td headers="labels.y" class="gt_row gt_left">owns cattle</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_goat_own</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0025</td>
+  <td headers="labels.y" class="gt_row gt_left">owns goats</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_sheep_own</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0500</td>
+  <td headers="labels.y" class="gt_row gt_left">owns sheep</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_refrigerator</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0595</td>
+  <td headers="labels.y" class="gt_row gt_left">owns refrigerator</td></tr>
+<tr><td headers="labels" class="gt_row gt_left">dm_age_of_hh_head</td>
+  <td headers="lambda.min" class="gt_row gt_right">0.0237</td>
+  <td headers="labels.y" class="gt_row gt_left">Age of head of household</td></tr>
 </tbody>
 
 
-    </table>
+  </table>
 </div>
 ```
 :::
