@@ -117,17 +117,42 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # ******************************************************************************
 # 食品群消費データの読み込み
 df_food_consumption_org <- read_rds(file.path(gdrive_enaho_dir,
-        "food_consumption_by_area_income.rds"))
+        "food_consumption_by_area_income.rds")) %>% 
+  mutate(
+    inc_quintile = labelled::to_factor(inc_quintile),
+    ena_staple_legume = staple_legume_log1p,
+    ena_vegetable = vegetable_log1p,
+    ena_fruit = fruit_log1p,
+    ena_dairy = dairy_log1p,
+    ena_ASF = ASF_log1p,
+    ena_oilfat = oilfat_log1p,
+    enase_staple_legume = staple_legume_log1p_se,
+    enase_vegetable = vegetable_log1p_se,
+    enase_fruit = fruit_log1p_se,
+    enase_dairy = dairy_log1p_se,
+    enase_ASF = ASF_log1p_se,
+    enase_oilfat = oilfat_log1p_se
+    )
 
-# マージ実行
+
+# マージ実行(dep, rural, incomeで結合)
 all_data_merged <- all_data_merged %>%
-  left_join_safe(temp_area, c("v024" = "department", "dm_rural" = "dm_rural",
-                              "dm_income_quintile" = "income_quintile"))
+  mutate(
+    dm_income_quintile = case_when(
+      v190 == 1 ~ "1",
+      v190 == 2 ~ "2",
+      v190 == 3 ~ "3",
+      v190 == 4 ~ "4",
+      v190 == 5 ~ "5",
+      TRUE ~ NA_character_
+      ) %>% as.factor()
+  ) %>%
+  left_join_safe(df_food_consumption_org, c("v024" = "department", 
+          "dm_rural" = "dm_rural", "dm_income_quintile" = "inc_quintile"))
 
-# データ結合後、temp_areaは不要になるので削除
-rm(temp_area)
 
 # ファイルをRDSで保存
-saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", "all_data_merged.rds"))
+saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
+        "all_data_merged.rds"))
 
 ```
