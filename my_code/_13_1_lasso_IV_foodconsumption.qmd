@@ -496,7 +496,7 @@ print(paste("オッズ比（元スケール、10%増加）:", round(exp(coef_ori
 
 ```
 
- # 5. ブートストラップを用いた標準誤差の補正
+# 5. ブートストラップを用いた標準誤差の補正
  
 ```{r}
 library(boot)
@@ -544,7 +544,7 @@ boot_results <- boot(
   statistic = iv_boot_function, 
   R = 1000,  # 最低500、理想的には1000以上
   parallel = "multicore",  # 並列処理（Windowsでは"snow"）
-  ncpus = 4  # CPUコア数に応じて調整
+  ncpus = 8  # CPUコア数に応じて調整
 )
 
 # 結果の確認
