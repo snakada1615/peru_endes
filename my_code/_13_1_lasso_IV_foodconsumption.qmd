@@ -550,8 +550,11 @@ boot_results <- boot(
 # 結果の確認
 print(boot_results)
 
+# 結果の保存
+saveRDS(coef_importance, file.path(save_path,"boot_result.rds"))
+
 # ブートストラップ信頼区間
-boot.ci(boot_results, type = c("norm", "basic", "perc", "bca"))
+boot.ci(boot_results, type = c("norm", "basic", "perc"))
 
 # ブートストラップ標準誤差
 boot_se <- sd(boot_results$t, na.rm = TRUE)
