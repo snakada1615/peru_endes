@@ -106,7 +106,7 @@ drop_cols_init <- c(
 "v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
 "v467b","v467c","v467d","v467f",
 "wt","state","age","treated_status","treatment_start","year_treated", 
-"dm_weath_index"
+"dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
 )
 
 # 除外変数定義
@@ -183,7 +183,7 @@ covariate_names <- df_lasso_data$covariate_names
 
 ```
 
-## 3. LASSOによる変数選択
+## 3. LASSO①による変数選択
 
 ```{r}
 library(gt)
@@ -311,6 +311,7 @@ if(length(selected_vars) > 0) {
   coef_importance <- as_tibble(coef_importance)
   
   saveRDS(coef_importance, file.path(save_path, "lasso_selected_vars_importance.rds"))
+  write.xlsx(coef_importance, file.path(save_path, "lasso_selected_vars_importance.xlsx"))
 
   #   # gt()で表示（列名で指定）
   # coef_importance %>%
@@ -333,7 +334,122 @@ if(length(selected_vars) > 0) {
 # 4. 選択変数でのIV-GLM実行
 
 ```{r}
+library(survey)
 
+# ================================================================================
+# 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
+# ================================================================================
+selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_mdd"
+)
+
+# ================================================================================
+# 2. sampling weightの年次補正
+# ================================================================================
+# 年ごとの元 v005 合計を算出
+year_totals <- df_lasso %>%
+  group_by(year) %>%
+  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
+
+# Survey designオブジェクトの作成前に変数を変換
+df_lasso <- df_lasso %>%
+  mutate(
+    v021 = as.numeric(v021),                        # Primary Sampling Unit
+    v022 = as.character(haven::as_factor(v022))    #haven_labelledをfactorに変換してからcharacter
+  )
+
+# 正規化済みサンプリングウェイトの作成
+df_lasso <- df_lasso %>%
+  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
+  left_join(year_totals, by = "year") %>%
+  mutate(
+    # 元のDHSウェイト
+    dhs_weight = v005 / 1e6,
+    # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
+    year_norm = total_v005 / sum(year_totals$total_v005),
+    # 正規化済みウェイト
+    sampling_weight_norm = dhs_weight / year_norm,
+    # 極端値トリミング
+    sampling_weight_trimmed = pmax(
+      pmin(sampling_weight_norm,
+           quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
+      quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
+    )
+  )
+
+# ================================================================================
+# 3. surveydesignオブジェクトの作成
+# ================================================================================
+library(survey)
+library(glmnet)
+
+# Survey designオブジェクトの作成
+svy_design <- svydesign(
+  ids = ~v021,          # Primary Sampling Unit (クラスター)
+  strata = ~v022,       # 層化変数
+  weights = ~sampling_weight_trimmed,
+  data = df_lasso,
+  nest = TRUE           # 入れ子構造
+)
+
+# 孤立PSUの処理
+options(survey.lonely.psu = "adjust")
+print("Survey designオブジェクトが作成されました")
+
+# ================================================================================
+# 4. 1st stage: dairy_log1p_scoreを予測（survey-weighted）
+# ================================================================================
+# 変数選択された共変量+juntos_non_participationを使用
+formula_1st <- as.formula(
+  paste("dairy_log1p_score ~", paste(c("juntos_non_participation", selected_predictors), 
+                    collapse = " + "))
+)
+
+print("1st stageの式:")
+print(formula_1st)
+
+# survey-weighted 1st stage regression
+fit1_svy <- svyglm(formula_1st, design = svy_design, family = gaussian())
+
+# 予測値を元のデータフレームに追加
+svy_design$variables$pred_dairy <- predict(fit1_svy, type = "response")
+
+# Survey designオブジェクトを再作成（pred_dairyを含む）
+svy_design <- svydesign(
+  ids = ~v021,
+  strata = ~v022,
+  weights = ~sampling_weight_trimmed,
+  data = df_lasso,
+  nest = TRUE
+)
+
+print("pred_dairy変数を含むsurvey designオブジェクトを再作成しました")
+# ================================================================================
+# 5. 2nd stage: pred_dairyでStuntingを予測（survey-weighted）
+# ================================================================================
+formula_2nd <- as.formula(
+  paste("stunting ~ ", paste(c("pred_dairy", selected_predictors), 
+                    collapse = " + "))
+)
+
+print("2nd stageの式:")
+print(formula_2nd)
+
+# survey-weighted 2nd stage regression
+fit2_svy <- svyglm(formula_2nd, design = svy_design, family = quasibinomial())
+
+# 結果の表示
+summary(fit1_svy)
+summary(fit2_svy)
+
+# 係数の取得
+coef1 <- coef(fit1_svy)
+coef2 <- coef(fit2_svy)
+
+print("1st stage係数:")
+print(coef1)
+
+print("2nd stage係数:")
+print(coef2)
 
 
 ```
