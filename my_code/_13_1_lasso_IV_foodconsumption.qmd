@@ -495,3 +495,85 @@ print(paste("オッズ比（元スケール、10%増加）:", round(exp(coef_ori
 
 
 ```
+
+ # 5. ブートストラップを用いた標準誤差の補正
+ 
+```{r}
+library(boot)
+
+# ブートストラップ関数
+iv_boot_function <- function(data, indices) {
+  # リサンプリング
+  d <- data[indices, ]
+  
+  # Survey designオブジェクトを作成
+  tryCatch({
+    svy_boot <- svydesign(
+      ids = ~v021, 
+      strata = ~v022, 
+      weights = ~sampling_weight_trimmed,
+      data = d, 
+      nest = TRUE
+    )
+    
+    # 1st stage
+    fit1 <- svyglm(formula_1st, design = svy_boot, family = gaussian())
+    d$pred_dairy <- (predict(fit1, type = "response") - pred_dairy_mean) / pred_dairy_sd
+    
+    # Survey designを更新
+    svy_boot <- svydesign(
+      ids = ~v021, strata = ~v022, 
+      weights = ~sampling_weight_trimmed,
+      data = d, nest = TRUE
+    )
+    
+    # 2nd stage
+    fit2 <- svyglm(formula_2nd, design = svy_boot, family = quasibinomial())
+    
+    # pred_dairyの係数を返す
+    return(coef(fit2)["pred_dairy"])
+  }, error = function(e) {
+    return(NA)
+  })
+}
+
+# ブートストラップ実行（時間がかかります：30分〜1時間程度）
+set.seed(12345)
+boot_results <- boot(
+  data = df_lasso, 
+  statistic = iv_boot_function, 
+  R = 1000,  # 最低500、理想的には1000以上
+  parallel = "multicore",  # 並列処理（Windowsでは"snow"）
+  ncpus = 4  # CPUコア数に応じて調整
+)
+
+# 結果の確認
+print(boot_results)
+
+# ブートストラップ信頼区間
+boot.ci(boot_results, type = c("norm", "basic", "perc", "bca"))
+
+# ブートストラップ標準誤差
+boot_se <- sd(boot_results$t, na.rm = TRUE)
+print(paste("ブートストラップ標準誤差:", round(boot_se, 4)))
+
+# 元の推定値との比較
+original_coef <- coef(fit2_svy)["pred_dairy"]
+original_se <- summary(fit2_svy)$coefficients["pred_dairy", "Std. Error"]
+
+cat("\n=== 標準誤差の比較 ===\n")
+cat("元の標準誤差（過小推定）:", round(original_se, 4), "\n")
+cat("ブートストラップ標準誤差:", round(boot_se, 4), "\n")
+cat("増加率:", round((boot_se / original_se - 1) * 100, 1), "%\n")
+
+# 修正後のp値
+z_boot <- original_coef / boot_se
+p_boot <- 2 * pnorm(-abs(z_boot))
+cat("\n修正後のp値:", format.pval(p_boot), "\n")
+
+# 修正後の95%信頼区間（正規近似）
+ci_boot <- original_coef + c(-1.96, 1.96) * boot_se
+cat("修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n")
+
+
+```
