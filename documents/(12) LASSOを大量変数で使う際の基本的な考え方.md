@@ -95,11 +95,11 @@
 
 ### 1.1 数学的問題
 
-州グループ変数（`early_treated`, `late_treated`, `control`）は個別州変数の**線形結合**として表現できるため、両者を同時にモデルに含めると完全共線性が発生する。[^(12-lassoを大量変数で使う際の基本的な考え方-1], [^(12-lassoを大量変数で使う際の基本的な考え方-2]
+州グループ変数（`early_treated`, `late_treated`, `control`）は個別州変数の**線形結合**として表現できるため、両者を同時にモデルに含めると完全共線性が発生する。[^(12-lassoを大量変数で使う際の基本的な考え方-1], [^(12-lassoを大量変数で使う際の基本的な考え方-2]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-1]: <https://www.aeaweb.org/articles?id=10.1257%2Faer.20181169>
+[^(12-lassoを大量変数で使う際の基本的な考え方-1]: <https://www.aeaweb.org/articles?id=10.1257%2Faer.20181169>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-2]: <https://www.nber.org/system/files/working_papers/w25904/w25904.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-2]: <https://www.nber.org/system/files/working_papers/w25904/w25904.pdf>
 
 例：
 
@@ -111,11 +111,11 @@
 
 ### 1.2 LASSOでの挙動
 
-LASSOは完全共線性に対しても一定の頑健性を持つが、以下の問題が発生する：[^(12-lassoを大量変数で使う際の基本的な考え方-3], [^(12-lassoを大量変数で使う際の基本的な考え方-4]
+LASSOは完全共線性に対しても一定の頑健性を持つが、以下の問題が発生する：[^(12-lassoを大量変数で使う際の基本的な考え方-3], [^(12-lassoを大量変数で使う際の基本的な考え方-4]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-3]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC4941428/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-3]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC4941428/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-4]: <https://www.pnas.org/doi/pdf/10.1073/pnas.1510506113>
+[^(12-lassoを大量変数で使う際の基本的な考え方-4]: <https://www.pnas.org/doi/pdf/10.1073/pnas.1510506113>
 
 -   完全に相関する変数群の中から**任意に一部を選択**する（選択が不安定）
 -   係数の推定値が **データの微細な変動に過度に敏感**になる
@@ -127,17 +127,17 @@ LASSOは完全共線性に対しても一定の頑健性を持つが、以下の
 
 ### 2.1 Staggered DiDの課題
 
-近年の計量経済学研究では、**異時点介入（staggered treatment）**を伴う差分差分設定において、従来の二方向固定効果（TWFE）推定量が**負の重み**を持つ可能性があることが判明している。[^(12-lassoを大量変数で使う際の基本的な考え方-5], [^(12-lassoを大量変数で使う際の基本的な考え方-6]
+近年の計量経済学研究では、**異時点介入（staggered treatment）**を伴う差分差分設定において、従来の二方向固定効果（TWFE）推定量が**負の重み**を持つ可能性があることが判明している。[^(12-lassoを大量変数で使う際の基本的な考え方-5], [^(12-lassoを大量変数で使う際の基本的な考え方-6]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-5]: <https://www.nber.org/system/files/working_papers/w25904/w25904.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-5]: <https://www.nber.org/system/files/working_papers/w25904/w25904.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-6]: <https://www.jonathandroth.com/assets/files/DiD_Review_Paper.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-6]: <https://www.jonathandroth.com/assets/files/DiD_Review_Paper.pdf>
 
-この問題は以下の状況で発生する：[^(12-lassoを大量変数で使う際の基本的な考え方-7], [^(12-lassoを大量変数で使う際の基本的な考え方-8]
+この問題は以下の状況で発生する：[^(12-lassoを大量変数で使う際の基本的な考え方-7], [^(12-lassoを大量変数で使う際の基本的な考え方-8]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-7]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC10771800/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-7]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC10771800/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-8]: <https://www.tse-fr.eu/sites/default/files/TSE/documents/doc/wp/2022/wp_tse_1362.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-8]: <https://www.tse-fr.eu/sites/default/files/TSE/documents/doc/wp/2022/wp_tse_1362.pdf>
 
 -   早期介入グループが後期介入グループの対照群として使用される
 -   介入効果が時間や州によって異質性を持つ
@@ -145,11 +145,11 @@ LASSOは完全共線性に対しても一定の頑健性を持つが、以下の
 
 ### 2.2 LASSO with Treatment Effects
 
-治療効果推定におけるLASSOの適用では、以下のアプローチが推奨される：[^(12-lassoを大量変数で使う際の基本的な考え方-9], [^(12-lassoを大量変数で使う際の基本的な考え方-10]
+治療効果推定におけるLASSOの適用では、以下のアプローチが推奨される：[^(12-lassoを大量変数で使う際の基本的な考え方-9], [^(12-lassoを大量変数で使う際の基本的な考え方-10]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-9]: <https://www.stata.com/manuals/causaltelasso.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-9]: <https://www.stata.com/manuals/causaltelasso.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-10]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC4941428/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-10]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC4941428/>
 
 1.  **Doubly Robust AIPW（Augmented Inverse Probability Weighting）**：
     -   アウトカムモデルと治療モデルの両方でLASSO選択を実行
@@ -182,9 +182,9 @@ model_state <- cv.glmnet(X_state, y_residual, alpha=1)
 
 ### 3.3 推奨アプローチ3：制約付きLASSO
 
-**Group LASSO**を使用して、関連する変数群を一括で選択・除外する：[^(12-lassoを大量変数で使う際の基本的な考え方-11]
+**Group LASSO**を使用して、関連する変数群を一括で選択・除外する：[^(12-lassoを大量変数で使う際の基本的な考え方-11]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-11]: <https://arxiv.org/pdf/2302.03832.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-11]: <https://arxiv.org/pdf/2302.03832.pdf>
 
 -   同一州に属する変数を一つのグループとして扱う
 -   グループ単位でのペナルティにより、解釈しやすい結果を得る
@@ -205,65 +205,65 @@ model_state <- cv.glmnet(X_state, y_residual, alpha=1)
     -   州を地理的または社会経済的特性でグルーピング
     -   より柔軟な地域効果のモデリング
 
-このアプローチにより、完全多重共線性を回避しつつ、介入効果と地域特性の両方を適切に評価できます。[^(12-lassoを大量変数で使う際の基本的な考え方-12],[^(12-lassoを大量変数で使う際の基本的な考え方-13], [^(12-lassoを大量変数で使う際の基本的な考え方-14],[^(12-lassoを大量変数で使う際の基本的な考え方-15],[^(12-lassoを大量変数で使う際の基本的な考え方-16],[^(12-lassoを大量変数で使う際の基本的な考え方-17],[^(12-lassoを大量変数で使う際の基本的な考え方-18],[^(12-lassoを大量変数で使う際の基本的な考え方-19], [^(12-lassoを大量変数で使う際の基本的な考え方-20], [^(12-lassoを大量変数で使う際の基本的な考え方-21], [^(12-lassoを大量変数で使う際の基本的な考え方-22], [^(12-lassoを大量変数で使う際の基本的な考え方-23], [^(12-lassoを大量変数で使う際の基本的な考え方-24], [^(12-lassoを大量変数で使う際の基本的な考え方-25], [^(12-lassoを大量変数で使う際の基本的な考え方-26], [^(12-lassoを大量変数で使う際の基本的な考え方-27], [^(12-lassoを大量変数で使う際の基本的な考え方-28], [^(12-lassoを大量変数で使う際の基本的な考え方-29], [^(12-lassoを大量変数で使う際の基本的な考え方-30], [^(12-lassoを大量変数で使う際の基本的な考え方-31], [^(12-lassoを大量変数で使う際の基本的な考え方-32], [^(12-lassoを大量変数で使う際の基本的な考え方-33], [^(12-lassoを大量変数で使う際の基本的な考え方-34], [^(12-lassoを大量変数で使う際の基本的な考え方-35], [^(12-lassoを大量変数で使う際の基本的な考え方-36], [^(12-lassoを大量変数で使う際の基本的な考え方-37], [^(12-lassoを大量変数で使う際の基本的な考え方-38], [^(12-lassoを大量変数で使う際の基本的な考え方-39], [^(12-lassoを大量変数で使う際の基本的な考え方-40]
+このアプローチにより、完全多重共線性を回避しつつ、介入効果と地域特性の両方を適切に評価できます。[^(12-lassoを大量変数で使う際の基本的な考え方-12],[^(12-lassoを大量変数で使う際の基本的な考え方-13], [^(12-lassoを大量変数で使う際の基本的な考え方-14],[^(12-lassoを大量変数で使う際の基本的な考え方-15],[^(12-lassoを大量変数で使う際の基本的な考え方-16],[^(12-lassoを大量変数で使う際の基本的な考え方-17],[^(12-lassoを大量変数で使う際の基本的な考え方-18],[^(12-lassoを大量変数で使う際の基本的な考え方-19], [^(12-lassoを大量変数で使う際の基本的な考え方-20], [^(12-lassoを大量変数で使う際の基本的な考え方-21], [^(12-lassoを大量変数で使う際の基本的な考え方-22], [^(12-lassoを大量変数で使う際の基本的な考え方-23], [^(12-lassoを大量変数で使う際の基本的な考え方-24], [^(12-lassoを大量変数で使う際の基本的な考え方-25], [^(12-lassoを大量変数で使う際の基本的な考え方-26], [^(12-lassoを大量変数で使う際の基本的な考え方-27], [^(12-lassoを大量変数で使う際の基本的な考え方-28], [^(12-lassoを大量変数で使う際の基本的な考え方-29], [^(12-lassoを大量変数で使う際の基本的な考え方-30], [^(12-lassoを大量変数で使う際の基本的な考え方-31], [^(12-lassoを大量変数で使う際の基本的な考え方-32], [^(12-lassoを大量変数で使う際の基本的な考え方-33], [^(12-lassoを大量変数で使う際の基本的な考え方-34], [^(12-lassoを大量変数で使う際の基本的な考え方-35], [^(12-lassoを大量変数で使う際の基本的な考え方-36], [^(12-lassoを大量変数で使う際の基本的な考え方-37], [^(12-lassoを大量変数で使う際の基本的な考え方-38], [^(12-lassoを大量変数で使う際の基本的な考え方-39], [^(12-lassoを大量変数で使う際の基本的な考え方-40]
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-12]: <https://wooyong.github.io/data/papers/spillover.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-12]: <https://wooyong.github.io/data/papers/spillover.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-13]: <https://arxiv.org/pdf/2006.15780.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-13]: <https://arxiv.org/pdf/2006.15780.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-14]: <https://arxiv.org/abs/2410.08283>
+[^(12-lassoを大量変数で使う際の基本的な考え方-14]: <https://arxiv.org/abs/2410.08283>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-15]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC5001752/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-15]: <https://pmc.ncbi.nlm.nih.gov/articles/PMC5001752/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-16]: <https://www.sciencedirect.com/science/article/abs/pii/S030440762500065X>
+[^(12-lassoを大量変数で使う際の基本的な考え方-16]: <https://www.sciencedirect.com/science/article/abs/pii/S030440762500065X>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-17]: <https://theeffectbook.net/ch-FixedEffects.html>
+[^(12-lassoを大量変数で使う際の基本的な考え方-17]: <https://theeffectbook.net/ch-FixedEffects.html>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-18]: <https://www.stata.com/stata17/causal-inference-treatment-effects-lasso/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-18]: <https://www.stata.com/stata17/causal-inference-treatment-effects-lasso/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-19]: <https://www.sciencedirect.com/science/article/abs/pii/S0893608024008141>
+[^(12-lassoを大量変数で使う際の基本的な考え方-19]: <https://www.sciencedirect.com/science/article/abs/pii/S0893608024008141>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-20]: <https://arxiv.org/abs/2006.15780>
+[^(12-lassoを大量変数で使う際の基本的な考え方-20]: <https://arxiv.org/abs/2006.15780>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-21]: <https://blogs.worldbank.org/en/impactevaluations/using-pds-lasso-to-select-controls-in-field-experiments>
+[^(12-lassoを大量変数で使う際の基本的な考え方-21]: <https://blogs.worldbank.org/en/impactevaluations/using-pds-lasso-to-select-controls-in-field-experiments>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-22]: <https://www.pnas.org/doi/abs/10.1073/pnas.1510506113?doi=10.1073%2Fpnas.1510506113>
+[^(12-lassoを大量変数で使う際の基本的な考え方-22]: <https://www.pnas.org/doi/abs/10.1073/pnas.1510506113?doi=10.1073%2Fpnas.1510506113>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-23]: <https://arxiv.org/html/2310.01950v2>
+[^(12-lassoを大量変数で使う際の基本的な考え方-23]: <https://arxiv.org/html/2310.01950v2>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-24]: <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.10253>
+[^(12-lassoを大量変数で使う際の基本的な考え方-24]: <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.10253>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-25]: <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.9132>
+[^(12-lassoを大量変数で使う際の基本的な考え方-25]: <https://onlinelibrary.wiley.com/doi/full/10.1002/sim.9132>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-26]: <https://www.statalist.org/forums/forum/general-stata-discussion/general/1471836-understanding-a-treatment-effect-with-group-fixed-effects>
+[^(12-lassoを大量変数で使う際の基本的な考え方-26]: <https://www.statalist.org/forums/forum/general-stata-discussion/general/1471836-understanding-a-treatment-effect-with-group-fixed-effects>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-27]: <https://www.sciencedirect.com/science/article/abs/pii/S0304407613002030>
+[^(12-lassoを大量変数で使う際の基本的な考え方-27]: <https://www.sciencedirect.com/science/article/abs/pii/S0304407613002030>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-28]: <https://pubs.acs.org/doi/10.1021/acs.jpcc.3c00770>
+[^(12-lassoを大量変数で使う際の基本的な考え方-28]: <https://pubs.acs.org/doi/10.1021/acs.jpcc.3c00770>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-29]: <https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-29]: <https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-30]: <https://bookdown.org/mike/data_analysis/sec-difference-in-differences.html>
+[^(12-lassoを大量変数で使う際の基本的な考え方-30]: <https://bookdown.org/mike/data_analysis/sec-difference-in-differences.html>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-31]: <https://arxiv.org/pdf/2503.13323.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-31]: <https://arxiv.org/pdf/2503.13323.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-32]: <https://arxiv.org/html/2402.09928v3>
+[^(12-lassoを大量変数で使う際の基本的な考え方-32]: <https://arxiv.org/html/2402.09928v3>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-33]: <https://www.reddit.com/r/econometrics/comments/ph80z6/can_someone_explain_to_me_in_simple_terms_what/>
+[^(12-lassoを大量変数で使う際の基本的な考え方-33]: <https://www.reddit.com/r/econometrics/comments/ph80z6/can_someone_explain_to_me_in_simple_terms_what/>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-34]: <https://arxiv.org/html/2503.13323v1>
+[^(12-lassoを大量変数で使う際の基本的な考え方-34]: <https://arxiv.org/html/2503.13323v1>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-35]: <https://bookdown.org/mike/data_analysis/sec-two-way-fixed-effects.html>
+[^(12-lassoを大量変数で使う際の基本的な考え方-35]: <https://bookdown.org/mike/data_analysis/sec-two-way-fixed-effects.html>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-36]: <https://en.wikipedia.org/wiki/Fixed_effects_model>
+[^(12-lassoを大量変数で使う際の基本的な考え方-36]: <https://en.wikipedia.org/wiki/Fixed_effects_model>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-37]: <https://journals.sagepub.com/doi/full/10.1177/1536867X241297914>
+[^(12-lassoを大量変数で使う際の基本的な考え方-37]: <https://journals.sagepub.com/doi/full/10.1177/1536867X241297914>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-38]: <https://www.sciencedirect.com/science/article/abs/pii/S0304407623001963>
+[^(12-lassoを大量変数で使う際の基本的な考え方-38]: <https://www.sciencedirect.com/science/article/abs/pii/S0304407623001963>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-39]: <https://christophbreunig.com/wp-content/uploads/2024/12/bayes_did.pdf>
+[^(12-lassoを大量変数で使う際の基本的な考え方-39]: <https://christophbreunig.com/wp-content/uploads/2024/12/bayes_did.pdf>
 
-[^(12-lassoを大量変数で使う際の基本的な考え方-40]: <https://www.sciencedirect.com/science/article/pii/S0304407625001137>
+[^(12-lassoを大量変数で使う際の基本的な考え方-40]: <https://www.sciencedirect.com/science/article/pii/S0304407625001137>
 
 # \*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*\*
 
