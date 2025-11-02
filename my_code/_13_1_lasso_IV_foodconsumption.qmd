@@ -183,7 +183,7 @@ covariate_names <- df_lasso_data$covariate_names
 
 ```
 
-## 3. LASSO①による変数選択
+## 3. LASSOによる変数選択
 
 ```{r}
 library(gt)
@@ -336,6 +336,171 @@ if(length(selected_vars) > 0) {
 ```{r}
 library(survey)
 
+# *******************************************************************************
+# IV-GLM関数定義
+#' @title survey_2sls
+#' @description survey-weighted 2SLS回帰を実行する関数
+#' @param y1 内生変数
+#' @param y2 目的変数
+#' @param instrument 操作変数
+#' @param covariates 共変量ベクトル
+#' *******************************************************************************
+survey_2sls <- function(y1, y2, instrument, covariates, design) {
+  data <- design$variables
+  
+  # 1st stage: y1（内生変数）を instrument（操作変数）+ 共変量で予測
+  formula_1st <- as.formula(
+    paste(y1, " ~ ", instrument, " + ", paste(covariates, collapse = " + ")))
+  print("1st stageの式:")
+  print(formula_1st)
+  
+  formula_2nd <- as.formula(
+    paste(y2, " ~ ", paste(c("pred_y1", covariates), collapse = " + "))
+  )
+  print("2nd stageの式:")
+  print(formula_2nd)
+
+  # survey-weighted 1st stage regression
+  fit1_svy <- svyglm(formula_1st, design = design, family = gaussian())
+
+  print("=== 1st Stage結果 ===")
+  print(summary(fit1_svy))
+  
+  # 予測値を元のデータフレームに保存
+  pred_y1_raw <- predict(fit1_svy, type = "response")
+
+  # *** 重要：予測値を標準化・スケーリング ***
+  pred_mean <- mean(pred_y1_raw, na.rm = TRUE)
+  pred_sd <- sd(pred_y1_raw, na.rm = TRUE)
+  
+  # スケーリング（重要な処理）
+  data[["pred_y1"]] <- (pred_y1_raw - pred_mean) / pred_sd
+  
+  # 統計量確認
+  cat("=== 1st Stage予測値の統計量 ===\n")
+  cat("生値（raw）:\n")
+  print(summary(pred_y1_raw))
+  cat("\n標準化値:\n")
+  print(summary(data[["pred_y1"]]))
+  cat("標準偏差:\n")
+  print(sd(data[["pred_y1"]], na.rm = TRUE))
+  
+  # F統計量（弱操作変数検定）- instrumentの係数を使う
+  f_stat <- summary(fit1_svy)$coefficients[instrument, "t value"]^2
+  print(paste("F統計量（", instrument, "）:", round(f_stat, 2)))
+  if(f_stat > 10) {
+    print("✓ 操作変数は十分に強い（F > 10）")
+  } else {
+    print("⚠ 弱操作変数の可能性（F < 10）")
+  }
+  
+  # Survey designオブジェクトを再作成
+  svy_design <- svydesign(
+    ids = ~v021,
+    strata = ~v022,
+    weights = ~sampling_weight_trimmed,
+    data = data,
+    nest = TRUE
+  )
+  
+  print("Survey designオブジェクトを再作成しました")
+  
+  # 2nd stage
+  fit2_svy <- svyglm(formula_2nd, design = svy_design, family = quasibinomial())
+  
+  print("=== 2nd Stage結果 ===")
+  print(summary(fit2_svy))
+  
+  # ... 以下同じ ...
+  # 2nd stageの結果
+
+  # pred_dairyの係数と信頼区間
+  coef_pred <- coef(fit2_svy)["pred_y1"]
+  ci_pred <- confint(fit2_svy)["pred_y1", ]
+  
+  print("=== 乳製品摂取のStuntingへの因果効果 ===")
+  print(paste("係数（標準化スケール）:", round(coef_pred, 4)))
+  print(paste("95%CI: [", round(ci_pred[1], 4), ",", round(ci_pred[2], 4), "]"))
+  
+  # オッズ比に変換（標準化スケール）
+  or_pred <- exp(coef_pred)
+  or_ci <- exp(ci_pred)
+  print(paste("オッズ比（SD増加当たり）:", round(or_pred, 4)))
+  print(paste("95%CI: [", round(or_ci[1], 4), ",", round(or_ci[2], 4), "]"))
+  
+# ================================================================================
+# 元のスケール（log1p dairy consumption）での効果分析 - 完全版
+# ================================================================================
+  
+  # 元スケール係数と信頼区間
+  coef_original_scale <- coef_pred / pred_sd
+  ci_original <- ci_pred / pred_sd
+  
+  cat("\n=== 元のスケール（log1p dairy consumption）での効果 ===\n")
+  cat("係数（元スケール）:", round(coef_original_scale, 6), "\n")
+  cat("95% CI: [", round(ci_original[1], 6), ",", round(ci_original[2], 6), "]\n\n")
+  
+  # データから平均値・中央値を取得
+  y1_raw <- expm1(data[[y1]])  # log(1+x)を逆変換
+  y1_mean <- mean(y1_raw, na.rm = TRUE)
+  y1_median <- median(y1_raw, na.rm = TRUE)
+  y1_q25 <- quantile(y1_raw, 0.25, na.rm = TRUE)
+  y1_q75 <- quantile(y1_raw, 0.75, na.rm = TRUE)
+  
+  cat("【データの分布】\n")
+  cat("平均:", round(y1_mean, 2), "\n")
+  cat("中央値:", round(y1_median, 2), "\n")
+  cat("25%分位:", round(y1_q25, 2), "\n")
+  cat("75%分位:", round(y1_q75, 2), "\n\n")
+  
+  # シナリオ分析
+  cat("【シナリオ分析：10%増加の効果】\n\n")
+  cat(sprintf("%-15s %-15s %-15s %-15s %-20s\n", 
+              "ベースライン", "10%増加後", "Δlog(1+x)", "オッズ比", "95% CI"))
+  cat(strrep("-", 80), "\n")
+  
+  baseline_values <- c(y1_q25, y1_median, y1_mean, y1_q75)
+  baseline_labels <- c("25%分位", "中央値", "平均値", "75%分位")
+  
+  for (i in 1:length(baseline_values)) {
+    baseline <- baseline_values[i]
+    new_val <- baseline * 1.10
+    delta <- log1p(new_val) - log1p(baseline)
+    or_val <- exp(coef_original_scale * delta)
+    or_ci_lower <- exp(ci_original[1] * delta)
+    or_ci_upper <- exp(ci_original[2] * delta)
+    
+    cat(sprintf("%-15s %-15.2f %-15.6f %-15.4f [%.4f, %.4f]\n",
+                baseline_labels[i], new_val, delta, or_val, 
+                or_ci_lower, or_ci_upper))
+  }
+  
+  cat("\n")
+  
+  # 様々な増加率でのシナリオ（中央値から）
+  cat("【中央値からの様々な増加率の効果】\n\n")
+  cat(sprintf("%-15s %-15s %-15s %-20s\n", 
+              "増加率", "新しい値", "オッズ比", "95% CI"))
+  cat(strrep("-", 65), "\n")
+  
+  increase_pcts <- c(5, 10, 15, 20, 25, 50)
+  
+  for (pct in increase_pcts) {
+    new_val <- y1_median * (1 + pct/100)
+    delta <- log1p(new_val) - log1p(y1_median)
+    or_val <- exp(coef_original_scale * delta)
+    or_ci_lower <- exp(ci_original[1] * delta)
+    or_ci_upper <- exp(ci_original[2] * delta)
+    
+    cat(sprintf("%-15s %-15.2f %-15.4f [%.4f, %.4f]\n",
+                paste0(pct, "%"), new_val, or_val, 
+                or_ci_lower, or_ci_upper))
+  }
+  return(svy_design)
+}
+
+# ---- 関数ここまで ------------------------------------------------------------
+
 # ================================================================================
 # 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
 # ================================================================================
@@ -395,108 +560,48 @@ svy_design <- svydesign(
 options(survey.lonely.psu = "adjust")
 print("Survey designオブジェクトが作成されました")
 
+
 # ================================================================================
-# 4. 1st stage: dairy_log1p_scoreを予測（survey-weighted）
+# 4. IV-GLM実行
 # ================================================================================
-formula_1st <- as.formula(
-  paste("dairy_log1p_score ~", paste(c("juntos_non_participation", selected_predictors), 
-                    collapse = " + "))
+
+survey_2sls(
+  y1 = "dairy_log1p_score",
+  y2 = "nt_ch_stunt",
+  instrument = "juntos_non_participation",
+  covariates = selected_predictors,
+  design = svy_design
 )
-
-print("1st stageの式:")
-print(formula_1st)
-
-# survey-weighted 1st stage regression
-fit1_svy <- svyglm(formula_1st, design = svy_design, family = gaussian())
-
-print("=== 1st Stage結果 ===")
-print(summary(fit1_svy))
-
-# 予測値を元のデータフレームに保存
-pred_dairy_raw <- predict(fit1_svy, type = "response")
-
-# *** 重要：予測値を標準化・スケーリング ***
-# 1st stageの標準化係数で使用したスケーリング情報を取得
-pred_dairy_mean <- mean(pred_dairy_raw, na.rm = TRUE)
-pred_dairy_sd <- sd(pred_dairy_raw, na.rm = TRUE)
-
-# スケーリング（重要な処理）
-df_lasso$pred_dairy <- (pred_dairy_raw - pred_dairy_mean) / pred_dairy_sd
-
-# 統計量確認
-cat("=== 1st Stage予測値の統計量 ===\n")
-cat("生値（raw）:\n")
-print(summary(pred_dairy_raw))
-cat("\n標準化値:\n")
-print(summary(df_lasso$pred_dairy))
-cat("標準偏差:\n")
-print(sd(df_lasso$pred_dairy, na.rm = TRUE))
-
-# F統計量（弱操作変数検定）
-f_stat <- summary(fit1_svy)$coefficients["juntos_non_participation", "t value"]^2
-print(paste("F統計量（juntos_non_participation）:", round(f_stat, 2)))
-if(f_stat > 10) {
-  print("✓ 操作変数は十分に強い（F > 10）")
-} else {
-  print("⚠ 弱操作変数の可能性（F < 10）")
-}
-
-# Survey designオブジェクトを再作成
-svy_design <- svydesign(
-  ids = ~v021,
-  strata = ~v022,
-  weights = ~sampling_weight_trimmed,
-  data = df_lasso,
-  nest = TRUE
-)
-
-print("Survey designオブジェクトを再作成しました")
-
-# ================================================================================
-# 5. 2nd stage: pred_dairyでStuntingを予測（survey-weighted）
-# ================================================================================
-formula_2nd <- as.formula(
-  paste("nt_ch_stunt ~ ", paste(c("pred_dairy", selected_predictors), 
-                    collapse = " + "))
-)
-
-print("2nd stageの式:")
-print(formula_2nd)
-
-# survey-weighted 2nd stage regression
-fit2_svy <- svyglm(formula_2nd, design = svy_design, family = quasibinomial())
-
-# 2nd stageの結果
-print("=== 2nd Stage結果 ===")
-print(summary(fit2_svy))
-
-# pred_dairyの係数と信頼区間
-coef_pred_dairy <- coef(fit2_svy)["pred_dairy"]
-ci_pred_dairy <- confint(fit2_svy)["pred_dairy", ]
-
-print("=== 乳製品摂取のStuntingへの因果効果 ===")
-print(paste("係数（標準化スケール）:", round(coef_pred_dairy, 4)))
-print(paste("95%CI: [", round(ci_pred_dairy[1], 4), ",", round(ci_pred_dairy[2], 4), "]"))
-
-# オッズ比に変換（標準化スケール）
-or_pred_dairy <- exp(coef_pred_dairy)
-or_ci <- exp(ci_pred_dairy)
-print(paste("オッズ比（SD増加当たり）:", round(or_pred_dairy, 4)))
-print(paste("95%CI: [", round(or_ci[1], 4), ",", round(or_ci[2], 4), "]"))
-
-# 元のスケールでの効果を計算
-coef_original_scale <- coef_pred_dairy / pred_dairy_sd
-or_original_scale <- exp(coef_original_scale)
-
-print("=== 元のスケール（log1p dairy consumption）での効果 ===")
-print(paste("係数（元スケール）:", round(coef_original_scale, 6)))
-print(paste("オッズ比（元スケール、1単位増加）:", round(or_original_scale, 6)))
-print(paste("オッズ比（元スケール、10%増加）:", round(exp(coef_original_scale * log(1.1)), 4)))
 
 
 ```
 
-# 5. ブートストラップを用いた標準誤差の補正
+# 5.別変数（- nt_mdd）で再計算
+
+```{r}
+
+# ================================================================================
+# モデル2：nt_mddを除外
+# ================================================================================
+
+# nt_mddを除外
+selected_predictors_without_mdd <- setdiff(selected_predictors, "nt_mdd")
+
+
+# IV-GLM実行
+survey_2sls(
+  y1 = "dairy_log1p_score",
+  y2 = "nt_ch_stunt",
+  instrument = "juntos_non_participation",
+  covariates = selected_predictors_without_mdd,
+  design = svy_design
+)
+
+
+```
+
+
+# 6. ブートストラップを用いた標準誤差の補正
  
 ```{r}
 library(boot)
