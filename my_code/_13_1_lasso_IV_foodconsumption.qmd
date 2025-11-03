@@ -605,83 +605,238 @@ survey_2sls(
  
 ```{r}
 library(boot)
+library(survey)
 
-# ブートストラップ関数
-iv_boot_function <- function(data, indices) {
-  # リサンプリング
-  d <- data[indices, ]
+# Cluster単位のブートストラップ関数
+# *******************************************************************************
+#' @title iv_boot_cluster
+#' @description Cluster単位でリサンプリングするブートストラップIV推定
+#' @param data データフレーム
+#' @param indices クラスターのインデックス
+#' @param y1 内生変数
+#' @param y2 目的変数
+#' @param instrument 操作変数
+#' @param covariates 共変量ベクトル
+#' @return pred_y1の係数
+# *******************************************************************************
+iv_boot_cluster <- function(data, indices, y1, y2, instrument, covariates) {
+  # クラスターリストを取得
+  clusters <- unique(data$v021)
+  selected_clusters <- clusters[indices]
   
-  # Survey designオブジェクトを作成
+  # 選択されたクラスターのデータを抽出
+  d <- data[data$v021 %in% selected_clusters, ]
+  
+  # 十分なデータがあるか確認
+  if (nrow(d) < 100) {
+    return(NA)
+  }
+  
   tryCatch({
+    # Survey design（strataなし）
     svy_boot <- svydesign(
-      ids = ~v021, 
-      strata = ~v022, 
+      ids = ~v021,
       weights = ~sampling_weight_trimmed,
-      data = d, 
+      data = d,
       nest = TRUE
     )
     
     # 1st stage
-    fit1 <- svyglm(formula_1st, design = svy_boot, family = gaussian())
-    d$pred_dairy <- (predict(fit1, type = "response") - pred_dairy_mean) / pred_dairy_sd
+    formula_1st <- as.formula(
+      paste(y1, " ~ ", instrument, " + ", paste(covariates, collapse = " + "))
+    )
+    fit1_svy <- svyglm(formula_1st, design = svy_boot, family = gaussian())
     
-    # Survey designを更新
+    # 予測値
+    pred_y1_raw <- predict(fit1_svy, type = "response")
+    pred_mean <- mean(pred_y1_raw, na.rm = TRUE)
+    pred_sd <- sd(pred_y1_raw, na.rm = TRUE)
+    
+    # SDチェック
+    if (is.na(pred_sd) || pred_sd < 1e-10) {
+      return(NA)
+    }
+    
+    # スケーリング
+    d[["pred_y1"]] <- (pred_y1_raw - pred_mean) / pred_sd
+    
+    # Survey design更新
     svy_boot <- svydesign(
-      ids = ~v021, strata = ~v022, 
+      ids = ~v021,
       weights = ~sampling_weight_trimmed,
-      data = d, nest = TRUE
+      data = d,
+      nest = TRUE
     )
     
     # 2nd stage
-    fit2 <- svyglm(formula_2nd, design = svy_boot, family = quasibinomial())
+    formula_2nd <- as.formula(
+      paste(y2, " ~ ", paste(c("pred_y1", covariates), collapse = " + "))
+    )
+    fit2_svy <- svyglm(formula_2nd, design = svy_boot, family = quasibinomial())
     
-    # pred_dairyの係数を返す
-    return(coef(fit2)["pred_dairy"])
+    # 係数を返す
+    coef_value <- coef(fit2_svy)["pred_y1"]
+    
+    if (is.na(coef_value) || !is.finite(coef_value)) {
+      return(NA)
+    }
+    
+    return(coef_value)
+    
   }, error = function(e) {
     return(NA)
   })
 }
 
-# ブートストラップ実行（時間がかかります：30分〜1時間程度）
+df <- 
+
+# クラスター数を確認
+n_clusters <- length(unique(df_lasso$v021))
+cat("Total number of clusters:", n_clusters, "\n")
+
+# テスト実行（R=10）
+cat("\n=== テスト実行（R=10）===\n")
 set.seed(12345)
-boot_results <- boot(
-  data = df_lasso, 
-  statistic = iv_boot_function, 
-  R = 1000,  # 最低500、理想的には1000以上
-  parallel = "multicore",  # 並列処理（Windowsでは"snow"）
-  ncpus = 8  # CPUコア数に応じて調整
+boot_test <- boot(
+  data = df_lasso,
+  statistic = iv_boot_cluster,
+  R = 10,
+  strata = rep(1, n_clusters),  # 全クラスターを1つのstrataとして扱う
+  y1 = "dairy_log1p_score",
+  y2 = "nt_ch_stunt",
+  instrument = "juntos_non_participation",
+  covariates = selected_predictors
 )
 
+print(boot_test)
+cat("\n個別の推定値:\n")
+print(boot_test$t)
+
+# NAの割合を確認
+na_rate <- mean(is.na(boot_test$t))
+cat("\nNA率:", round(na_rate * 100, 1), "%\n")
+
+if (na_rate > 0.5) {
+  cat("\n警告: NA率が高すぎます。データを確認してください。\n")
+  stop("テスト失敗")
+}
+
+cat("\n=== テスト成功 ===\n")
+cat("本番実行を開始します（R=1000）...\n\n")
+
+# 本番実行（R=1000）
+set.seed(12345)
+system.time({
+  boot_results <- boot(
+    data = df_lasso,
+    statistic = iv_boot_cluster,
+    R = 1000,
+    strata = rep(1, n_clusters),
+    parallel = "multicore",
+    ncpus = 8,
+    y1 = "dairy_log1p_score",
+    y2 = "nt_ch_stunt",
+    instrument = "juntos_non_participation",
+    covariates = selected_predictors
+  )
+})
+
 # 結果の確認
+cat("\n=== ブートストラップ結果 ===\n")
 print(boot_results)
 
-# 結果の保存
-saveRDS(coef_importance, file.path(save_path,"boot_result.rds"))
+# NA除去
+boot_t_clean <- boot_results$t[!is.na(boot_results$t)]
+cat("\n有効な推定値:", length(boot_t_clean), "/", nrow(boot_results$t), "\n")
+
+if (length(boot_t_clean) < 100) {
+  cat("\n警告: 有効な推定値が少なすぎます\n")
+  stop("ブートストラップ失敗")
+}
+
+# 結果の保存（ローカルパスに保存）
+local_save_path <- "~/Desktop/boot_result_cluster.rds"
+saveRDS(boot_results, local_save_path)
+cat("\n結果を保存しました:", local_save_path, "\n")
+
+# Google Driveにコピー（オプション）
+tryCatch({
+  file.copy(local_save_path, 
+            file.path(save_path, "boot_result_cluster.rds"), 
+            overwrite = TRUE)
+  cat("Google Driveにもコピーしました\n")
+}, error = function(e) {
+  cat("Google Driveへのコピーに失敗（問題ありません）\n")
+})
 
 # ブートストラップ信頼区間
+cat("\n=== 信頼区間 ===\n")
 boot.ci(boot_results, type = c("norm", "basic", "perc"))
 
 # ブートストラップ標準誤差
-boot_se <- sd(boot_results$t, na.rm = TRUE)
-print(paste("ブートストラップ標準誤差:", round(boot_se, 4)))
+boot_se <- sd(boot_t_clean, na.rm = TRUE)
+cat("\nブートストラップ標準誤差:", round(boot_se, 4), "\n")
 
-# 元の推定値との比較
-original_coef <- coef(fit2_svy)["pred_dairy"]
-original_se <- summary(fit2_svy)$coefficients["pred_dairy", "Std. Error"]
+# 元の推定値を計算（比較用）
+svy_original <- svydesign(
+  ids = ~v021,
+  strata = ~v022,
+  weights = ~sampling_weight_trimmed,
+  data = df_lasso,
+  nest = TRUE
+)
 
+# 1st stage (元のモデル)
+formula_1st_orig <- as.formula(
+  paste("dairy_log1p_score ~ juntos_non_participation + ", 
+        paste(selected_predictors, collapse = " + "))
+)
+fit1_orig <- svyglm(formula_1st_orig, design = svy_original, family = gaussian())
+
+pred_y1_raw_orig <- predict(fit1_orig, type = "response")
+pred_mean_orig <- mean(pred_y1_raw_orig, na.rm = TRUE)
+pred_sd_orig <- sd(pred_y1_raw_orig, na.rm = TRUE)
+
+df_lasso$pred_y1_orig <- (pred_y1_raw_orig - pred_mean_orig) / pred_sd_orig
+
+svy_original <- svydesign(
+  ids = ~v021,
+  strata = ~v022,
+  weights = ~sampling_weight_trimmed,
+  data = df_lasso,
+  nest = TRUE
+)
+
+# 2nd stage (元のモデル)
+formula_2nd_orig <- as.formula(
+  paste("nt_ch_stunt ~ pred_y1_orig + ", paste(selected_predictors, collapse = " + "))
+)
+fit2_orig <- svyglm(formula_2nd_orig, design = svy_original, family = quasibinomial())
+
+original_coef <- coef(fit2_orig)["pred_y1_orig"]
+original_se <- summary(fit2_orig)$coefficients["pred_y1_orig", "Std. Error"]
+
+# 結果の比較
 cat("\n=== 標準誤差の比較 ===\n")
-cat("元の標準誤差（過小推定）:", round(original_se, 4), "\n")
-cat("ブートストラップ標準誤差:", round(boot_se, 4), "\n")
+cat("元の標準誤差（過小推定の可能性）:", round(original_se, 4), "\n")
+cat("ブートストラップ標準誤差（頑健）:", round(boot_se, 4), "\n")
 cat("増加率:", round((boot_se / original_se - 1) * 100, 1), "%\n")
 
 # 修正後のp値
 z_boot <- original_coef / boot_se
 p_boot <- 2 * pnorm(-abs(z_boot))
-cat("\n修正後のp値:", format.pval(p_boot), "\n")
+cat("\n元のp値:", format.pval(2 * pnorm(-abs(original_coef / original_se))), "\n")
+cat("修正後のp値（ブートストラップSE使用）:", format.pval(p_boot), "\n")
 
 # 修正後の95%信頼区間（正規近似）
 ci_boot <- original_coef + c(-1.96, 1.96) * boot_se
-cat("修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n")
+cat("\n修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n")
+
+# ブートストラップ分布の可視化
+cat("\n=== ブートストラップ分布の要約 ===\n")
+print(summary(boot_t_clean))
+
+cat("\n=== 完了 ===\n")
 
 
 ```
