@@ -56,6 +56,7 @@ df_food_org <- readRDS(
     file.path(gdrive__dir_enaho, "output","food_consumption_by_area_income.rds")
   ) %>% 
   select(-ends_with("_se")) %>%
+  select(-starts_with("se.")) %>%
   select(-c("area_income")) %>%
   select(-ends_with("_log1p")) %>%
   mutate(inc_quintile = as.numeric(as.character(inc_quintile)))
@@ -566,7 +567,7 @@ print("Survey designオブジェクトが作成されました")
 # ================================================================================
 
 survey_2sls(
-  y1 = "dairy_log1p_score",
+  y1 = "dairy_log1p_score_below",
   y2 = "nt_ch_stunt",
   instrument = "juntos_non_participation",
   covariates = selected_predictors,
@@ -590,13 +591,14 @@ selected_predictors_without_mdd <- setdiff(selected_predictors, "nt_mdd")
 
 # IV-GLM実行
 survey_2sls(
-  y1 = "dairy_log1p_score",
+  y1 = "dairy_log1p_score_below",
   y2 = "nt_ch_stunt",
   instrument = "juntos_non_participation",
   covariates = selected_predictors_without_mdd,
   design = svy_design
 )
 
+stop("とりあえず")
 
 ```
 
