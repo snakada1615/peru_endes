@@ -477,6 +477,40 @@ gt_result <- function(table_data, y1, y2) {
   return(table1)
 }
 # ---- 関数ここまで ------------------------------------------------------------
+
+library(gt)
+library(gtExtras)
+gt_result_compact <- function(table_data, y1, y2) {
+  cat("=== GT表の作成 ===\n")
+  table1 <- table_data %>%
+    filter(
+      !(!Variable %in% c("juntos_non_participation", "F-statistic", y1) & 
+         Panel == "Panel A: First-Stage")
+      ) %>%
+    gt(groupname_col = "Panel", rowname_col = "Variable") %>%
+    gt_highlight_rows(
+      rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
+      fill = "grey80"
+    ) %>%
+    cols_label(
+      Display_Coef = "coefficient",
+      Display_SE = "standard error"
+    ) %>%
+    cols_align(align = "center", columns = c(Display_Coef, Display_SE)) %>%
+    tab_header(
+      title = "table: IV analysis result(IV: juntos_non_participation)",
+      subtitle = paste("impact of ", y1, "on ", y2, "reduction)")
+    ) %>%
+    tab_source_note(
+      source_note = "remark：*p<0.10, **p<0.05, ***p<0.01"
+    ) %>%
+    opt_table_font(font = list(google_font("Noto Sans JP"), "system-ui")) %>%
+    tab_options(table.font.size = "11px")
+  
+    print(table1)
+  return(table1)
+}
+# ---- 関数ここまで ------------------------------------------------------------
 # ================================================================================
 # @title create_table2
 # @description 変数の効果をシナリオ分析で表形式に
@@ -617,6 +651,7 @@ res <- survey_2sls(
 results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
 # GT表作成・表示
 table1_gt <- gt_result(results_table1, y1, y2)
+table1_gt_compact <- gt_result_compact(results_table1, y1, y2)
 
 # シナリオ分析表作成
 result_table2 <- create_table2(res, y1, increase_pct = 10)
@@ -626,6 +661,8 @@ table2_gt <- gt_result2(result_table2, y1, y2)
 # HTML保存
 gtsave(table1_gt, filename = file.path(save_path, 
           paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
+gtsave(table1_gt_compact, filename = file.path(save_path, 
+          paste0("IV_GLM_table1_compact_", y1, "_on_", y2, ".html")))
 gtsave(table2_gt, filename = file.path(save_path,
           paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
 
