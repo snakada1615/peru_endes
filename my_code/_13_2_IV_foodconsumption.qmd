@@ -405,17 +405,31 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
   # 結合
   table1_data <- rbind(first_stage_df, second_stage_df)
 
+  # 変数ラベルが提供されていれば、Variable名をラベルに置換
   if (!is.null(label_df)) {
-    table1_data <- table1_data %>%
-      left_join(label_df, by = c("Variable" = "variable_name"))
-    # 変数名をラベルに置換（ラベルが存在する場合のみ）
-    table1_data <- table1_data %>%
+
+    # label_dfのクリーニング
+    label_lookup <- label_df %>%
+      select(variable_name, label) %>%
       mutate(
-        Variable = ifelse(!is.na(label) & label != "", label, Variable)
+        label = as.character(label),
+        label = na_if(label, "NULL"),  # "NULL"文字列をNAに
+        label = if_else(label == "", NA_character_, label)  # 空文字列もNAに
+      ) %>%
+      filter(!is.na(label))  # NAの行を削除（ラベルがない変数は結合しない）
+  
+    
+    # label_dfから必要な列だけ選択
+    label_lookup <- label_lookup %>%
+      select(variable_name, label)
+    
+    table1_data <- table1_data %>%
+      left_join(label_lookup, by = c("Variable" = "variable_name")) %>%
+      mutate(
+        Variable = coalesce(label, Variable)  # NAの場合は元のVariableを使用
       ) %>%
       select(-label)
-  }
-    
+  }    
   return(table1_data)
 }
 # ---- 関数ここまで ------------------------------------------------------------
