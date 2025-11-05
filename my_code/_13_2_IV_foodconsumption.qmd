@@ -130,7 +130,7 @@ label_df <- data.frame(
 ```
 
 
-# 4. 選択変数でのIV-GLM実行
+# 3. 各種関数
 
 ```{r}
 library(survey)
@@ -171,7 +171,7 @@ survey_2sls <- function(y1, y2, instrument, covariates, design) {
   # *** 重要：予測値を標準化・スケーリング ***
   pred_mean <- mean(pred_y1_raw, na.rm = TRUE)
   pred_sd <- sd(pred_y1_raw, na.rm = TRUE)
-  
+
   # スケーリング（重要な処理）
   data[["pred_y1"]] <- (pred_y1_raw - pred_mean) / pred_sd
   
@@ -298,7 +298,9 @@ survey_2sls <- function(y1, y2, instrument, covariates, design) {
                 or_ci_lower, or_ci_upper))
   }
   return(list(fit1_svy = fit1_svy,
-              fit2_svy = fit2_svy))
+              fit2_svy = fit2_svy,
+              pred_sd = pred_sd
+              ))
 }
 
 # ---- 関数ここまで ------------------------------------------------------------
@@ -319,13 +321,13 @@ get_significance <- function(p_value) {
 }
 # ---- 関数ここまで ------------------------------------------------------------
 # ================================================================================
-# @title create_results_table
+# @title create_table1
 # @description 回帰結果を表形式でまとめる関数
 # @param fit1_svy 1st stageのsvyglmオブジェクト
 # @param fit2_svy 2nd stageのsvyglmオブジェクト
 # @return データフレーム形式の結果表
 # ================================================================================
-create_results_table <- function(fit1_svy, fit2_svy) {
+create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
   # すべての係数情報をまとめて取得（最も効率的）
   coef_table_1st <- summary(fit1_svy)$coefficients
   coef_table_2nd <- summary(fit2_svy)$coefficients
@@ -402,7 +404,18 @@ create_results_table <- function(fit1_svy, fit2_svy) {
   
   # 結合
   table1_data <- rbind(first_stage_df, second_stage_df)
-  
+
+  if (!is.null(label_df)) {
+    table1_data <- table1_data %>%
+      left_join(label_df, by = c("Variable" = "variable_name"))
+    # 変数名をラベルに置換（ラベルが存在する場合のみ）
+    table1_data <- table1_data %>%
+      mutate(
+        Variable = ifelse(!is.na(label) & label != "", label, Variable)
+      ) %>%
+      select(-label)
+  }
+    
   return(table1_data)
 }
 # ---- 関数ここまで ------------------------------------------------------------
@@ -425,7 +438,7 @@ gt_result <- function(table_data, y1, y2) {
     ) %>%
     cols_align(align = "center", columns = c(Display_Coef, Display_SE)) %>%
     tab_header(
-      title = "table: IV-GLManalysis result",
+      title = "table: IV-GLM analysis result",
       subtitle = paste("impact of ", y1, "on ", y2, "reduction")
     ) %>%
     tab_source_note(
@@ -434,11 +447,123 @@ gt_result <- function(table_data, y1, y2) {
     opt_table_font(font = list(google_font("Noto Sans JP"), "system-ui")) %>%
     tab_options(table.font.size = "11px")
   
-    gtsave(table1, filename = file.path(save_path, 
-              paste0("IV_GLM_result_", y1, "_on_", y2, ".html")))
     print(table1)
+  return(table1)
 }
 # ---- 関数ここまで ------------------------------------------------------------
+# ================================================================================
+# @title create_table2
+# @description 変数の効果をシナリオ分析で表形式に
+# @param fit2_svy 2nd stageのsvyglmオブジェクト
+# @param y1 内生変数名
+# @param increase_pct 増加率（デフォルトは10%）
+# @return データフレーム形式のシナリオ分析表
+# ================================================================================
+create_table2 <- function(result_2sls, y1,increase_pct = 10) {
+  fit2_svy <- result_2sls$fit2_svy
+  pred_sd <- result_2sls$pred_sd
+  
+  # 標準化スケールの pred_dairy 係数と信頼区間
+  coef_pred <- coef(fit2_svy)["pred_y1"]
+  ci_pred <- confint(fit2_svy)["pred_y1", ]
+  
+  # 元スケール（pred_sd で除算）
+  coef_original_scale <- coef_pred / pred_sd
+  ci_original <- ci_pred / pred_sd
+  
+  # ベースライン値の取得：元データの中間値
+  # データから平均値・中央値を取得
+  data <- fit2_svy$data
+  y1_raw <- expm1(data[[y1]])  # log(1+x)を逆変換
+  y1_mean <- mean(y1_raw, na.rm = TRUE)
+  y1_median <- median(y1_raw, na.rm = TRUE)
+  y1_q25 <- quantile(y1_raw, 0.25, na.rm = TRUE)
+  y1_q75 <- quantile(y1_raw, 0.75, na.rm = TRUE)
+  
+  baseline_values <- c(y1_q25, y1_median, y1_mean, y1_q75)
+
+  new_val <- baseline_values * (100 + increase_pct)/100
+  delta <- sapply(baseline_values, function(x) log1p(x * (100 + increase_pct)/100) - log1p(x))
+  or_val <- exp(coef_original_scale * delta)
+  or_ci_lower <- exp(ci_original[1] * delta)
+  or_ci_upper <- exp(ci_original[2] * delta)
+  
+  scenario_1st_df <- data.frame(
+    Baseline = c("25%", "median", "mean", "75%"),
+    Increase = paste0(increase_pct, "%"),
+    New_Value = new_val,
+    OR = or_val,
+    or_ci_lower = or_ci_lower,
+    or_ci_upper = or_ci_upper
+  )
+  scenario_1st_df <- scenario_1st_df %>%
+    mutate(Panel = "Panel A: scenario-1")  
+  
+
+  # 様々な増加率でのシナリオ（中央値から）
+  increase_pcts <- c(5, 10, 15, 20, 25, 50)
+  new_val <- sapply(increase_pcts, function(x) y1_median * (1+x/100))
+  delta <- sapply(new_val, function(x) log1p(x) - log1p(y1_median))
+  or_val <- exp(coef_original_scale * delta)
+  or_ci_lower <- exp(ci_original[1] * delta)
+  or_ci_upper <- exp(ci_original[2] * delta)
+  
+  scenario_2nd_df <- data.frame(
+    Baseline = paste0(increase_pcts, "%"),
+    Increase = paste0(increase_pcts, "%"),
+    New_Value = new_val,
+    OR = or_val,
+    or_ci_lower = or_ci_lower,
+    or_ci_upper = or_ci_upper
+  )
+  scenario_2nd_df <- scenario_2nd_df %>%
+    mutate(Panel = "Panel B: scenario-2")
+
+  scenario_df <- rbind(scenario_1st_df, scenario_2nd_df)
+  
+  return(scenario_df)
+}
+
+# ---- 関数ここまで ------------------------------------------------------------
+# ================================================================================
+# @title gt_result2
+# @description gtパッケージを用いてシナリオ分析結果表を作成・表示
+# @param mytable シナリオ分析結果データフレーム
+# *******************************************************************************
+gt_result2 <- function(mytable, y1, y2) {
+  df_gt <- mytable %>% 
+    gt(groupname_col = "Panel", rowname_col = "Baseline") %>%
+    cols_label(
+      Baseline = "Variables",
+      Increase = "Increase",
+      New_Value = "New Value",
+      OR = "Odds Ratio",
+      or_ci_lower = "95% CI Lower",
+      or_ci_upper = "95% CI Upper"
+    ) %>%
+    fmt_number(
+      columns = c(New_Value, OR, or_ci_lower, or_ci_upper),
+      decimals = 2
+    ) %>%
+    tab_header(
+      title = "Table: Scenario Analysis Results",
+      subtitle = paste("Impact of", y1, "on", y2)
+    ) %>%
+    tab_source_note(
+      source_note = "Note: OR represents the odds ratio for the specified increase."
+    ) %>%
+    opt_table_font(font = list(google_font("Noto Sans JP"), "system-ui")) %>%
+    tab_options(table.font.size = "11px")
+  
+  return(df_gt)
+}
+
+
+```
+
+# 4. IV-GLM実行
+
+```{r}
 # ================================================================================
 # 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
 # ================================================================================
@@ -463,20 +588,20 @@ res <- survey_2sls(
 )
 
 # 結果表作成
-results_table <- create_results_table(res$fit1_svy, res$fit2_svy)
-
-# 変数ラベルを結果表にマージ
-results_table_labeled <- results_table %>%
-  left_join(label_df, by = c("Variable" = "variable_name"))
-# 変数名をラベルに置換（ラベルが存在する場合のみ）
-results_table_labeled <- results_table_labeled %>%
-  mutate(
-    Variable = ifelse(!is.na(label) & label != "", label, Variable)
-  ) %>%
-  select(-label)
-
+results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
 # GT表作成・表示
-gt_result(results_table_labeled, y1, y2)
+table1_gt <- gt_result(results_table1, y1, y2)
+
+# シナリオ分析表作成
+result_table2 <- create_table2(res, y1, increase_pct = 10)
+# GT表作成・表示
+table2_gt <- gt_result2(result_table2, y1, y2)
+
+# HTML保存
+gtsave(table1_gt, filename = file.path(save_path, 
+          paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
+gtsave(table2_gt, filename = file.path(save_path,
+          paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
 
 
 ```
@@ -511,20 +636,21 @@ for (predictor in key_predictors) {
   
   
   # 結果表作成
-  results_table <- create_results_table(res$fit1_svy, res$fit2_svy)
-  
-  # 変数ラベルを結果表にマージ
-  results_table_labeled <- results_table %>%
-    left_join(label_df, by = c("Variable" = "variable_name"))
-  # 変数名をラベルに置換（ラベルが存在する場合のみ）
-  results_table_labeled <- results_table_labeled %>%
-    mutate(
-      Variable = ifelse(!is.na(label) & label != "", label, Variable)
-    ) %>%
-    select(-label)
-  
+  results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
   # GT表作成・表示
-  gt_result(results_table_labeled, y1, y2)
+  table1_gt <- gt_result(results_table1, y1, y2)
+  
+  # シナリオ分析表作成
+  result_table2 <- create_table2(res, y1, increase_pct = 10)
+  # GT表作成・表示
+  table2_gt <- gt_result2(result_table2, y1, y2)
+  
+  # HTML保存
+  gtsave(table1_gt, filename = file.path(save_path, 
+            paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
+  gtsave(table2_gt, filename = file.path(save_path,
+            paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
+  
 
   
   cat("\n=========================================\n")
