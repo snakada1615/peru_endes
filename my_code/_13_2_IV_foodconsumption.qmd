@@ -455,15 +455,7 @@ gt_result <- function(table_data, y1, y2) {
   table1 <- table_data %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
     gt_highlight_rows(
-      rows = (Variable == "juntos_non_participation"),
-      fill = "grey80"
-    ) %>%
-    gt_highlight_rows(
-      rows = (Variable == "F-statistic"),
-      fill = "grey80"
-    ) %>%
-    gt_highlight_rows(
-      rows = (Variable == y1),
+      rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
       fill = "grey80"
     ) %>%
     cols_label(
