@@ -332,6 +332,9 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
   coef_table_1st <- summary(fit1_svy)$coefficients
   coef_table_2nd <- summary(fit2_svy)$coefficients
   
+  # 目的変数名を取得
+  y1 <- as.character(formula(fit1_svy)[[2]])
+  
   # 全変数に適用
   p_values_1st <- coef_table_1st[, "Pr(>|t|)"]
   significance_1st <- sapply(p_values_1st, get_significance)
@@ -388,6 +391,10 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
     stringsAsFactors = FALSE
   ) %>%
     mutate(
+      # pred_y1をy1の名前に置換
+      Variable = ifelse(Variable == "pred_y1", y1, Variable)
+    ) %>%
+    mutate(
       # 係数と有意性マークを結合
       Display_Coef = paste0(sprintf("%.4f", Coefficient), Significance),
       # 標準誤差を括弧内に
@@ -442,18 +449,31 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
 #' @param table_data 結果データフレーム
 # *******************************************************************************
 library(gt)
+library(gtExtras)
 gt_result <- function(table_data, y1, y2) {
   cat("=== GT表の作成 ===\n")
   table1 <- table_data %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
+    gt_highlight_rows(
+      rows = (Variable == "juntos_non_participation"),
+      fill = "grey80"
+    ) %>%
+    gt_highlight_rows(
+      rows = (Variable == "F-statistic"),
+      fill = "grey80"
+    ) %>%
+    gt_highlight_rows(
+      rows = (Variable == y1),
+      fill = "grey80"
+    ) %>%
     cols_label(
       Display_Coef = "coefficient",
       Display_SE = "standard error"
     ) %>%
     cols_align(align = "center", columns = c(Display_Coef, Display_SE)) %>%
     tab_header(
-      title = "table: IV-GLM analysis result",
-      subtitle = paste("impact of ", y1, "on ", y2, "reduction")
+      title = "table: IV analysis result(IV: juntos_non_participation)",
+      subtitle = paste("impact of ", y1, "on ", y2, "reduction)")
     ) %>%
     tab_source_note(
       source_note = "remark：*p<0.10, **p<0.05, ***p<0.01"
