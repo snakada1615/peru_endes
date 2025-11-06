@@ -117,6 +117,11 @@ svy_design <- svydesign(
 options(survey.lonely.psu = "adjust")
 print("Survey designオブジェクトが作成されました")
 
+# Survey designオブジェクトを保存
+saveRDS(svy_design,
+        file.path(save_path, "svy_design_lasso_IV_org.rds")
+)
+
 # 後で使うラベル一覧を取得
 # var_label()で一度に全ラベルを取得
 all_labels <- var_label(svy_design$variables)
@@ -702,6 +707,7 @@ for (predictor in key_predictors) {
   results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
   # GT表作成・表示
   table1_gt <- gt_result(results_table1, y1, y2)
+  table1_gt_compact <- gt_result_compact(results_table1, y1, y2)
   
   # シナリオ分析表作成
   result_table2 <- create_table2(res, y1, increase_pct = 10)
@@ -711,6 +717,8 @@ for (predictor in key_predictors) {
   # HTML保存
   gtsave(table1_gt, filename = file.path(save_path, 
             paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
+  gtsave(table1_gt_compact, filename = file.path(save_path, 
+            paste0("IV_GLM_table1_compact_", y1, "_on_", y2, ".html")))
   gtsave(table2_gt, filename = file.path(save_path,
             paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
   
