@@ -1,0 +1,95 @@
+---
+title: "_13_3_descriptive_stat"
+format: html
+---
+
+## Descriptive Statistics
+## 1. データ読み込み
+
+```{r}
+# ================================================================================
+# 0. 初期設定・パッケージ読み込み
+# ================================================================================
+library(tinytex)
+library(here)
+library(haven)
+library(labelled)
+library(glmnet)
+library(tidyverse)
+# library(fastDummies)
+library(nnet)      # 多項ロジスティック回帰
+library(survey)    # 重み付き統計解析
+library(did)       # Staggered DID用（必要に応じて）
+library(sjlabelled)　# ラベル付きデータ処理用
+library(tableone)
+library(fixest)   # 回帰分析の推定結果から係数表（推定値、標準誤差、t値、p値など）を抽出
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+
+svydesign_org <-  readRDS(
+    file.path(save_path, "svy_design_lasso_IV_org.rds")
+  )
+
+
+
+```
+## 2. データ確認
+
+```{r}
+library(survey)
+library(gtsummary)
+
+selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf", "staple_legume_log1p_score_ok","vegetable_log1p_score_ok", "fruit_log1p_score_ok", "dairy_log1p_score_ok", "ASF_log1p_score_ok", "oilfat_log1p_score_ok"
+)
+
+svydesign_org$variables <- svydesign_org$variables %>%
+  mutate(across(contains("_log1p_"), as.numeric))
+
+# 因子化してラベル付け
+# svydesign_org$variables <- svydesign_org$variables %>%
+#   mutate(nt_ch_stunt = factor(nt_ch_stunt, levels = c(0, 1), labels = c("not_stunted", "stunted")))
+
+table1 <- tbl_svysummary(
+  svydesign_org,
+  by = nt_ch_stunt,           # 目的変数で群比較（任意、なければ群比較せず全体集計）
+  include = selected_predictors,         # 共変量: 例 c(age, sex, bmi, region)など
+  type = list(
+    contains("_log1p") ~ "continuous"   # _log1p含む変数を強制的に連続変数扱い
+  ),
+  statistic = list(
+    all_continuous() ~ "{mean} ({sd})",      # 連続変数：平均（標準偏差）
+    all_categorical() ~ "{n} ({p}%)"         # カテゴリ変数：度数（パーセント）
+  ),
+  digits = list(
+    all_continuous() ~ c(2, 2),              # 少数第2位まで
+    all_categorical() ~ c(0, 1)
+  )
+) %>%
+  add_p(
+    test = list(
+      all_continuous() ~ "svy.wilcox.test",      # 連続変数
+      all_categorical() ~ "svy.chisq.test"      # カテゴリ・ダミー変数
+    )
+  ) %>%
+  modify_header(update = list(stat_1 ~ "not_stunted", stat_2 ~ "stunted"))
+
+table1
+
+```

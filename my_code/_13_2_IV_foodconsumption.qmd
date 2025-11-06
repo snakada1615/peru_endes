@@ -98,6 +98,13 @@ df_lasso <- df_lasso %>%
     )
   )
 
+# 元データのラベル適正化
+library(labelled)
+
+# 1. 元のhaven_labelledデータから変換
+df_lasso <- df_lasso %>%
+  mutate(across(where(is.labelled), labelled::to_factor))
+
 # ================================================================================
 # 3. surveydesignオブジェクトの作成
 # ================================================================================
