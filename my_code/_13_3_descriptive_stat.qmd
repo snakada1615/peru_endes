@@ -56,8 +56,13 @@ svydesign_org <-  readRDS(
 library(survey)
 library(gtsummary)
 
-selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf", "staple_legume_log1p_score_ok","vegetable_log1p_score_ok", "fruit_log1p_score_ok", "dairy_log1p_score_ok", "ASF_log1p_score_ok", "oilfat_log1p_score_ok"
-)
+covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas")
+
+food_vars <- c("nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
+
+food_score_vars <- c("staple_legume_log1p_score_ok","vegetable_log1p_score_ok", "fruit_log1p_score_ok", "dairy_log1p_score_ok", "ASF_log1p_score_ok", "oilfat_log1p_score_ok")
+
+selected_predictors <- c(covariates, food_vars, food_score_vars)
 
 svydesign_org$variables <- svydesign_org$variables %>%
   mutate(across(contains("_log1p_"), as.numeric))
@@ -91,5 +96,27 @@ table1 <- tbl_svysummary(
   modify_header(update = list(stat_1 ~ "not_stunted", stat_2 ~ "stunted"))
 
 table1
+
+
+# 線形回帰モデル1
+formula_str <-as.formula(
+  paste("nt_ch_stunt", " ~", paste(c(covariates, food_vars), collapse = " + ")))
+fit1 <- svyglm(formula_str, design = svydesign_org, family = binomial())
+
+library(gtsummary)
+glm_res1 <- fit1 %>% tbl_regression(exponentiate = TRUE) %>% as_gt()
+
+glm_res1
+
+
+# 線形回帰モデル2
+formula_str <-as.formula(
+  paste("nt_ch_stunt", " ~", paste(c(covariates, food_score_vars), collapse = " + ")))
+fit1 <- svyglm(formula_str, design = svydesign_org, family = binomial())
+
+library(gtsummary)
+glm_res2 <- fit1 %>% tbl_regression(exponentiate = TRUE) %>% as_gt()
+
+glm_res2
 
 ```

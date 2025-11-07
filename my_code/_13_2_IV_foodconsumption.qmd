@@ -172,10 +172,41 @@ survey_2sls <- function(y1, y2, instrument, covariates, design) {
   print(formula_2nd)
 
   # survey-weighted 1st stage regression
-  fit1_svy <- svyglm(formula_1st, design = design, family = gaussian())
-
-  print("=== 1st Stage結果 ===")
-  print(summary(fit1_svy))
+  # 家計消費変数がダミー変数かどうかを判定してgaussian()を使うか決定
+  if (is_dummy(data[[y1]])) {
+    cat(paste("y1:", y1, "はダミー変数です。ロジスティック回帰を使用します。\n"))
+    family_1st <- binomial(link = "logit")
+    
+    # y1がfactor型の場合、数値型に変換
+    if (is.factor(data[[y1]])) {
+      cat(paste("y1:", y1, "はfactor型です。数値型に変換します。\n"))
+    
+      # factor のレベルを確認
+      levels_y1 <- levels(data[[y1]])
+      cat(paste("レベル数:", length(levels_y1), "\n"))
+      cat("レベル:", paste(levels_y1, collapse = ", "), "\n")
+      
+      # 適切な変換方法を選択
+      if (all(levels_y1 %in% c("0", "1"))) {
+        # レベルが "0" と "1" の場合
+        design$variables[[y1]] <- as.numeric(as.character(design$variables[[y1]]))
+        cat("文字列 '0'/'1' を数値に変換しました。\n")
+        
+      } else if (length(levels_y1) == 2) {
+        # レベルが2つだが "0"/"1" でない場合（例: "No"/"Yes"）
+        design$variables[[y1]] <- as.numeric(design$variables[[y1]]) - 1
+        cat(paste("2レベルfactorを 0/1 に変換しました:", levels_y1[1], "→ 0,", 
+                  levels_y1[2], "→ 1\n"))
+      }
+    }  # <- is.factor()のif文の閉じ括弧
+  } else {  # <- is_dummy()のelse
+    family_1st <- gaussian()
+  }  # <- is_dummy()のif文の閉じ括弧
+  
+  # -------------------------------------
+  # 1st stage回帰モデルの適合
+  # -------------------------------------
+  fit1_svy <- svyglm(formula_1st, design = design, family = family_1st)
 
   # 予測値を元のデータフレームに保存
   pred_y1_raw <- predict(fit1_svy, type = "response")
@@ -186,24 +217,6 @@ survey_2sls <- function(y1, y2, instrument, covariates, design) {
 
   # スケーリング（重要な処理）
   data[["pred_y1"]] <- (pred_y1_raw - pred_mean) / pred_sd
-  
-  # 統計量確認
-  cat("=== 1st Stage予測値の統計量 ===\n")
-  cat("生値（raw）:\n")
-  print(summary(pred_y1_raw))
-  cat("\n標準化値:\n")
-  print(summary(data[["pred_y1"]]))
-  cat("標準偏差:\n")
-  print(sd(data[["pred_y1"]], na.rm = TRUE))
-  
-  # F統計量（弱操作変数検定）- instrumentの係数を使う
-  f_stat <- summary(fit1_svy)$coefficients[instrument, "t value"]^2
-  print(paste("F統計量（", instrument, "）:", round(f_stat, 2)))
-  if(f_stat > 10) {
-    print("✓ 操作変数は十分に強い（F > 10）")
-  } else {
-    print("⚠ 弱操作変数の可能性（F < 10）")
-  }
   
   # Survey designオブジェクトを再作成
   svy_design <- svydesign(
@@ -216,103 +229,17 @@ survey_2sls <- function(y1, y2, instrument, covariates, design) {
   
   print("Survey designオブジェクトを再作成しました")
   
+  # -------------------------------------
   # 2nd stage
+  # -------------------------------------
   fit2_svy <- svyglm(formula_2nd, design = svy_design, family = quasibinomial())
   
-  print("=== 2nd Stage結果 ===")
-  print(summary(fit2_svy))
 
-  # ... 以下同じ ...
-  # 2nd stageの結果
-
-  # pred_dairyの係数と信頼区間
-  coef_pred <- coef(fit2_svy)["pred_y1"]
-  ci_pred <- confint(fit2_svy)["pred_y1", ]
-  
-  y1_label <- gsub("_log1p_score", "", y1)
-  
-  print(paste("=== ", y1_label, "のStuntingへの因果効果 ==="))
-  print(paste("係数（標準化スケール）:", round(coef_pred, 4)))
-  print(paste("95%CI: [", round(ci_pred[1], 4), ",", round(ci_pred[2], 4), "]"))
-  
-  # オッズ比に変換（標準化スケール）
-  or_pred <- exp(coef_pred)
-  or_ci <- exp(ci_pred)
-  print(paste("オッズ比（SD増加当たり）:", round(or_pred, 4)))
-  print(paste("95%CI: [", round(or_ci[1], 4), ",", round(or_ci[2], 4), "]"))
-  
-  # ================================================================================
-  # 元のスケール（log1p dairy consumption）での効果分析 - 完全版
-  # ================================================================================
-  
-  # 元スケール係数と信頼区間
-  coef_original_scale <- coef_pred / pred_sd
-  ci_original <- ci_pred / pred_sd
-  
-  cat(paste("\n=== 元のスケール（", y1_label, ")での効果 ===\n"))
-  cat("係数（元スケール）:", round(coef_original_scale, 6), "\n")
-  cat("95% CI: [", round(ci_original[1], 6), ",", round(ci_original[2], 6), "]\n\n")
-  
-  # データから平均値・中央値を取得
-  y1_raw <- expm1(data[[y1]])  # log(1+x)を逆変換
-  y1_mean <- mean(y1_raw, na.rm = TRUE)
-  y1_median <- median(y1_raw, na.rm = TRUE)
-  y1_q25 <- quantile(y1_raw, 0.25, na.rm = TRUE)
-  y1_q75 <- quantile(y1_raw, 0.75, na.rm = TRUE)
-  
-  cat("【データの分布】\n")
-  cat("平均:", round(y1_mean, 2), "\n")
-  cat("中央値:", round(y1_median, 2), "\n")
-  cat("25%分位:", round(y1_q25, 2), "\n")
-  cat("75%分位:", round(y1_q75, 2), "\n\n")
-  
-  # シナリオ分析
-  cat("【シナリオ分析：10%増加の効果】\n\n")
-  cat(sprintf("%-15s %-15s %-15s %-15s %-20s\n", 
-              "ベースライン", "10%増加後", "Δlog(1+x)", "オッズ比", "95% CI"))
-  cat(strrep("-", 80), "\n")
-  
-  baseline_values <- c(y1_q25, y1_median, y1_mean, y1_q75)
-  baseline_labels <- c("25%分位", "中央値", "平均値", "75%分位")
-  
-  for (i in 1:length(baseline_values)) {
-    baseline <- baseline_values[i]
-    new_val <- baseline * 1.10
-    delta <- log1p(new_val) - log1p(baseline)
-    or_val <- exp(coef_original_scale * delta)
-    or_ci_lower <- exp(ci_original[1] * delta)
-    or_ci_upper <- exp(ci_original[2] * delta)
-    
-    cat(sprintf("%-15s %-15.2f %-15.6f %-15.4f [%.4f, %.4f]\n",
-                baseline_labels[i], new_val, delta, or_val, 
-                or_ci_lower, or_ci_upper))
-  }
-  
-  cat("\n")
-  
-  # 様々な増加率でのシナリオ（中央値から）
-  cat("【中央値からの様々な増加率の効果】\n\n")
-  cat(sprintf("%-15s %-15s %-15s %-20s\n", 
-              "増加率", "新しい値", "オッズ比", "95% CI"))
-  cat(strrep("-", 65), "\n")
-  
-  increase_pcts <- c(5, 10, 15, 20, 25, 50)
-  
-  for (pct in increase_pcts) {
-    new_val <- y1_median * (1 + pct/100)
-    delta <- log1p(new_val) - log1p(y1_median)
-    or_val <- exp(coef_original_scale * delta)
-    or_ci_lower <- exp(ci_original[1] * delta)
-    or_ci_upper <- exp(ci_original[2] * delta)
-    
-    cat(sprintf("%-15s %-15.2f %-15.4f [%.4f, %.4f]\n",
-                paste0(pct, "%"), new_val, or_val, 
-                or_ci_lower, or_ci_upper))
-  }
-  return(list(fit1_svy = fit1_svy,
-              fit2_svy = fit2_svy,
-              pred_sd = pred_sd
-              ))
+  return(list(
+    fit1_svy = fit1_svy,
+    fit2_svy = fit2_svy,
+    pred_sd = pred_sd
+  ))
 }
 
 # ---- 関数ここまで ------------------------------------------------------------
@@ -630,6 +557,39 @@ gt_result2 <- function(mytable, y1, y2) {
   return(df_gt)
 }
 
+# ---- 関数ここまで ------------------------------------------------------------
+
+# ================================================================================
+# @title is_dummy
+# @description 変数がダミー変数かどうかを判定する関数
+# @param x 判定する変数
+# @return ダミー変数であればTRUE、そうでなければFALSE
+# ================================================================================
+is_dummy <- function(x) {
+  x_non_na <- x[!is.na(x)]
+  
+  # numeric型で0と1のみの場合
+  if (is.numeric(x) && all(x_non_na %in% c(0, 1))) {
+    return(TRUE)
+  }
+  
+  # factor型で2水準の場合
+  if (is.factor(x) && length(levels(x)) == 2) {
+    return(TRUE)
+  }
+  
+  # character型でYes/Noまたはyes/noの場合
+  if (is.character(x)) {
+    unique_vals <- unique(tolower(x_non_na))
+    if (length(unique_vals) == 2 && all(unique_vals %in% c("yes", "no"))) {
+      return(TRUE)
+    }
+  }
+  
+  return(FALSE)
+}
+
+# ---- 関数ここまで ------------------------------------------------------------
 
 ```
 
@@ -689,8 +649,11 @@ gtsave(table2_gt, filename = file.path(save_path,
 # モデル2：nt_mddを除外
 # ================================================================================
 
-key_predictors <- c("vegetable_log1p_score_ok","dairy_log1p_score_ok","dairy_log1p_score_below", "staple_legume_log1p_score_ok","ASF_log1p_score_ok","oilfat_log1p_score_ok", "fruit_log1p_score_ok", "nt_mdd")
+food_vars <- c("nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
 
+food_score_vars <- c("staple_legume_log1p_score_ok","vegetable_log1p_score_ok", "fruit_log1p_score_ok", "dairy_log1p_score_ok", "ASF_log1p_score_ok", "oilfat_log1p_score_ok")
+
+key_predictors <- c(food_vars, food_score_vars)
 
 for (predictor in key_predictors) {
   cat("\n=========================================\n")
@@ -716,20 +679,24 @@ for (predictor in key_predictors) {
   table1_gt <- gt_result(results_table1, y1, y2)
   table1_gt_compact <- gt_result_compact(results_table1, y1, y2)
   
-  # シナリオ分析表作成
-  result_table2 <- create_table2(res, y1, increase_pct = 10)
-  # GT表作成・表示
-  table2_gt <- gt_result2(result_table2, y1, y2)
-  
   # HTML保存
   gtsave(table1_gt, filename = file.path(save_path, 
             paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
   gtsave(table1_gt_compact, filename = file.path(save_path, 
             paste0("IV_GLM_table1_compact_", y1, "_on_", y2, ".html")))
-  gtsave(table2_gt, filename = file.path(save_path,
-            paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
   
 
+  
+  if (!str_detect(predictor, "nt_")) {
+    # シナリオ分析表作成
+    result_table2 <- create_table2(res, y1, increase_pct = 10)
+    # GT表作成・表示
+    table2_gt <- gt_result2(result_table2, y1, y2)
+    
+    # HTML保存    
+    gtsave(table2_gt, filename = file.path(save_path,
+              paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
+  }
   
   cat("\n=========================================\n")
   cat("\n=== IV-GLM: ", predictor, " が完了しました ===\n")
