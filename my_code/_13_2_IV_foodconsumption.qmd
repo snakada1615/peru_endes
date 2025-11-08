@@ -14,7 +14,6 @@ editor:
 # ================================================================================
 # 0. 初期設定・パッケージ読み込み
 # ================================================================================
-library(tinytex)
 library(here)
 library(haven)
 library(labelled)
@@ -399,26 +398,14 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
   if (!is.null(label_df)) {
     cat("変数ラベルのクリーニングを行います...\n")
 
-    # # label_dfのクリーニング
-    # cat("変数ラベルのクリーニングを行います...\n")
-    # label_lookup <- label_df %>%
-    #   select(variable_name, label) %>%
-    #   mutate(
-    #     label = as.character(label),
-    #     label = na_if(label, "NULL"),  # "NULL"文字列をNAに
-    #     label = if_else(label == "", NA_character_, label)  # 空文字列もNAに
-    #   ) %>%
-    #   filter(!is.na(label))  # NAの行を削除（ラベルがない変数は結合しない）
-    # 
-    # # label_dfから必要な列だけ選択
-    # label_lookup <- label_lookup %>%
-    #   select(variable_name, label)
-    
     table1_data <- table1_data %>%
       left_join(label_df, by = c("Variable" = "label_ref")) %>%
       mutate(
         Variable = coalesce(all_label, Variable)  # NAの場合は元のVariableを使用
-      ) 
+      ) %>% 
+      mutate(
+        item = y1 # 食品群をitem列として追加
+      )
     cat("変数ラベルの置換が完了しました。\n")
 
   }    
@@ -439,7 +426,7 @@ gt_result <- function(table_data, y1, y2) {
   table1 <- table_data %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
     cols_hide(
-      columns = c(var0, var_label, val_label, all_label) # 非表示にしたい列名を指定
+      columns = c(var0, var_label, val_label, all_label, item) # 非表示にしたい列名を指定
     ) %>%
     gt_highlight_rows(
       rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
@@ -483,7 +470,7 @@ gt_result_compact <- function(table_data, y1, y2) {
       ) %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
     cols_hide(
-      columns = c(var0, var_label, val_label, all_label) # 非表示にしたい列名を指定
+      columns = c(var0, var_label, val_label, all_label, item) # 非表示にしたい列名を指定
     ) %>%
     gt_highlight_rows(
       # rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
@@ -578,7 +565,11 @@ create_table2 <- function(result_2sls, y1,increase_pct = 10) {
   scenario_2nd_df <- scenario_2nd_df %>%
     mutate(Panel = "Panel B: scenario-2")
 
-  scenario_df <- rbind(scenario_1st_df, scenario_2nd_df)
+  scenario_df <- rbind(scenario_1st_df, scenario_2nd_df) %>%
+      mutate(
+        item = y1 # 食品群をitem列として追加
+      )
+    
   
   return(scenario_df)
 }
@@ -592,6 +583,9 @@ create_table2 <- function(result_2sls, y1,increase_pct = 10) {
 gt_result2 <- function(mytable, y1, y2) {
   df_gt <- mytable %>% 
     gt(groupname_col = "Panel", rowname_col = "Baseline") %>%
+    cols_hide(
+      columns = c(item) # 非表示にしたい列名を指定
+    ) %>%
     cols_label(
       Baseline = "Variables",
       Increase = "Increase",
@@ -718,8 +712,8 @@ food_score_vars <- c("staple_legume_log1p_score_ok","vegetable_log1p_score_ok", 
 
 key_predictors <- c(food_vars, food_score_vars)
 
-logit_results <- list()
-logit_results2 <- list()
+logit_results <- data.frame()
+logit_results2 <- data.frame()
 
 for (predictor in key_predictors) {
   cat("\n=========================================\n")
@@ -743,7 +737,7 @@ for (predictor in key_predictors) {
   results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
   
   # 結果保存
-  logit_results[[predictor]] <- results_table1
+  logit_results <- rbind(logit_results, results_table1)
   
   # GT表作成・表示
   table1_gt <- gt_result(results_table1, y1, y2)
@@ -757,12 +751,13 @@ for (predictor in key_predictors) {
   
 
   
-  if (!str_detect(predictor, "nt_")) {
+  if (str_detect(predictor, "log")) {
     # シナリオ分析表作成
     result_table2 <- create_table2(res, y1, increase_pct = 10)
 
-    logit_results2[[predictor]] <- result_table2
-    
+    # 結果保存
+    logit_results2 <- rbind(logit_results2, result_table2)
+
     # GT表作成・表示
     table2_gt <- gt_result2(result_table2, y1, y2)
     

@@ -1,0 +1,38 @@
+---
+title: "_13_3_summary_table"
+format: html
+---
+
+## 1. データ読み込み
+
+```{r}
+library(tidyverse)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+
+logit_result1 <-  readRDS(
+    file.path(gdrive_dir, "output", "lasso_IV01", "iv_logit_results.rds")
+  )
+
+logit_result2 <-  readRDS(
+    file.path(gdrive_dir, "output", "lasso_IV01", "iv_logit_results2.rds")
+  )
+
+```
