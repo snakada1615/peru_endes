@@ -356,7 +356,7 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
   additional_stats <- data.frame(
     Variable = c("F-statistic", "N"),
     Display_Coef = c(
-      paste0(sprintf("%.2f", f_stat), "***"),
+      paste0(sprintf("%.2f", f_stat), if (f_stat > 10) "*" else ""),
       sprintf("%.0f", nobs(fit1_svy))
     ),
     Display_SE = c("", ""),
