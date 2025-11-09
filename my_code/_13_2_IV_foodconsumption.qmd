@@ -58,6 +58,7 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 # 変数ラベル一覧
 endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
 
+hide_column <- c("var0", "var_label", "val_label", "all_label", "item", "Coefficient", "SE")  # 非表示にしたい列名を指定
 
 ```
 # 2. svydesignオブジェクト作成準備
@@ -349,7 +350,7 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
       # 標準誤差を括弧内に
       Display_SE = paste0("(", sprintf("%.4f", SE), ")")
     ) %>%
-    select(Variable, Display_Coef, Display_SE)
+    select(Variable, Display_Coef, Display_SE, Coefficient, SE)
   
   # First-stage特有の情報を行として追加
   additional_stats <- data.frame(
@@ -359,6 +360,8 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
       sprintf("%.0f", nobs(fit1_svy))
     ),
     Display_SE = c("", ""),
+    Coefficient = c(f_stat, nobs(fit1_svy)),
+    SE = c(NA, NA),
     stringsAsFactors = FALSE
   )
   
@@ -382,7 +385,7 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
       # 標準誤差を括弧内に
       Display_SE = paste0("(", sprintf("%.4f", SE), ")")
     ) %>%
-    select(Variable, Display_Coef, Display_SE)
+    select(Variable, Display_Coef, Display_SE, Coefficient, SE)
   
   # First-stage と Second-stage を区別するため Panel 列を追加
   first_stage_df <- first_stage_df %>%
@@ -396,8 +399,6 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
 
   # 変数ラベルが提供されていれば、Variable名をラベルに置換
   if (!is.null(label_df)) {
-    cat("変数ラベルのクリーニングを行います...\n")
-
     table1_data <- table1_data %>%
       left_join(label_df, by = c("Variable" = "label_ref")) %>%
       mutate(
@@ -406,8 +407,6 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
       mutate(
         item = y1 # 食品群をitem列として追加
       )
-    cat("変数ラベルの置換が完了しました。\n")
-
   }    
   return(table1_data)
 }
@@ -421,12 +420,12 @@ create_table1 <- function(fit1_svy, fit2_svy, label_df = NULL) {
 # *******************************************************************************
 library(gt)
 library(gtExtras)
-gt_result <- function(table_data, y1, y2) {
+gt_result <- function(table_data, y1, y2, hide_col = NULL) {
   cat("=== GT表の作成 ===\n")
   table1 <- table_data %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
     cols_hide(
-      columns = c(var0, var_label, val_label, all_label, item) # 非表示にしたい列名を指定
+      columns = hide_column # 非表示にしたい列名を指定
     ) %>%
     gt_highlight_rows(
       rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
@@ -470,7 +469,7 @@ gt_result_compact <- function(table_data, y1, y2) {
       ) %>%
     gt(groupname_col = "Panel", rowname_col = "Variable") %>%
     cols_hide(
-      columns = c(var0, var_label, val_label, all_label, item) # 非表示にしたい列名を指定
+      columns = hide_column # 非表示にしたい列名を指定
     ) %>%
     gt_highlight_rows(
       # rows = Variable %in% c("juntos_non_participation", "F-statistic", y1),
