@@ -646,7 +646,8 @@ is_dummy <- function(x) {
 
 ```
 
-# 4. IV-GLM実行
+
+# 4.IV-Logitの実行
 
 ```{r}
 # ================================================================================
@@ -654,52 +655,6 @@ is_dummy <- function(x) {
 # ================================================================================
 selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas"
 )
-
-# ================================================================================
-# 4. IV-GLM実行
-# ================================================================================
-
-selected_predictors_with_mdd <- c(selected_predictors, "nt_mdd")
-# IV-GLM実行
-  y1 = "dairy_log1p_score_below"
-  y2 = "nt_ch_stunt"
-
-res <- survey_2sls(
-  y1 = y1,
-  y2 = y2,
-  instrument = "juntos_non_participation",
-  covariates = selected_predictors_with_mdd,
-  design = svy_design
-)
-
-# 結果表作成
-results_table1 <- create_table1(res$fit1_svy, res$fit2_svy, label_df)
-print("=== 結果表1 ===")
-print(results_table1)
-
-# GT表作成・表示
-table1_gt <- gt_result(results_table1, y1, y2)
-table1_gt_compact <- gt_result_compact(results_table1, y1, y2)
-
-# シナリオ分析表作成
-result_table2 <- create_table2(res, y1, increase_pct = 10)
-# GT表作成・表示
-table2_gt <- gt_result2(result_table2, y1, y2)
-
-# HTML保存
-gtsave(table1_gt, filename = file.path(save_path, 
-          paste0("IV_GLM_table1_", y1, "_on_", y2, ".html")))
-gtsave(table1_gt_compact, filename = file.path(save_path, 
-          paste0("IV_GLM_table1_compact_", y1, "_on_", y2, ".html")))
-gtsave(table2_gt, filename = file.path(save_path,
-          paste0("IV_GLM_table2_", y1, "_on_", y2, ".html")))
-
-
-```
-
-# 5.別変数（- nt_mdd）で再計算
-
-```{r}
 
 # ================================================================================
 # モデル2：nt_mddを除外
@@ -779,7 +734,7 @@ stop("とりあえず")
 ```
 
 
-# 6. ブートストラップを用いた標準誤差の補正
+# 5. ブートストラップを用いた標準誤差の補正
  
 ```{r}
 library(boot)

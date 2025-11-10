@@ -1,0 +1,41 @@
+## Two-Stage Least Squares (2SLS) Survey-Weighted Model
+
+### Stage 1: First-Stage Regression
+
+The endogenous variable $Y_1$ is regressed on the instrumental variable and control covariates:
+
+$$
+\large
+\text{logit}\left( \Pr(Y_{1i}=1) \right) = \alpha_0 + \alpha_1 \cdot \text{Instrument}_i + \sum_{k=1}^{K} \alpha_{k+1} \cdot C_{k,i}
+$$
+
+**Where:**
+
+-   $Y_{1i}$: Endogenous variable for observation $i$ (food group consumption score)
+-   $\text{Instrument}_i$: Instrumental variable (`juntos_non_participation`)
+-   $C_{k,i}$: $k$-th covariate for observation $i$
+-   $\alpha_0, \alpha_1, \boldsymbol{\alpha}_{2:K+1}$: Coefficients to be estimated
+-   $K$: Number of covariates
+
+------------------------------------------------------------------------
+
+### Stage 2: Second-Stage Regression (Main Effect Estimation)
+
+The outcome variable $Y_2$ (binary) is regressed on the standardized predicted values from stage 1 and the same covariates, using survey-weighted logistic regression:
+
+$$
+\large
+\text{logit}\left( \Pr(Y_{2i}=1 \mid \widetilde{Y}_{1i}, \mathbf{C}_i) \right) = \beta_0 + \beta_1 \cdot \widetilde{Y}_{1i} + \sum_{k=1}^{K} \beta_{k+1} \cdot C_{k,i}
+$$
+
+**Where:**
+
+-   $Y_{2i}$: Binary outcome variable (child stunting dummy)
+-   $\widetilde{Y}_{1i}$: Standardized predicted values from the first stage
+-   $C_{k,i}$: $k$-th covariate for observation $i$
+-   $\beta_0, \beta_1, \boldsymbol{\beta}_{2:K+1}$: Coefficients to be estimated
+-   $K$: Number of covariates
+
+```         
+------------------------------------------------------------------------
+```
