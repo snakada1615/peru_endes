@@ -46,7 +46,7 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 gdrive__dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_stunting")
+save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
@@ -56,6 +56,7 @@ df_food_org <- readRDS(
     file.path(gdrive__dir_enaho, "output","food_consumption_by_area_income.rds")
   ) %>% 
   select(-ends_with("_se")) %>%
+  select(-starts_with("se.")) %>%
   select(-c("area_income")) %>%
   select(-ends_with("_log1p")) %>%
   mutate(inc_quintile = as.numeric(as.character(inc_quintile)))
@@ -180,10 +181,12 @@ df_lasso_data <- create_lasso_data(df_org, drop_cols_init, drop_cols_add, groupi
 df_lasso <- df_lasso_data$df_lasso
 covariate_names <- df_lasso_data$covariate_names
 
+saveRDS(df_lasso, file.path(save_path, "df_lasso.rds"))
+
 
 ```
 
-## 3. LASSO①による変数選択
+## 3. LASSOによる変数選択
 
 ```{r}
 library(gt)
@@ -331,8 +334,8 @@ if(length(selected_vars) > 0) {
 
 ```
 
-# 4. 選択変数でのIV-GLM実行
 
+<<<<<<< HEAD
 ```{r}
 library(survey)
 
@@ -577,3 +580,5 @@ cat("修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n
 
 
 ```
+=======
+>>>>>>> bce66749bfeb9ceb217da8ff222c984159f37078

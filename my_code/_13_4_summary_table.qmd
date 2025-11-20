@@ -1,0 +1,164 @@
+---
+title: "_13_3_summary_table"
+format: html
+---
+
+## 1. データ読み込み
+
+```{r}
+library(tidyverse)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+
+logit_result1 <-  readRDS(
+    file.path(gdrive_dir, "output", "lasso_IV01", "iv_logit_results.rds")
+  )
+
+logit_result2 <-  readRDS(
+    file.path(gdrive_dir, "output", "lasso_IV01", "iv_logit_results2.rds")
+  )
+
+```
+
+## 2. 結果集計
+
+```{r}
+
+#' ******************************************************************************
+#' @title: getsummary_normal
+#' @description ロジスティック回帰の結果を集計する関数
+#' @param df1 データフレーム
+#' @param var 変数名
+#' @return 集計結果のデータフレーム
+#' ******************************************************************************
+getsummary_normal <- function(df1, var){
+  org_dat <- df1 %>% filter(Variable == var)
+  org_dat2 <- df1 %>% filter(item == var & 
+    Variable == "F-statistic")
+
+  coef_org <- org_dat$Coefficient
+  coef_disp <- org_dat$Display_Coef
+  SE <- org_dat$SE
+  OR <- exp(coef_org)
+  lower_CI <- coef_org - 1.96 * SE
+  upper_CI <- coef_org + 1.96 * SE
+  F_statistic <- org_dat2$Display_Coef
+  
+  summary_df <- data.frame(
+    Variable = var,
+    Coefficient = coef_org,
+    Display_coef = coef_disp,
+    SE = SE,
+    OR = OR,
+    lower_CI = lower_CI,
+    upper_CI = upper_CI,
+    F_statistic = F_statistic
+  )
+  return(summary_df)
+}
+# ---- 関数ここまで ------------------------------------------------------------
+
+
+vars_nt <- c("nt_grains", "nt_root", "nt_nuts", "nt_vita", "nt_frtveg", "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
+
+vars_score <- c("staple_legume_log1p_score_ok", "vegetable_log1p_score_ok", "fruit_log1p_score_ok", "dairy_log1p_score_ok", "ASF_log1p_score_ok", "oilfat_log1p_score_ok")
+
+vars_all <- c(vars_nt, vars_score)
+
+summary_tbl1 <- data.frame()
+summary_tbl2 <- data.frame()
+
+for (var in vars_nt) {
+  tmp_result <- getsummary_normal(logit_result1, var)
+  summary_tbl1 <- rbind(summary_tbl1, tmp_result)
+}
+
+summary_tbl1 <- summary_tbl1 %>%
+  mutate(
+    Variable_label = recode(Variable,
+      "nt_grains" = "Grains consumed",
+      "nt_root" = "Roots and tubers consumed",
+      "nt_nuts" = "Nuts and seeds consumed",
+      "nt_vita" = "Vitamin A-rich fruits and vegetables consumed",
+      "nt_frtveg" = "Other fruits and vegetables consumed",
+      "nt_meatfish" = "Meat, fish and poultry consumed",
+      "nt_eggs" = "Eggs consumed",
+      "nt_dairy" = "Dairy products consumed",
+      "nt_mdd" = "Minimum dietary diversity",
+      "nt_mmf" = "Minimum meal frequency"
+    ),
+    Panel = "Panel-A: FoodGrp intake dummy (yes/no)"
+  ) 
+
+for (var in vars_score) {
+  tmp_result <- getsummary_normal(logit_result1, var)
+  summary_tbl2 <- rbind(summary_tbl2, tmp_result)
+}
+
+summary_tbl2 <- summary_tbl2 %>%
+  mutate(
+    Variable_label = recode(Variable,
+      "staple_legume_log1p_score_ok" = "Staple and Legume score",
+      "vegetable_log1p_score_ok" = "Vegetable score",
+      "fruit_log1p_score_ok" = "Fruit score",
+      "dairy_log1p_score_ok" = "Dairy score",
+      "ASF_log1p_score_ok" = "Animal source food score",
+      "oilfat_log1p_score_ok" = "Oil and fat score"
+    ),
+    Panel = "Panel-B: FoodGrp score dummy (optimal/non-optimal)"
+  )
+
+summary_tbl <- rbind(summary_tbl1, summary_tbl2)
+
+summary_tbl <- summary_tbl %>%
+  gt(groupname_col = "Panel", rowname_col = "Variable_label") %>%
+  cols_hide(
+    columns = c(Coefficient, Variable)
+  ) %>%
+  tab_header(
+    title = "Table: IV Logit Regression Results",
+    subtitle = "Dependent variable: Child stunting status (yes/no), IV: participataion rate in Cash Transfer program (JUNTOS)"
+  ) %>%
+  fmt_number(
+    columns = c(SE, OR, lower_CI, upper_CI),
+    decimals = 3
+  ) %>%
+  cols_label(
+    Variable_label = "Variable",
+    Display_coef = "Coef.",
+    SE = "Std. Err.",
+    OR = "Odds Ratio",
+    lower_CI = "95% CI Lower",
+    upper_CI = "95% CI Upper",
+    F_statistic = "F-statistic"
+  ) %>%
+  tab_spanner(
+    label = "IV Logit Regression Results",
+    columns = c(Display_coef, SE, OR, lower_CI, upper_CI, F_statistic)
+  ) %>%
+  tab_source_note(
+    source_note = "Note: F-statistic for IV relevance. *: F>10"
+  )
+summary_tbl
+# 結果保存
+# saveRDS(summary_tbl, file.path(save_path, "iv_logit_summary_table.rds"))
+
+
+```
