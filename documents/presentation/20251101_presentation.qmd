@@ -1,29 +1,79 @@
 ---
-title: "20251101_presentation"
+title: "Association of Food Consumption and Child Stunting"
 author: "nakada shunichi"
+institute: "Department of Agricultural and Resource Economics, The University of Tokyo"
+date: "November 1, 2024"
 format:
-  revealjs:
-    theme: sky
-    slide-number: true
-    chalkboard: true
+  beamer:
+    theme: "Madrid"
+    aspectratio: 169
+    slide-level: 2
+    include-in-header:
+      - text: |
+          \AtBeginSection[]{
+            \begin{frame}
+            \tableofcontents[currentsection]
+            \end{frame}
+          }
 editor: visual
 ---
 
-## Quarto
+## Overall structure of my thesys
 
-Quarto enables you to weave together content and executable code into a finished presentation. To learn more about Quarto presentations see <https://quarto.org/docs/presentations/>.
+1.  Background
+2.  Research interest
+3.  \alert{Factor analysis of stunting reduction focusing on food consumption (IV: CCT program participation rate)}
+4.  Impact of multisector intervention on stunting reduction
+5.  2SLS focusing on interaction
+6.  Impact of CRECER program in stunting reduction
+7.  PSM-DID for impact assessment of CRESER program
+8.  Mediation analysis to assess contribution of CRECER program
+9.  Discussion
 
-## Bullets
+## Table of contents
 
-When you click the **Render** button a document will be generated that includes:
+1.  Background
+2.  Research interest
+3.  Data and methodology
+4.  Result
+5.  Discussion
 
--   Content authored with markdown
--   Output from executable code
+# Background
 
-## Code
+## Current status
 
-When you click the **Render** button a presentation will be generated that includes both content and the output of embedded code. You can embed code like this:
+-   Malnutrition is one of the world’s most serious but least-addressed development challenges. Its human and economic costs are enormous, falling hardest on the poor, women, and children.
+-   South Asia and Sub-Saharan Africa are the hardest hit, with with roughly two-thirds of the 150.2 million stunted children residing in these two regions(World bank).
+-   The economic costs of undernutrition are significant with at least \$1 trillion a year because of productivity loss due to undernutrition and micronutrient deficiencies (FAO 2013).
+-   From meta-analysis of 37 international study, it is revealed that stunting was strongly linked to household food insecurity and poor dietary diversity (2025, islam et. al).
+-   Meanwhile, it is well known that other various factors including mother’s education status, access to clean water and toilet, economic disparity, fragile agro-ecosystem have also significant impact on malnutrition.
+
+## Why we need multisector intervention?
+
+### three key factors are associated with undernutrition
+
+![UNICEF framework of undernutrition](image/unicef_framework.png){width="80%"}
+
+## Peru case study
+
+### Key factors associated with undernutrition in Peru
+
+![Drivers of stunting reduction in Peru: a country case study (Luis, et. Al, 2020)](image/deivers_of_stunting_reductionin_Peru.png){width="50%"}
 
 ```{r}
-1 + 1
+# --- 関数ここから ------------------------------------------------------------
+create_lasso_data <- function(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var) {
+  # df: 元データフレーム
+  # drop_cols_init: 除外変数定義(初期値)
+  # drop_cols_add: 除外変数定義(追加)   
+  # grouping_cols: ID・管理用変数
+  # y_var_all: 目的変数候補
+  # y_var: 目的変数
+  
+  # 除外変数定義(最終値)
+  drop_cols <- c(drop_cols_init, y_var_all, drop_cols_add) %>% unique()
+  y_var_drop <- setdiff(y_var_all, y_var)
+  
+  return(y_var_drop)
+}
 ```
