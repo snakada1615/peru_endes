@@ -60,20 +60,6 @@ editor: visual
 
 ![Drivers of stunting reduction in Peru: a country case study (Luis, et. Al, 2020)](image/deivers_of_stunting_reductionin_Peru.png){width="50%"}
 
-```{r}
-# --- 関数ここから ------------------------------------------------------------
-create_lasso_data <- function(df_org, drop_cols_init, drop_cols_add, grouping_cols, y_var_all, y_var) {
-  # df: 元データフレーム
-  # drop_cols_init: 除外変数定義(初期値)
-  # drop_cols_add: 除外変数定義(追加)   
-  # grouping_cols: ID・管理用変数
-  # y_var_all: 目的変数候補
-  # y_var: 目的変数
-  
-  # 除外変数定義(最終値)
-  drop_cols <- c(drop_cols_init, y_var_all, drop_cols_add) %>% unique()
-  y_var_drop <- setdiff(y_var_all, y_var)
-  
-  return(y_var_drop)
-}
-```
+## Different type of dietary guidance
+
+## How to evaluate quality of diet?
