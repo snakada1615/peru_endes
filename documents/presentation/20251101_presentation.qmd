@@ -19,7 +19,7 @@ execute:
 editor: visual
 ---
 
-## Overall structure of my thesys{.fragile}
+## Overall structure of my thesys {.fragile}
 
 1.  Background
 2.  Research interest
@@ -31,7 +31,7 @@ editor: visual
 8.  Mediation analysis to assess contribution of CRECER program
 9.  Discussion
 
-## Table of contents{.fragile}
+## Table of contents {.fragile}
 
 1.  Background
 2.  Research interest
@@ -41,7 +41,7 @@ editor: visual
 
 # Background
 
-## Current status{.fragile}
+## Current status {.fragile}
 
 -   Malnutrition is one of the world’s most serious but least-addressed development challenges. Its human and economic costs are enormous, falling hardest on the poor, women, and children.
 -   South Asia and Sub-Saharan Africa are the hardest hit, with with roughly two-thirds of the 150.2 million stunted children residing in these two regions(World bank).
@@ -49,26 +49,25 @@ editor: visual
 -   From meta-analysis of 37 international study, it is revealed that stunting was strongly linked to household food insecurity and poor dietary diversity (2025, islam et. al).
 -   Meanwhile, it is well known that other various factors including mother’s education status, access to clean water and toilet, economic disparity, fragile agro-ecosystem have also significant impact on malnutrition.
 
-## Why we need multisector intervention?{.fragile}
+## Why we need multisector intervention? {.fragile}
 
 ### three key factors are associated with undernutrition
 
 ![UNICEF framework of undernutrition](image/unicef_framework.png){width="80%"}
 
-## Peru case study{.fragile}
+## Peru case study {.fragile}
 
 ### Key factors associated with undernutrition in Peru
 
 ![Drivers of stunting reduction in Peru: a country case study (Luis, et. Al, 2020)](image/deivers_of_stunting_reductionin_Peru.png){width="50%"}
 
-## Different type of dietary guidance{.fragile}
+## Different type of dietary guidance {.fragile}
 
 ![different type of dietary guideline](image/dietary_guideline.png){width="90%"}
 
-## How to evaluate quality of diet?{.fragile}
+## How to evaluate quality of diet? {.fragile}
 
-
-## How to evaluate quality of diet?{.fragile}
+## How to evaluate quality of diet? {.fragile}
 
 ```{r}
 library(flextable)
@@ -105,7 +104,7 @@ ft <- autofit(ft)
 ft
 ```
 
-## Is Dietary Diversity Score effective tool to assess diet quality?{.fragile}
+## Is Dietary Diversity Score effective tool to assess diet quality? {.fragile}
 
 -   Ruel conducted intensive review of 47 articles to examine impact of various agriculture intervention to nutrition improvement. Overall, number of studies showed clear impact of NSA to DDIs, while impact on nutrition outcome was limited (Ruel, 2018)
 -   Eric conducted peer review from 137 articles to examine relationship between DDIs and health impact, found that associations between DDIs and health outcomes were largely inconsistent (Eric, 2021)

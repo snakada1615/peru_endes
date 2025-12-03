@@ -97,3 +97,53 @@ ft <- padding(ft, padding = 4, part = "all")
 
 ft
 ```
+
+## second table{.fragile}
+
+```{r}
+library(flextable)
+library(magrittr)
+library(dplyr)
+
+# パネルA用のデータフレーム（4列）
+panelA_df <- data.frame(
+  Item = c("Diversity", "Balance", "Adequacy", "Moderation"),
+  Description = c(
+    "Diversity of food group (qualitative)",
+    "Consumed food group balance (semi-quantitative)",
+    "Adequacy of key nutrient intake from diet (quantitative)",
+    "Refrain overconsumption"
+  ),
+  Type = c("Qualitative", "Semi-quant", "Quantitative", "Qualitative"),
+  Score = c(85, 78, 92, 70)
+)
+
+# パネルB用のデータフレーム（2列）
+panelB_df <- data.frame(
+  Indicator = c("Overall Diet Quality", "Food Security", "Nutrition Security"),
+  Status = c("Good", "Moderate", "Good")
+)
+
+# 共通の列幅（スライド1枚に収まる程度で調整）
+col_width_item  <- 3.5   # in 単位
+col_width_desc  <- 7.0
+
+## パネルA
+ft_A <- flextable(panelA_df) %>%
+  theme_booktabs() %>%
+  bg(i = c(1, 3), bg = "#F5E6D3", part = "body") %>%
+  autofit()
+
+## パネルB
+ft_B <- flextable(panelB_df) %>%
+  theme_booktabs() %>%
+  color(part = "header", color = "white") %>%
+  bold(part = "header") %>%
+  bg(i = c(1, 3), bg = "#F5E6D3", part = "body") %>%
+  autofit()
+
+ft_A
+ft_B
+
+
+```
