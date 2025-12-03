@@ -8,18 +8,18 @@ format:
     theme: "Madrid"
     aspectratio: 169
     slide-level: 2
+    mermaid-format: png
+    # デフォルトで fragile を有効化
     include-in-header:
       - text: |
-          \AtBeginSection[]{
-            \begin{frame}
-            \tableofcontents[currentsection]
-            \end{frame}
-          }
-mermaid-format: png
+          \usepackage{ctable}
+execute:
+  echo: false
+  
 editor: visual
 ---
 
-## Overall structure of my thesys
+## Overall structure of my thesys{.fragile}
 
 1.  Background
 2.  Research interest
@@ -31,7 +31,7 @@ editor: visual
 8.  Mediation analysis to assess contribution of CRECER program
 9.  Discussion
 
-## Table of contents
+## Table of contents{.fragile}
 
 1.  Background
 2.  Research interest
@@ -41,7 +41,7 @@ editor: visual
 
 # Background
 
-## Current status
+## Current status{.fragile}
 
 -   Malnutrition is one of the world’s most serious but least-addressed development challenges. Its human and economic costs are enormous, falling hardest on the poor, women, and children.
 -   South Asia and Sub-Saharan Africa are the hardest hit, with with roughly two-thirds of the 150.2 million stunted children residing in these two regions(World bank).
@@ -49,59 +49,34 @@ editor: visual
 -   From meta-analysis of 37 international study, it is revealed that stunting was strongly linked to household food insecurity and poor dietary diversity (2025, islam et. al).
 -   Meanwhile, it is well known that other various factors including mother’s education status, access to clean water and toilet, economic disparity, fragile agro-ecosystem have also significant impact on malnutrition.
 
-## Why we need multisector intervention?
+## Why we need multisector intervention?{.fragile}
 
 ### three key factors are associated with undernutrition
 
 ![UNICEF framework of undernutrition](image/unicef_framework.png){width="80%"}
 
-## Peru case study
+## Peru case study{.fragile}
 
 ### Key factors associated with undernutrition in Peru
 
 ![Drivers of stunting reduction in Peru: a country case study (Luis, et. Al, 2020)](image/deivers_of_stunting_reductionin_Peru.png){width="50%"}
 
-## Different type of dietary guidance
+## Different type of dietary guidance{.fragile}
 
 ![different type of dietary guideline](image/dietary_guideline.png){width="90%"}
 
-## How to evaluate quality of diet?
-::: {=html}
-<table style="width: 100%; border-collapse: collapse;">
-  <thead>
-    <tr style="background-color: #E89850; color: white; font-weight: bold;">
-      <th colspan="2" style="padding: 10px; text-align: left;">Key consideration in evaluating quality of diet</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr style="background-color: #FFFFFF;">
-      <td style="padding: 10px; width: 15%;"><strong>Diversity</strong></td>
-      <td style="padding: 10px;">Diversity of food group (qualitative)</td>
-    </tr>
-    <tr style="background-color: #F5E6D3;">
-      <td style="padding: 10px;"><strong>Balance</strong></td>
-      <td style="padding: 10px;">Consumed food group balance (semi-quantitative)</td>
-    </tr>
-    <tr style="background-color: #FFFFFF;">
-      <td style="padding: 10px;"><strong>Adequacy</strong></td>
-      <td style="padding: 10px;">Adequacy of key nutrient intake from diet (quantitative)</td>
-    </tr>
-    <tr style="background-color: #F5E6D3;">
-      <td style="padding: 10px;"><strong>Moderation</strong></td>
-      <td style="padding: 10px;">Refrain overconsumption</td>
-    </tr>
-  </tbody>
-</table>
-:::
+## How to evaluate quality of diet?{.fragile}
 
-## How to evaluate quality of diet?
+
+## How to evaluate quality of diet?{.fragile}
+
 ```{r}
 library(flextable)
 library(magrittr)
+set_flextable_defaults(tabular = "latex")
 
-set_flextable_defaults(font.size = 11, padding = 10)
 
-data <- data.frame(
+df <- data.frame(
   Item = c("Diversity", "Balance", "Adequacy", "Moderation"),
   Description = c(
     "Diversity of food group (qualitative)",
@@ -111,36 +86,26 @@ data <- data.frame(
   )
 )
 
-ft <- flextable(data) %>%
-  set_header_labels(Item = "", Description = "") %>%
-  # ★ compose でヘッダを作成
-  compose(
-    part = "header",
-    i = 1,
-    j = 1:2,
-    value = as_paragraph("Key consideration in evaluating quality of diet")
-  ) %>%
-  # ★ ヘッダセルを結合
-  merge_at(i = 1, j = 1:2, part = "header") %>%
-  # スタイル適用
-  bg(part = "header", bg = "#E89850") %>%
-  color(part = "header", color = "white") %>%
-  bold(part = "header", bold = TRUE) %>%
-  bg(i = c(1, 3), part = "body", bg = "#FFFFFF") %>%
-  bg(i = c(2, 4), part = "body", bg = "#F5E6D3") %>%
-  bold(j = 1, part = "body", bold = TRUE) %>%
-  autofit()
+ft <- flextable(df) %>%
+  theme_booktabs()
 
-# PDF用に調整
-ft <- set_flextable_defaults(
-  font.size = 11,
-  padding = 10
-)
+# ヘッダー行をオレンジ色に設定
+ft <- bg(ft, part = "header", bg = "#E89850")
+ft <- color(ft, part = "header", color = "white")
+
+# フォントを太字に
+ft <- bold(ft, part = "header")
+
+# 交互に背景色を付ける（オプション）
+ft <- bg(ft, i = c(1, 3), bg = "#F5E6D3", part = "body")
+
+# パディングと列幅を調整
+ft <- autofit(ft)
 
 ft
 ```
 
-## Is Dietary Diversity Score effective tool to assess diet quality?
+## Is Dietary Diversity Score effective tool to assess diet quality?{.fragile}
 
 -   Ruel conducted intensive review of 47 articles to examine impact of various agriculture intervention to nutrition improvement. Overall, number of studies showed clear impact of NSA to DDIs, while impact on nutrition outcome was limited (Ruel, 2018)
 -   Eric conducted peer review from 137 articles to examine relationship between DDIs and health impact, found that associations between DDIs and health outcomes were largely inconsistent (Eric, 2021)
