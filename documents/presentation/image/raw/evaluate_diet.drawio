@@ -1,0 +1,65 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Safari/605.1.15" version="29.2.3">
+  <diagram name="ページ1" id="xr_QM4jp497I7FVPPf4a">
+    <mxGraphModel dx="2564" dy="1325" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1500" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-1" parent="1" style="shape=table;startSize=60;container=1;collapsible=0;childLayout=tableLayout;fontSize=36;verticalAlign=middle;fillColor=#FF8000;strokeColor=#6c8ebf;fontColor=#FFFFFF;strokeWidth=4;" value="Key consideration in evaluating quality of diet" vertex="1">
+          <mxGeometry height="470" width="1230" x="135" y="165" as="geometry" />
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-2" parent="ta4_k1xqO6UmRDW9YP_w-1" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;strokeWidth=4;" value="" vertex="1">
+          <mxGeometry height="103" width="1230" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-3" parent="ta4_k1xqO6UmRDW9YP_w-2" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f5f5f5;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontColor=#333333;strokeWidth=4;perimeterSpacing=1;" value="&lt;span style=&quot;text-align: start; font-size: 24pt;&quot;&gt;&lt;font face=&quot;Helvetica&quot;&gt;Diversity&lt;/font&gt;&lt;/span&gt;&lt;span style=&quot;font-family: -webkit-standard; font-size: medium; text-align: start;&quot;&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="103" width="360" as="geometry">
+            <mxRectangle height="103" width="360" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-4" parent="ta4_k1xqO6UmRDW9YP_w-2" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f5f5f5;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontSize=32;fontFamily=Helvetica;fontColor=#333333;strokeWidth=4;perimeterSpacing=1;" value="&lt;p style=&quot;text-indent: 0in; margin-top: 0pt; margin-bottom: 0pt; margin-left: 0in; text-align: left; direction: ltr; unicode-bidi: embed; word-break: normal;&quot;&gt;&lt;span style=&quot;&quot;&gt;Diversity of&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-weight: bold;&quot;&gt;food group&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;&quot;&gt;(qualitative)&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="103" width="870" x="360" as="geometry">
+            <mxRectangle height="103" width="870" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-5" parent="ta4_k1xqO6UmRDW9YP_w-1" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;strokeWidth=4;" value="" vertex="1">
+          <mxGeometry height="102" width="1230" y="163" as="geometry" />
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-6" parent="ta4_k1xqO6UmRDW9YP_w-5" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f8cecc;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontFamily=Helvetica;fontSize=32;strokeWidth=4;perimeterSpacing=9;" value="&lt;span style=&quot;text-align: start;&quot;&gt;Balance&lt;/span&gt;&lt;span style=&quot;text-align: start;&quot;&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="102" width="360" as="geometry">
+            <mxRectangle height="102" width="360" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-7" parent="ta4_k1xqO6UmRDW9YP_w-5" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f8cecc;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontSize=32;fontFamily=Helvetica;strokeWidth=4;perimeterSpacing=9;" value="&lt;p style=&quot;text-indent: 0in; margin-top: 0pt; margin-bottom: 0pt; margin-left: 0in; text-align: left; direction: ltr; unicode-bidi: embed; word-break: normal;&quot;&gt;&lt;span style=&quot;&quot;&gt;Consumed&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-weight: bold;&quot;&gt;food group&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;&quot;&gt;balance (semi-quantitative)&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="102" width="870" x="360" as="geometry">
+            <mxRectangle height="102" width="870" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-8" parent="ta4_k1xqO6UmRDW9YP_w-1" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;strokeWidth=4;" value="" vertex="1">
+          <mxGeometry height="103" width="1230" y="265" as="geometry" />
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-9" parent="ta4_k1xqO6UmRDW9YP_w-8" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f5f5f5;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontFamily=Helvetica;fontSize=32;fontColor=#333333;strokeWidth=4;perimeterSpacing=9;" value="&lt;span style=&quot;text-align: start;&quot;&gt;Adequacy&lt;/span&gt;&lt;span style=&quot;text-align: start;&quot;&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="103" width="360" as="geometry">
+            <mxRectangle height="103" width="360" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-10" parent="ta4_k1xqO6UmRDW9YP_w-8" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f5f5f5;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontSize=32;fontFamily=Helvetica;fontColor=#333333;strokeWidth=4;perimeterSpacing=9;" value="&lt;p style=&quot;text-indent: 0in; margin-top: 0pt; margin-bottom: 0pt; margin-left: 0in; text-align: left; direction: ltr; unicode-bidi: embed; word-break: normal;&quot;&gt;&lt;span style=&quot;&quot;&gt;Adequacy of key&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;font-weight: bold;&quot;&gt;nutrient intake&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;&quot;&gt;from diet (quantitative)&lt;/span&gt;&lt;/p&gt;" vertex="1">
+          <mxGeometry height="103" width="870" x="360" as="geometry">
+            <mxRectangle height="103" width="870" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-11" parent="ta4_k1xqO6UmRDW9YP_w-1" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=inherit;top=0;left=0;bottom=0;right=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;strokeWidth=4;" value="" vertex="1">
+          <mxGeometry height="102" width="1230" y="368" as="geometry" />
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-12" parent="ta4_k1xqO6UmRDW9YP_w-11" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f8cecc;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontFamily=Helvetica;fontSize=32;strokeWidth=4;perimeterSpacing=9;" value="&lt;span style=&quot;text-align: start;&quot;&gt;Moderation&lt;/span&gt;&lt;span style=&quot;text-align: start;&quot;&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="102" width="360" as="geometry">
+            <mxRectangle height="102" width="360" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="ta4_k1xqO6UmRDW9YP_w-13" parent="ta4_k1xqO6UmRDW9YP_w-11" style="shape=partialRectangle;html=1;whiteSpace=wrap;connectable=0;strokeColor=light-dark(#66B2FF,#007600);overflow=hidden;fillColor=#f8cecc;top=0;left=0;bottom=0;right=0;pointerEvents=1;fontSize=32;fontFamily=Helvetica;strokeWidth=4;perimeterSpacing=9;" value="&lt;span style=&quot;text-align: start;&quot;&gt;Refrain&amp;nbsp;&lt;/span&gt;&lt;span style=&quot;text-align: start; font-weight: bold;&quot;&gt;overconsumption&lt;/span&gt;&lt;span style=&quot;text-align: start;&quot;&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="102" width="870" x="360" as="geometry">
+            <mxRectangle height="102" width="870" as="alternateBounds" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
