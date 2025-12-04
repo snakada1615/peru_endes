@@ -1096,18 +1096,43 @@ combine_flextables_cairo <- function(ft_list, output_file, width = 7, dpi = 150,
     ft <- ft_list[[i]]
     nrows <- 0
     
-    # bodyデータの行数のみを取得（header/footerは除外）
-    if (!is.null(ft$body$dataset)) {
-      nrows <- nrow(ft$body$dataset)
-    } else if (!is.null(ft$body$content)) {
-      if (is.data.frame(ft$body$content)) {
-        nrows <- nrow(ft$body$content)
-      } else if (is.list(ft$body$content)) {
-        nrows <- length(ft$body$content)
+    # bodyデータの行数を取得
+    tryCatch({
+      if (!is.null(ft$body$dataset)) {
+        nrows <- nrow(ft$body$dataset)
+        if (is.null(nrows) || is.na(nrows)) {
+          nrows <- 1
+        }
+      } else if (!is.null(ft$body$content)) {
+        if (is.data.frame(ft$body$content)) {
+          nrows <- nrow(ft$body$content)
+          if (is.null(nrows) || is.na(nrows)) {
+            nrows <- 1
+          }
+        } else if (is.list(ft$body$content)) {
+          nrows <- length(ft$body$content)
+          if (length(nrows) == 0 || is.na(nrows)) {
+            nrows <- 1
+          }
+        }
       }
+      
+      # nrows がNULLまたはNA の場合は1行と判定
+      if (is.null(nrows) || is.na(nrows) || length(nrows) == 0) {
+        nrows <- 1
+      }
+      
+    }, error = function(e) {
+      cat("テーブル", i, "の行数取得でエラー:", e$message, "\n")
+      nrows <<- 1
+    })
+    
+    # 行数が0以下の場合は1行と判定
+    if (nrows <= 0) {
+      nrows <- 1
     }
     
-    # body行のみの高さを計算（マージンなし）
+    # body行のみの高さを計算
     heights_in[i] <- max(nrows * row_height, 0.3)
   }
   

@@ -67,6 +67,88 @@ editor: visual
 
 ## How to evaluate quality of diet? {.fragile}
 
+```{r}
+#| include: false
+
+source("../../myTools.R")
+# パネルA用のデータフレーム（4列）
+panelA_df <- data.frame(
+  Item = c("Diversity", "Balance", "Adequacy", "Moderation"),
+  Description = c(
+    "Diversity of food group (qualitative)",
+    "Consumed food group balance (semi-quantitative)",
+    "Adequacy of key nutrient intake from diet (quantitative)",
+    "Refrain overconsumption"
+  ),
+  Type = c("Qualitative", "Semi-quant", "Quantitative", "Qualitative"),
+  Score = c(85, 78, 92, 70)
+)
+
+# パネルA用のタイトル用データフレーム（2列:1列にするとエラー発生）
+panelA_title_df <- data.frame(
+  Item = "Panel A: Dietary Assessment Components",
+  Description = NA
+)
+
+# パネルB用のデータフレーム（2列）
+panelB_df <- data.frame(
+  Indicator = c("Overall Diet Quality", "Food Security", "Nutrition Security"),
+  Status = c("Good", "Moderate", "Good")
+)
+
+# 共通の列幅（スライド1枚に収まる程度で調整）
+col_width_desc  <- 7.0   # in 単位
+
+## パネルA
+ft_A <- flextable(panelA_df) %>%
+  theme_booktabs() %>%
+  autofit()
+
+ft_A <- delete_part(ft_A, part = "header") %>%
+  bg(part = "body", bg = "#F5E6D3") %>%
+  bg(i = c(1, 3), part = "body", bg = "#E89850") %>%
+  color(i = c(1, 3), part = "body", color = "white")
+
+ft_A <- scale_ft(ft_A, "table_A.png", col_width_desc)
+
+# パネルのタイトル
+ft_A_title <- flextable(panelA_title_df) %>%
+  theme_booktabs() %>%
+  delete_part(part = "header") %>%
+  bg(part = "body", bg = "#E89850") %>%
+  color(part = "body", color = "white") %>%
+  bold(part = "body") %>%
+  autofit()
+
+ft_A_title <- scale_ft(ft_A_title, "table_A_title.png", col_width_desc)
+
+## パネルB
+ft_B <- flextable(panelB_df) %>%
+  theme_booktabs() %>%
+  autofit()
+
+ft_B <- delete_part(ft_B, part = "header") %>%
+  bg(part = "body", bg = "#F5E6D3") %>%
+  bg(i = c(1, 3), part = "body", bg = "#E89850") %>%
+  color(i = c(1, 3), part = "body", color = "white")
+
+ft_B <- scale_ft(ft_B, "table_B.png", col_width_desc)
+
+
+result <- combine_flextables_cairo(
+  ft_list = list(ft_A_title, ft_A, ft_B),
+  output_file = "image/tables_combined.png",
+  width = 7,
+  dpi = 150,
+  row_height = 0.3
+)
+
+
+```
+![](image/tables_combined.png){width="100%"} 
+
+
+
 ## How to evaluate quality of diet? {.fragile}
 
 ```{r}
