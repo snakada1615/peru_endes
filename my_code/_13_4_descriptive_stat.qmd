@@ -55,45 +55,7 @@ svydesign_org <-  readRDS(
 library(survey)
 library(gtsummary)
 
-#' ******************************************************************************
-#' @title: create_gt
-#' @description tbl_summaryオブジェクトからgtテーブルを作成する関数
-#' @param tbl_summary_obj tbl_summaryオブジェクト
-#' @param title_text タイトルテキスト
-#' @param subtitle_text サブタイトルテキスト
-#' @return gtテーブル
-#' ******************************************************************************
-create_gt <- function(tbl_summary_obj, title_text, subtitle_text) {
-  result_df <- tbl_summary_obj %>%
-    gt() %>%
-    tab_header(
-      title = title_text,
-      subtitle = subtitle_text
-    ) %>%
-    fmt_number(
-      columns = c(estimate, conf.low, conf.high),
-      decimals = 2
-    ) %>%
-    fmt_number(
-      columns = p.value,
-      decimals = 3
-    ) %>%
-    cols_label(
-      label_all = "Variable",
-      estimate = "Odds Ratio",
-      conf.low = "95% CI Low",
-      conf.high = "95% CI High",
-      p.value = "P-value"
-    ) %>%
-    tab_source_note(
-    source_note = "Note: two separate descriptive statistics are shown based on food consumption variables(griup1) and food score variables(group2) to avoid possible multicolinearity."
-  )
-
-  return(result_df)
-}
-# ---- 関数ここまで ------------------------------------------------------------
-library(survey)
-library(gtsummary)
+options(survey.lonely.psu = "adjust")
 
 covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", 
                 "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", 
