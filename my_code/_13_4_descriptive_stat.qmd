@@ -117,18 +117,20 @@ dstrat <- svydesign_org
 
 dstrat$variables <- dstrat$variables %>%
   mutate(
-    three_grp = case_when(
-      treated_status == "not_yet_treated" ~ 0,
-      treated_status == "never_treated" ~ 0,
-      treated_status == "early_treated" ~ 1,
-      treated_status == "late_treated" ~ 1
+    analysis_grp = case_when(
+      treatment_group == 0 & year < 2009  ~ "control_early(<2009)",
+      treatment_group == 0 & year >= 2009  ~ "control_late(>=2009)",
+      treatment_group == 1 & year < 2009  ~ "ctreat_early_pre",
+      treatment_group == 1 & year >= 2009  ~ "control_late_post",
+      treatment_group == 2 & year < 2011  ~ "ctreat_early_pre",
+      treatment_group == 2 & year >= 2011  ~ "control_late_post"
     )
   )
 
 # 3. tbl_svysummaryで記述統計表を作成
 dstrat %>%
   tbl_svysummary(
-    by = three_grp,                                # グループ分け（任意）
+    by = analysis_grp,                  # グループ分け（任意）
     include = dscriptive_stat_vars,     # 集計したい変数
     statistic = list(all_continuous() ~ "{mean} ({sd})") # 統計量の指定
   ) %>%
