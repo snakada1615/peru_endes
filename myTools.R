@@ -10,6 +10,7 @@ library(psych) # for describe function
 library(flextable)
 library(gridExtra)
 library(grid)
+library(labelled)
 
 #' @title Hello World 関数
 hello <- function() {
@@ -1172,3 +1173,33 @@ combine_flextables_cairo <- function(ft_list, output_file, width = 7, dpi = 150,
 }
 
 # ----関数ここまで--------------------------------------------------------------
+
+# ******************************************************************************
+# '@title add_labels
+#' @description データフレームの指定した変数に対して変数
+#' ラベルと値ラベルを設定する関数
+#' @param df データフレーム。ラベルを追加する対象のデータセット。
+#' @param var_name 文字列。ラベルを追加する変数名。
+#' @param var_label 文字列。設定する変数ラベル。
+#' @param val_labels 命名ベクトル。設定する値ラベル（デフォルトはNULL）。
+#' @return ラベルが追加されたデータフレーム。
+# ******************************************************************************
+add_labels <- function(df, var_name, var_label, val_labels = NULL) {
+  # 変数ラベルを設定
+  var_label_list <- list(var_label)
+  names(var_label_list) <- var_name
+  df <- df %>%
+    set_variable_labels(.labels = var_label_list, .strict = FALSE)
+  
+  # 値ラベルを設定（指定されている場合のみ）
+  if (!is.null(val_labels)) {
+    val_label_list <- list(val_labels)
+    names(val_label_list) <- var_name
+    df <- df %>%
+      set_value_labels(.labels = val_label_list, .strict = FALSE)
+  }
+  
+  return(df)
+}
+# --- 関数定義ここまで ---------------------------------------------------------
+

@@ -580,5 +580,3 @@ cat("修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n
 
 
 ```
-=======
->>>>>>> bce66749bfeb9ceb217da8ff222c984159f37078

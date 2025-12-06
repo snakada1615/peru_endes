@@ -57,12 +57,12 @@ library(gtsummary)
 
 options(survey.lonely.psu = "adjust")
 
-covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", 
-                "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", 
-                "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", 
-                "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", 
+covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_secondary", 
+                "dm_sheeep_own", "rh_anc_pvskill", "dm_refrigerator", 
+                "nt_wm_ovobese", "ph_wtr_far", "dm_hh_head_30plus", 
+                "dm_capital", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
-                "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas")
+                "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
 
 food_vars <- c("nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", 
                "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
@@ -75,174 +75,87 @@ outcome_var <- c("nt_ch_stunt", "nt_ch_wast", "nt_ch_any_anem")
 
 dscriptive_stat_vars <- c(covariates, food_vars, outcome_var)
 
+style_p_star <- function(p) {
+  dplyr::case_when(
+    p < 0.001 ~ "***",
+    p < 0.01  ~ "**",
+    p < 0.05  ~ "*",
+    TRUE      ~ ""
+  )
+}
+
 dstrat <- svydesign_org
 
 dstrat$variables <- dstrat$variables %>%
   mutate(
     analysis_grp = case_when(
-      treatment_group == 0 & year < 2009  ~ "control_early(<2009)",
-      treatment_group == 0 & year >= 2009  ~ "control_late(>=2009)",
-      treatment_group == 1 & year < 2009  ~ "ctreat_early_pre",
-      treatment_group == 1 & year >= 2009  ~ "control_late_post",
-      treatment_group == 2 & year < 2011  ~ "ctreat_early_pre",
-      treatment_group == 2 & year >= 2011  ~ "control_late_post"
+      treatment_group == 0 & year < 2009  ~ "control_pre(<2009)",
+      treatment_group == 0 & year >= 2009  ~ "control_post(>=2009)",
+      treatment_group == 1 & year < 2009  ~ "treat_pre",
+      treatment_group == 1 & year >= 2009  ~ "treat_post",
+      treatment_group == 2 & year < 2011  ~ "treat_pre",
+      treatment_group == 2 & year >= 2011  ~ "treat_post"
     )
-  )
+  ) %>% 
+  mutate(
+    analysis_grp = factor(analysis_grp, 
+                          levels =c("control_pre(<2009)", "treat_pre",
+                                    "control_post(>=2009)", "treat_post"))  
+  )%>% 
+  mutate(
+    dm_child_more_than3 = ifelse(dm_children_under12 > 3, 1, 0),
+    rc_edu_secondary = case_when(
+      rc_edu %in% c("Complete secondary", "Higher") ~ 1,
+      TRUE ~ 0
+      ),
+    dm_sheeep_own = ifelse(dm_sheep_own == "Yes (owns sheep)", 1, 0),
+    ph_wtr_far = ifelse(ph_wtr_time %in% c("More than 30 minutes"), 1, 0),
+    dm_hh_head_30plus = ifelse(dm_age_of_hh_head %in% c("10s", "20s"), 0, 1),
+    dm_sani_open_yes = ifelse(ph_sani_open %in% c("open defecation"), 1, 0),
+    ch_stool_safe_no = ifelse(ch_stool_safe %in% c("Not safe"), 1, 0),
+  ) %>%
+  add_labels("dm_child_more_than3", "more than 3 child under 12") %>%
+  add_labels("rc_edu_secondary", "secondary or higher education") %>%
+  add_labels("dm_sheeep_own", "own a sheep") %>%
+  add_labels("ph_wtr_far", "water fetching over 30min") %>%
+  add_labels("dm_hh_head_30plus", "HH head over 29") %>%
+  add_labels("dm_sani_open_yes", "open defication") %>%
+  add_labels("ch_stool_safe_no", "stool improper handling")
+    
+
+design_pre <- subset(dstrat, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
+
+design_post <- subset(dstrat, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
+
 
 # 3. tbl_svysummaryで記述統計表を作成
-dstrat %>%
-  tbl_svysummary(
-    by = analysis_grp,                  # グループ分け（任意）
-    include = dscriptive_stat_vars,     # 集計したい変数
-    statistic = list(all_continuous() ~ "{mean} ({sd})") # 統計量の指定
-  ) %>%
-  add_p() %>%     # 重み付けを考慮したp値を追加
-  add_n() %>%     # サンプルサイズを追加
-  bold_labels()
+get_summary <- function(design_obj, covariates, grp_var) {
+  res <- design_obj %>%
+    tbl_svysummary(
+      by = analysis_grp,                  # グループ分け（任意）
+      include = dscriptive_stat_vars,     # 集計したい変数
+      statistic = list(all_continuous() ~ "{mean} ({sd})") # 統計量の指定
+    ) %>%
+    add_p(
+      test = list(
+        all_continuous()  ~ "svy.t.test",
+        all_categorical() ~ "svy.wald.test"
+      ),
+      pvalue_fun = style_p_star   # ここで星に変換
+    ) %>%     # 重み付けを考慮したp値を追加
+    add_n() %>%     # サンプルサイズを追加
+    bold_labels()
 
-# ----------------------------------------------------------------------------
-# 
-# covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", 
-#                 "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", 
-#                 "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", 
-#                 "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", 
-#                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
-#                 "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas")
-# 
-# food_vars <- c("nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", 
-#                "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
-# 
-# food_score_vars <- c("staple_legume_log1p_score_ok", "vegetable_log1p_score_ok", 
-#                      "fruit_log1p_score_ok", "dairy_log1p_score_ok", 
-#                      "ASF_log1p_score_ok", "oilfat_log1p_score_ok")
-# 
-# 
-# # 線形回帰モデル1（有意性記号付き）
-# formula_str <- as.formula(
-#   paste("nt_ch_stunt", " ~", paste(c(covariates, food_vars), collapse = " + ")))
-# fit1 <- svyglm(formula_str, design = svydesign_org, family = binomial())
-# 
-# glm_res1_org <- fit1 %>% 
-#   tbl_regression(exponentiate = TRUE) %>%
-#   add_significance_stars(
-#     hide_p = FALSE,
-#     pattern = "{p.value}{stars}"
-#   ) %>% as_gt() %>% as.data.frame() %>%
-#   mutate(
-#     label_all = case_when(
-#       var_label == label ~ var_label,
-#       TRUE ~ paste0(var_label, " (", gsub("^[\u00A0]+", "", label), ")")),
-#     conf.low.org = strsplit(conf.low, ", ")
-#   ) %>%
-#   mutate(
-#     label_all = case_when(
-#       variable == "nt_grains" ~ "Grains consumed",
-#       variable == "nt_root" ~ "Roots and tubers consumed",
-#       variable == "nt_nuts" ~ "Nuts and seeds consumed",
-#       variable == "nt_vita" ~ "Vitamin A-rich fruits and vegetables consumed",
-#       variable == "nt_frtveg" ~ "Other fruits and vegetables consumed",
-#       variable == "nt_meatfish" ~ "Meat, fish and poultry consumed",
-#       variable == "nt_eggs" ~ "Eggs consumed",
-#       variable == "nt_dairy" ~ "Dairy products consumed",
-#       variable == "nt_mdd" ~ "Minimum dietary diversity",
-#       variable == "nt_mmf" ~ "Minimum meal frequency",
-#       variable == "staple_legume_log1p_score_ok" ~ "Staple and Legume score",
-#       variable == "vegetable_log1p_score_ok" ~ "Vegetable score",
-#       variable == "fruit_log1p_score_ok" ~ "Fruit score",
-#       variable == "dairy_log1p_score_ok" ~ "Dairy score",
-#       variable == "ASF_log1p_score_ok" ~ "Animal source food score",
-#       variable == "oilfat_log1p_score_ok" ~ "Oil and fat score",
-#       TRUE ~ label_all
-#       )
-#   ) %>%
-#   mutate(
-#     conf.low = map_chr(conf.low.org, 1),
-#   ) %>% 
-#   select(-conf.low.org)
-#   
-# 
-# glm_res1 <- glm_res1_org %>%
-#   select(label_all, N_obs, estimate, conf.low, conf.high, p.value) %>%
-#   create_gt(
-#     title_text = "Table: desccriptive stat - Group1(food consumption dummy)",
-#     subtitle_text = "summary with All Variables"
-#   )
-# 
-# 
-# glm_compact_res1 <- glm_res1_org %>% 
-#   filter(!stars == "") %>%
-#   select(label_all, N_obs, estimate, conf.low, conf.high, p.value) %>%
-#   create_gt(
-#     title_text = "Table: desccriptive stat - Group2(food consumption dummy)",
-#     subtitle_text = "summary with Significant Variables only"
-#   )
-# 
-# glm_compact_res1
-# gtsave(glm_res1, file.path(save_path, "descriptive_food_dummy.html"))
-# gtsave(glm_compact_res1, file.path(save_path, "descriptive_food_dummy_compact.html"))
-# 
-# # 線形回帰モデル2（有意性記号付き）
-# formula_str <- as.formula(
-#   paste("nt_ch_stunt", " ~", paste(c(covariates, food_score_vars), collapse = " + ")))
-# fit2 <- svyglm(formula_str, design = svydesign_org, family = binomial())
-# 
-# glm_res2_org <- fit2 %>% 
-#   tbl_regression(exponentiate = TRUE) %>%
-#   add_significance_stars(
-#     hide_p = FALSE,
-#     pattern = "{p.value}{stars}"
-#   ) %>% as_gt() %>% as.data.frame() %>%
-#   mutate(
-#     label_all = case_when(
-#       var_label == label ~ var_label,
-#       TRUE ~ paste0(var_label, " (", gsub("^[\u00A0]+", "", label), ")")),
-#     conf.low.org = strsplit(conf.low, ", ")
-#   ) %>%
-#   mutate(
-#     label_all = case_when(
-#       variable == "nt_grains" ~ "Grains consumed",
-#       variable == "nt_root" ~ "Roots and tubers consumed",
-#       variable == "nt_nuts" ~ "Nuts and seeds consumed",
-#       variable == "nt_vita" ~ "Vitamin A-rich fruits and vegetables consumed",
-#       variable == "nt_frtveg" ~ "Other fruits and vegetables consumed",
-#       variable == "nt_meatfish" ~ "Meat, fish and poultry consumed",
-#       variable == "nt_eggs" ~ "Eggs consumed",
-#       variable == "nt_dairy" ~ "Dairy products consumed",
-#       variable == "nt_mdd" ~ "Minimum dietary diversity",
-#       variable == "nt_mmf" ~ "Minimum meal frequency",
-#       variable == "staple_legume_log1p_score_ok" ~ "Staple and Legume score",
-#       variable == "vegetable_log1p_score_ok" ~ "Vegetable score",
-#       variable == "fruit_log1p_score_ok" ~ "Fruit score",
-#       variable == "dairy_log1p_score_ok" ~ "Dairy score",
-#       variable == "ASF_log1p_score_ok" ~ "Animal source food score",
-#       variable == "oilfat_log1p_score_ok" ~ "Oil and fat score",
-#       TRUE ~ label_all
-#       )
-#   ) %>%
-#   mutate(
-#     conf.low = map_chr(conf.low.org, 1),
-#   ) %>% 
-#   select(-conf.low.org)
-#  
-# 
-# glm_res2 <- glm_res2_org %>%
-#   select(label_all, N_obs, estimate, conf.low, conf.high, p.value) %>%
-#   create_gt(
-#     title_text = "Table: desccriptive stat - Group1(food score dummy)",
-#     subtitle_text = "summary with All Variables"
-#   )
-# 
-# glm_compact_res2 <- glm_res2_org %>%
-#   filter(!stars == "") %>%
-#   select(label_all, N_obs, estimate, conf.low, conf.high, p.value) %>%
-#   create_gt(
-#     title_text = "Table: desccriptive stat - Group1(food score dummy)",
-#     subtitle_text = "summary with Significant Variables only"
-#   )
-# 
-# glm_compact_res2
-# 
-# gtsave(glm_res2, file.path(save_path, "descriptive_food_score.html"))
-# gtsave(glm_compact_res2, file.path(save_path, "descriptive_food_score_compact.html"))
+  return(res)
+}
+
+
+result1 <- get_summary(design_pre, dscriptive_stat_vars, analysis_grp)
+result2 <- get_summary(design_post, dscriptive_stat_vars, analysis_grp)
+
+result1
+result2
 
 ```
