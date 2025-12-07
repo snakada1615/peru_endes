@@ -55,6 +55,7 @@ svydesign_org <-  readRDS(
 library(survey)
 library(gtsummary)
 
+
 options(survey.lonely.psu = "adjust")
 
 covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_secondary", 
@@ -114,21 +115,29 @@ dstrat$variables <- dstrat$variables %>%
     dm_sani_open_yes = ifelse(ph_sani_open %in% c("open defecation"), 1, 0),
     ch_stool_safe_no = ifelse(ch_stool_safe %in% c("Not safe"), 1, 0),
   ) %>%
-  add_labels("dm_child_more_than3", "more than 3 child under 12") %>%
-  add_labels("rc_edu_secondary", "secondary or higher education") %>%
-  add_labels("dm_sheeep_own", "own a sheep") %>%
-  add_labels("ph_wtr_far", "water fetching over 30min") %>%
-  add_labels("dm_hh_head_30plus", "HH head over 29") %>%
-  add_labels("dm_sani_open_yes", "open defication") %>%
-  add_labels("ch_stool_safe_no", "stool improper handling")
-    
+  set_variable_labels(
+      dm_child_more_than3 = "more than 3 child under 12",
+      rc_edu_secondary = "secondary or higher education",
+      dm_sheeep_own = "own a sheep",
+      ph_wtr_far = "water fetching over 30min",
+      dm_hh_head_30plus = "HH head over 29",
+      dm_sani_open_yes = "open defication",
+      ch_stool_safe_no = "stool improper handling"
+    )
 
+# subsetの前にラベルを保存
+var_labels_list <- var_label(dstrat$variables)
+
+# サブセット作成
 design_pre <- subset(dstrat, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
 design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
 
 design_post <- subset(dstrat, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
 design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
 
+# サブセット後にラベルを復元
+var_label(design_pre$variables) <- var_labels_list
+var_label(design_post$variables) <- var_labels_list
 
 # 3. tbl_svysummaryで記述統計表を作成
 get_summary <- function(design_obj, covariates, grp_var) {
@@ -155,7 +164,9 @@ get_summary <- function(design_obj, covariates, grp_var) {
 result1 <- get_summary(design_pre, dscriptive_stat_vars, analysis_grp)
 result2 <- get_summary(design_post, dscriptive_stat_vars, analysis_grp)
 
-result1
-result2
+# 結果保存
+saveRDS(result1, file.path(save_path, "descriptive_stat_pre.rds"))
+saveRDS(result2, file.path(save_path, "descriptive_stat_post.rds"))
+
 
 ```
