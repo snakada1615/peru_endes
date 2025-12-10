@@ -151,9 +151,32 @@ get_summary <- function(design_obj, covariates, grp_var) {
       test = list(
         all_continuous()  ~ "svy.t.test",
         all_categorical() ~ "svy.wald.test"
-      ),
-      pvalue_fun = style_p_star   # ここで星に変換
+      )
     ) %>%     # 重み付けを考慮したp値を追加
+    # ★ ここで p.value から星を抽出して、stat 列に追記
+    modify_table_body(
+      ~ .x |>
+        mutate(
+          across(
+            starts_with("stat_2"),
+            ~ case_when(
+              !is.na(p.value) & p.value < 0.001 ~
+                paste0(., " ***"),
+              !is.na(p.value) & p.value < 0.01  ~
+                paste0(., " **"),
+              !is.na(p.value) & p.value < 0.05  ~
+                paste0(., " *"),
+              TRUE ~ .
+            ),
+            .names = "{.col}"
+          )
+        )
+    ) |>
+    # p.value 列を隠す
+    modify_table_styling(
+      columns = "p.value",
+      hide    = TRUE
+    ) |>
     add_n() %>%     # サンプルサイズを追加
     bold_labels()
 

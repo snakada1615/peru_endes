@@ -85,62 +85,159 @@ Key consideration in evaluating quality of diet
 ## Descriptive statistics1 {.fragile}
 
 ```{r}
+#| include: false
+
 library(gtsummary)
 library(survey)
 
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 save_path  <- file.path(gdrive_dir, "output", "lasso_IV01")
 
+create_table_slides <- function(tbl_list, table_num, table_name) {
+  markdown <- ""
+  for (i in seq_along(tbl_list)) {
+    label <- paste0("tbl-", table_num, "-", i)
+    caption <- paste0(
+      "Table ", table_num, "-", i, ". ",
+      table_name, " (part ", i, ")"
+    )
+    
+    # Markdown スライドテンプレートを生成
+    slide <- sprintf(
+      "## %s (part %d)\n\n %s\n\n %s\n\n",
+      table_name, i, label, caption,
+      ifelse(table_num == 1, "pre", "post"), i
+    )
+    markdown <- paste0(markdown, slide)
+  }
+  return(markdown)
+}
+
+
 gt_pre  <- readRDS(file.path(save_path, "descriptive_stat_pre.rds"))
 gt_post <- readRDS(file.path(save_path, "descriptive_stat_post.rds"))
 
 # 行番号で分割（6行目と12行目の後で分割）
 tbl_split_pre <- gt_pre %>%
-  tbl_split_by_rows(row_numbers = c(6, 12)) %>%
-  as_gt() %>%
-  gt::tab_options(table.width = gt::pct(100))
+  tbl_split_by_rows(row_numbers = c(8, 16, 22, 28))
 
 tbl_split_post <- gt_post %>%
-  tbl_split_by_rows(row_numbers = c(6, 12)) %>%
-  as_gt() %>%
-  gt::tab_options(table.width = gt::pct(100))
+  tbl_split_by_rows(row_numbers = c(8, 16, 22, 28))
 
-# 横幅調整を各要素に適用
-tbl_split_pre_gt <- lapply(
-  tbl_split_pre,
-  \(x) x %>%
-    as_gt() %>%
+# 整形して画像保存  
+for (i in seq_along(tbl_split_pre)) {
+  tbl_split_pre[[i]] |>
+    as_gt() |>
+    gt::cols_width(
+      label ~ gt::px(400)
+    ) |>
     gt::tab_options(
-      table.width     = gt::pct(100),
-      table.font.size = 11
+      table.width     = gt::px(900),
+      table.font.size = 13
+    ) |>
+    gt::gtsave(
+      filename = paste0("image/fig_tbl_pre_", i, ".png"),
+      vwidth   = 1200,
+      vheight  = 600
     )
-)
+}
 
-tbl_split_post_gt <- lapply(
-  tbl_split_post,
-  \(x) x %>%
-    as_gt() %>%
+for (i in seq_along(tbl_split_post)) {
+  tbl_split_post[[i]] |>
+    as_gt() |>
+    gt::cols_width(
+      label ~ gt::px(400)
+    ) |>
     gt::tab_options(
-      table.width     = gt::pct(100),
-      table.font.size = 11
+      table.width     = gt::px(900),
+      table.font.size = 13
+    ) |>
+    gt::gtsave(
+      filename = paste0("image/fig_tbl_post_", i, ".png"),
+      vwidth   = 1200,
+      vheight  = 600
     )
-)
+}
 
 
-```
-
-
-```{r}
-
-tbl_split_pre_gt[[1]]
+# スライドテキストを生成
+slides_pre  <- create_table_slides(tbl_split_pre,  1, "Baseline characteristics")
+slides_post <- create_table_slides(tbl_split_post, 2, "Endline characteristics")
 
 ```
 
+::: {#tbl-desc-stat01}
+![](image/fig_tbl_pre_1.png){width="100%"}
 
-## Descriptive statistics1 {.fragile}
+descriptive statistics-1
+:::
 
-```{r}
 
-tbl_split_pre_gt[[2]]
+## Descriptive statistics2 {.fragile}
 
-```
+::: {#tbl-desc-stat02}
+![](image/fig_tbl_pre_2.png){width="100%"}
+
+descriptive statistics-2
+:::
+
+## Descriptive statistics3 {.fragile}
+
+::: {#tbl-desc-stat03}
+![](image/fig_tbl_pre_3.png){width="100%"}
+
+descriptive statistics-3
+:::
+
+## Descriptive statistics4 {.fragile}
+::: {#tbl-desc-stat04}
+![](image/fig_tbl_pre_4.png){width="100%"}
+
+descriptive statistics-4
+:::
+
+## Descriptive statistics5 {.fragile}
+::: {#tbl-desc-stat01}
+![](image/fig_tbl_pre_5.png){width="100%"}
+
+descriptive statistics-5
+:::
+
+## Descriptive statistics6 {.fragile}
+::: {#tbl-desc-post01}
+![](image/fig_tbl_post_1.png){width="100%"}
+
+descriptive statistics-1
+:::
+
+
+## Descriptive statistics2 {.fragile}
+
+::: {#tbl-desc-post02}
+![](image/fig_tbl_post_2.png){width="100%"}
+
+descriptive statistics-2
+:::
+
+## Descriptive statistics3 {.fragile}
+
+::: {#tbl-desc-post03}
+![](image/fig_tbl_post_3.png){width="100%"}
+
+descriptive statistics-3
+:::
+
+## Descriptive statistics4 {.fragile}
+::: {#tbl-desc-stat04}
+![](image/fig_tbl_post_4.png){width="100%"}
+
+descriptive statistics-4
+:::
+
+## Descriptive statistics5 {.fragile}
+::: {#tbl-desc-post05}
+![](image/fig_tbl_post_5.png){width="100%"}
+
+descriptive statistics-5
+:::
+
