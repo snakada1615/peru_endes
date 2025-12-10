@@ -67,7 +67,6 @@ editor: visual
 
 ![different type of dietary guideline](image/dietary_guideline.png){width="90%"}
 
-
 ## How to evaluate quality of diet? {.fragile}
 
 ::: {#tbl-evaluate-diet}
@@ -76,11 +75,72 @@ editor: visual
 Key consideration in evaluating quality of diet
 :::
 
-
-
 ## Is Dietary Diversity Score effective tool to assess diet quality? {.fragile}
 
 -   Ruel conducted intensive review of 47 articles to examine impact of various agriculture intervention to nutrition improvement. Overall, number of studies showed clear impact of NSA to DDIs, while impact on nutrition outcome was limited (Ruel, 2018)
 -   Eric conducted peer review from 137 articles to examine relationship between DDIs and health impact, found that associations between DDIs and health outcomes were largely inconsistent (Eric, 2021)
 
 ![effectiveness of DDIs](image/DDI_limitation.drawio.png){width="90%"}
+
+## Descriptive statistics1 {.fragile}
+
+```{r}
+library(gtsummary)
+library(survey)
+
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+save_path  <- file.path(gdrive_dir, "output", "lasso_IV01")
+
+gt_pre  <- readRDS(file.path(save_path, "descriptive_stat_pre.rds"))
+gt_post <- readRDS(file.path(save_path, "descriptive_stat_post.rds"))
+
+# 行番号で分割（6行目と12行目の後で分割）
+tbl_split_pre <- gt_pre %>%
+  tbl_split_by_rows(row_numbers = c(6, 12)) %>%
+  as_gt() %>%
+  gt::tab_options(table.width = gt::pct(100))
+
+tbl_split_post <- gt_post %>%
+  tbl_split_by_rows(row_numbers = c(6, 12)) %>%
+  as_gt() %>%
+  gt::tab_options(table.width = gt::pct(100))
+
+# 横幅調整を各要素に適用
+tbl_split_pre_gt <- lapply(
+  tbl_split_pre,
+  \(x) x %>%
+    as_gt() %>%
+    gt::tab_options(
+      table.width     = gt::pct(100),
+      table.font.size = 11
+    )
+)
+
+tbl_split_post_gt <- lapply(
+  tbl_split_post,
+  \(x) x %>%
+    as_gt() %>%
+    gt::tab_options(
+      table.width     = gt::pct(100),
+      table.font.size = 11
+    )
+)
+
+
+```
+
+
+```{r}
+
+tbl_split_pre_gt[[1]]
+
+```
+
+
+## Descriptive statistics1 {.fragile}
+
+```{r}
+
+tbl_split_pre_gt[[2]]
+
+```
