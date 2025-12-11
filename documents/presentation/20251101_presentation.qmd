@@ -104,7 +104,7 @@ create_table_slides <- function(tbl_list, table_num, table_name) {
     
     # Markdown スライドテンプレートを生成
     slide <- sprintf(
-      "## %s (part %d)\n\n %s\n\n %s\n\n",
+      "## %s (part %d)\n\n %s \n\n %s \n\n",
       table_name, i, label, caption,
       ifelse(table_num == 1, "pre", "post"), i
     )
@@ -172,7 +172,6 @@ slides_post <- create_table_slides(tbl_split_post, 2, "Endline characteristics")
 descriptive statistics-1
 :::
 
-
 ## Descriptive statistics2 {.fragile}
 
 ::: {#tbl-desc-stat02}
@@ -190,6 +189,7 @@ descriptive statistics-3
 :::
 
 ## Descriptive statistics4 {.fragile}
+
 ::: {#tbl-desc-stat04}
 ![](image/fig_tbl_pre_4.png){width="100%"}
 
@@ -197,19 +197,22 @@ descriptive statistics-4
 :::
 
 ## Descriptive statistics5 {.fragile}
-::: {#tbl-desc-stat01}
+
+<div>
+
 ![](image/fig_tbl_pre_5.png){width="100%"}
 
 descriptive statistics-5
-:::
+
+</div>
 
 ## Descriptive statistics6 {.fragile}
+
 ::: {#tbl-desc-post01}
 ![](image/fig_tbl_post_1.png){width="100%"}
 
 descriptive statistics-1
 :::
-
 
 ## Descriptive statistics2 {.fragile}
 
@@ -228,16 +231,19 @@ descriptive statistics-3
 :::
 
 ## Descriptive statistics4 {.fragile}
-::: {#tbl-desc-stat04}
+
+<div>
+
 ![](image/fig_tbl_post_4.png){width="100%"}
 
 descriptive statistics-4
-:::
+
+</div>
 
 ## Descriptive statistics5 {.fragile}
+
 ::: {#tbl-desc-post05}
 ![](image/fig_tbl_post_5.png){width="100%"}
 
 descriptive statistics-5
 :::
-
