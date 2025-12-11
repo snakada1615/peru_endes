@@ -58,8 +58,32 @@ df_food_org <- readRDS(
   select(-ends_with("_se")) %>%
   select(-starts_with("se.")) %>%
   select(-c("area_income")) %>%
-  select(-ends_with("_log1p")) %>%
-  mutate(inc_quintile = as.numeric(as.character(inc_quintile)))
+  # select(-ends_with("_log1p")) %>%
+  mutate(
+    inc_quintile = as.numeric(as.character(inc_quintile)),
+    nt_fooddummy_staple_legume = case_when(
+      "nt_grains" == 1 | "nt_nuts" == 1| "nt_root" == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    nt_fooddummy_vegetable_fruit = case_when(
+      "nt_vegetable" == 1 | "nt_fruit" == 1 | "nt_vita" == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    nt_fooddummy_dairy = case_when(
+      "nt_dairy" == 1 | "nt_fed_milk" == 1 ~ 1,
+      TRUE ~ 0
+    ), 
+    nt_fooddummy_ASF = case_when(
+      "nt_meatfish" == 1 | "nt_eggs" == 1 ~ 1,
+      TRUE ~ 0
+    )
+  ) %>%
+  var_labels(
+    nt_fooddummy_staple_legume = "Staple and Legume consumption dummy",
+    nt_fooddummy_vegetable_fruit = "Vegetable and Fruit consumption dummy",
+    nt_fooddummy_dairy = "Dairy consumption dummy",
+    nt_fooddummy_ASF = "Animal Source Food consumption dummy"
+  )
 
 # 食品消費データ結合
 df_org <- df_org %>%
@@ -84,6 +108,10 @@ df_org <- df_org %>%
     ),
     treatment_group = as.factor(treatment_group)
   )
+
+# LASSO前の前データを一旦保存
+saveRDS(df_org, file.path(gdrive_dir, "output", "df_lasso_before_preprocess.rds"))
+
 # 変数ラベル取得
 var_labels <- df_org %>% get_label %>% as_tibble() %>% rename(labels = value)
 var_labels$varname <- names(df_org)
@@ -110,8 +138,12 @@ drop_cols_init <- c(
 "dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
 )
 
-# 除外変数定義
-drop_cols_add <- c()
+# 除外変数定義(まずは多重共線性対応の観点から食事摂取量を全て除外：食品群摂取ダミーのみ)
+drop_cols_add <- c(names(df_org)[grep("_log1p_score", names(df_org))], 
+                   names(df_org)[grep("_optimal", names(df_org))],
+                   names(df_org)[grep("nt_fooddummy", names(df_org))],
+                   names(df_org)[grep("_log1p$", names(df_org))]
+                   )
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
 y_var_all <- c("nt_ch_stunt", "nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_sev_wast", "nt_ch_wast", "nt_ch_whz", "nt_ch_ovwt_ht", "nt_ch_ovwt_age", "nt_ch_underwt", "nt_ch_sev_underwt", "nt_ch_any_anem", "nt_ch_mod_anem", "nt_ch_sev_anem")
@@ -144,6 +176,7 @@ create_lasso_data <- function(df,
   # 除外変数定義(最終値)
   drop_cols <- c(drop_cols_init, y_var_all, drop_cols_add) %>% unique()
   y_var_drop <- setdiff(y_var_all, y_var)
+  cat("除去変数数:", length(drop_cols), "\n")
 
   
   # 1. LASSO用のデータセット定義
