@@ -336,18 +336,23 @@ if(length(selected_vars) > 0) {
 
 
 <<<<<<< HEAD
+
+## 4. LASSO選択変数を用いた2SLS分析（survey-weighted）
 ```{r}
 library(survey)
 
 # ================================================================================
 # 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
 # ================================================================================
-selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_capital", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_mdd"
+selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_city", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_mdd"
 )
 
 # ================================================================================
 # 2. sampling weightの年次補正
 # ================================================================================
+#
+# ***********(注意)dairy_log1p_scoreでエラー発生********************************
+#
 # 年ごとの元 v005 合計を算出
 year_totals <- df_lasso %>%
   group_by(year) %>%
