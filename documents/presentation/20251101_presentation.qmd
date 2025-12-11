@@ -21,7 +21,7 @@ execute:
 editor: visual
 ---
 
-## Overall structure of my thesys {.fragile}
+## Overall structure of my thesis {.fragile}
 
 1.  Background
 2.  Research interest
@@ -82,7 +82,6 @@ Key consideration in evaluating quality of diet
 
 ![effectiveness of DDIs](image/DDI_limitation.drawio.png){width="90%"}
 
-## Descriptive statistics1 {.fragile}
 
 ```{r}
 #| include: false
@@ -92,27 +91,6 @@ library(survey)
 
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 save_path  <- file.path(gdrive_dir, "output", "lasso_IV01")
-
-create_table_slides <- function(tbl_list, table_num, table_name) {
-  markdown <- ""
-  for (i in seq_along(tbl_list)) {
-    label <- paste0("tbl-", table_num, "-", i)
-    caption <- paste0(
-      "Table ", table_num, "-", i, ". ",
-      table_name, " (part ", i, ")"
-    )
-    
-    # Markdown スライドテンプレートを生成
-    slide <- sprintf(
-      "## %s (part %d)\n\n %s \n\n %s \n\n",
-      table_name, i, label, caption,
-      ifelse(table_num == 1, "pre", "post"), i
-    )
-    markdown <- paste0(markdown, slide)
-  }
-  return(markdown)
-}
-
 
 gt_pre  <- readRDS(file.path(save_path, "descriptive_stat_pre.rds"))
 gt_post <- readRDS(file.path(save_path, "descriptive_stat_post.rds"))
@@ -159,91 +137,37 @@ for (i in seq_along(tbl_split_post)) {
     )
 }
 
+```
 
-# スライドテキストを生成
-slides_pre  <- create_table_slides(tbl_split_pre,  1, "Baseline characteristics")
-slides_post <- create_table_slides(tbl_split_post, 2, "Endline characteristics")
+```{r}
+#| results: asis
+source("../../my_code/func/create_table_slide_final.r")
+
+for (i in seq_along(tbl_split_pre)) {
+  image_path <- paste0("image/fig_tbl_pre_", i, ".png")
+  tbl_number <- paste0("1-", i)
+  caption <- paste0("Descriptive statistics(pre) part-", i)
+  slide_title <- paste0("Descriptive statistics ", i, " (pre)")
+  create_table_slide(
+    image_path = image_path,
+    caption = caption,
+    table_number = tbl_number,
+    slide_title = slide_title,
+  )
+}
+
+for (i in seq_along(tbl_split_post)) {
+  image_path <- paste0("image/fig_tbl_post_", i, ".png")
+  tbl_number <- paste0("2-", i)
+  caption <- paste0("Descriptive statistics(post) part-", i)
+  slide_title <- paste0("Descriptive statistics ", i, " (post)")
+  create_table_slide(
+    image_path = image_path,
+    caption = caption,
+    table_number = tbl_number,
+    slide_title = slide_title,
+  )
+}
 
 ```
 
-::: {#tbl-desc-stat01}
-![](image/fig_tbl_pre_1.png){width="100%"}
-
-descriptive statistics-1
-:::
-
-## Descriptive statistics2 {.fragile}
-
-::: {#tbl-desc-stat02}
-![](image/fig_tbl_pre_2.png){width="100%"}
-
-descriptive statistics-2
-:::
-
-## Descriptive statistics3 {.fragile}
-
-::: {#tbl-desc-stat03}
-![](image/fig_tbl_pre_3.png){width="100%"}
-
-descriptive statistics-3
-:::
-
-## Descriptive statistics4 {.fragile}
-
-::: {#tbl-desc-stat04}
-![](image/fig_tbl_pre_4.png){width="100%"}
-
-descriptive statistics-4
-:::
-
-## Descriptive statistics5 {.fragile}
-
-<div>
-
-![](image/fig_tbl_pre_5.png){width="100%"}
-
-descriptive statistics-5
-
-</div>
-
-## Descriptive statistics6 {.fragile}
-
-::: {#tbl-desc-post01}
-![](image/fig_tbl_post_1.png){width="100%"}
-
-descriptive statistics-1
-:::
-
-## Descriptive statistics2 {.fragile}
-
-::: {#tbl-desc-post02}
-![](image/fig_tbl_post_2.png){width="100%"}
-
-descriptive statistics-2
-:::
-
-## Descriptive statistics3 {.fragile}
-
-::: {#tbl-desc-post03}
-![](image/fig_tbl_post_3.png){width="100%"}
-
-descriptive statistics-3
-:::
-
-## Descriptive statistics4 {.fragile}
-
-<div>
-
-![](image/fig_tbl_post_4.png){width="100%"}
-
-descriptive statistics-4
-
-</div>
-
-## Descriptive statistics5 {.fragile}
-
-::: {#tbl-desc-post05}
-![](image/fig_tbl_post_5.png){width="100%"}
-
-descriptive statistics-5
-:::
