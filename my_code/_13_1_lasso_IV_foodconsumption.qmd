@@ -335,9 +335,10 @@ if(length(selected_vars) > 0) {
 ```
 
 
-<<<<<<< HEAD
+
 
 ## 4. LASSO選択変数を用いた2SLS分析（survey-weighted）
+ここから下は実行しない
 ```{r}
 library(survey)
 
