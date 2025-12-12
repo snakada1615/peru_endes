@@ -46,7 +46,7 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 gdrive_dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+save_path <- file.path(gdrive_dir, "output", "lasso_14")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
@@ -60,22 +60,28 @@ df_food_org <- readRDS(
   select(-c("area_income")) %>%
   # select(-ends_with("_log1p")) %>%
   mutate(
-    inc_quintile = as.numeric(as.character(inc_quintile)),
-    nt_fooddummy_staple_legume = case_when(
-      "nt_grains" == 1 | "nt_nuts" == 1| "nt_root" == 1 ~ 1,
-      TRUE ~ 0
+    inc_quintile = as.numeric(as.character(inc_quintile))
+  ) 
+
+# 食品消費データ結合
+df_org <- df_org %>%
+  left_join(
+    df_food_org,
+    by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
+  ) %>%
+  mutate(
+    # as.integer()で論理値を0/1に変換
+    nt_fooddummy_staple_legume = as.integer(
+      nt_grains == 1 | nt_nuts == 1 | nt_root == 1
     ),
-    nt_fooddummy_vegetable_fruit = case_when(
-      "nt_vegetable" == 1 | "nt_fruit" == 1 | "nt_vita" == 1 ~ 1,
-      TRUE ~ 0
+    nt_fooddummy_vegetable_fruit = as.integer(
+      nt_frtveg == 1 | nt_vita == 1
     ),
-    nt_fooddummy_dairy = case_when(
-      "nt_dairy" == 1 | "nt_fed_milk" == 1 ~ 1,
-      TRUE ~ 0
+    nt_fooddummy_dairy = as.integer(
+      nt_dairy == 1 | nt_fed_milk == 1
     ), 
-    nt_fooddummy_ASF = case_when(
-      "nt_meatfish" == 1 | "nt_eggs" == 1 ~ 1,
-      TRUE ~ 0
+    nt_fooddummy_ASF = as.integer(
+      nt_meatfish == 1 | nt_eggs == 1
     )
   ) %>%
   var_labels(
@@ -85,12 +91,7 @@ df_food_org <- readRDS(
     nt_fooddummy_ASF = "Animal Source Food consumption dummy"
   )
 
-# 食品消費データ結合
-df_org <- df_org %>%
-  left_join(
-    df_food_org,
-    by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
-  )
+
 # データベース一覧
 endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 
