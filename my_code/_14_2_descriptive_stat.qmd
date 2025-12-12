@@ -65,7 +65,7 @@ covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_secon
                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
                 "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
 
-food_vars <- c("nt_mdd", "nt_mmf",
+food_vars <- c("nt_mdd", "nt_mmf","nt_grains", "nt_vita", "nt_frtveg", "nt_root", 
                 names(svydesign_org$variables)[grep("nt_fooddummy", 
                                               names(svydesign_org$variables))],
                 names(svydesign_org$variables)[grep("_log1p$", 
@@ -148,7 +148,7 @@ get_summary <- function(design_obj, covariates, grp_var) {
   res <- design_obj %>%
     tbl_svysummary(
       by = grp_var,                  # グループ分け（任意）
-      include = dscriptive_stat_vars,     # 集計したい変数
+      include = all_of(covariates),     # 集計したい変数
       statistic = list(all_continuous() ~ "{mean} ({sd})") # 統計量の指定
     ) %>%
     add_p(
@@ -189,8 +189,8 @@ get_summary <- function(design_obj, covariates, grp_var) {
 
 # ------------------------------------------------------------------------------
 
-result1 <- get_summary(design_pre, dscriptive_stat_vars, "analysis_grp")
-result2 <- get_summary(design_all, dscriptive_stat_vars, "nt_ch_stunt")
+result1 <- get_summary(design_pre, "dscriptive_stat_vars", "analysis_grp")
+result2 <- get_summary(design_all, "dscriptive_stat_vars", "nt_ch_stunt")
 
 ## tableの結合
 final_table <- tbl_merge(
