@@ -40,7 +40,7 @@ source("../myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+save_path <- file.path(gdrive_dir, "output", "lasso_14")
 
 svydesign_org <-  readRDS(
     file.path(save_path, "svy_design_lasso_org.rds")
@@ -65,29 +65,25 @@ covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_secon
                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
                 "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
 
-food_vars <- c("nt_grains", "nt_root", "nt_vita", "nt_frtveg", "nt_nuts", 
-               "nt_meatfish", "nt_eggs", "nt_dairy", "nt_mdd", "nt_mmf")
+food_vars <- c("nt_mdd", "nt_mmf",
+                names(svydesign_org$variables)[grep("nt_fooddummy", 
+                                              names(svydesign_org$variables))],
+                names(svydesign_org$variables)[grep("_log1p$", 
+                                              names(svydesign_org$variables))]
+               )
 
 food_score_vars <- c("staple_legume_log1p_score_ok", "vegetable_log1p_score_ok", 
                      "fruit_log1p_score_ok", "dairy_log1p_score_ok", 
-                     "ASF_log1p_score_ok", "oilfat_log1p_score_ok")
+                     "ASF_log1p_score_ok", "oilfat_log1p_score_ok"
+                     )
 
 outcome_var <- c("nt_ch_stunt", "nt_ch_wast", "nt_ch_any_anem")
 
 dscriptive_stat_vars <- c(covariates, food_vars, outcome_var)
 
-style_p_star <- function(p) {
-  dplyr::case_when(
-    p < 0.001 ~ "***",
-    p < 0.01  ~ "**",
-    p < 0.05  ~ "*",
-    TRUE      ~ ""
-  )
-}
+design_all <- svydesign_org
 
-dstrat <- svydesign_org
-
-dstrat$variables <- dstrat$variables %>%
+design_all$variables <- design_all$variables %>%
   mutate(
     analysis_grp = case_when(
       treatment_group == 0 & year < 2009  ~ "control_pre(<2009)",
@@ -126,13 +122,13 @@ dstrat$variables <- dstrat$variables %>%
     )
 
 # subsetの前にラベルを保存
-var_labels_list <- var_label(dstrat$variables)
+var_labels_list <- var_label(design_all$variables)
 
 # サブセット作成
-design_pre <- subset(dstrat, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
 design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
 
-design_post <- subset(dstrat, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
 design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
 
 # サブセット後にラベルを復元
@@ -140,10 +136,18 @@ var_label(design_pre$variables) <- var_labels_list
 var_label(design_post$variables) <- var_labels_list
 
 # 3. tbl_svysummaryで記述統計表を作成
+
+# *******************************************************************************
+# '@title グループ別記述統計量の取得関数
+# '@param design_obj srvyr::as_survey_designオブジェクト
+# '@param covariates 記述統計量を取得する変数のベクトル
+# '@param grp_var グループ変数の文字列
+# '@return gtsummaryオブジェクト
+# *******************************************************************************
 get_summary <- function(design_obj, covariates, grp_var) {
   res <- design_obj %>%
     tbl_svysummary(
-      by = analysis_grp,                  # グループ分け（任意）
+      by = grp_var,                  # グループ分け（任意）
       include = dscriptive_stat_vars,     # 集計したい変数
       statistic = list(all_continuous() ~ "{mean} ({sd})") # 統計量の指定
     ) %>%
@@ -183,13 +187,25 @@ get_summary <- function(design_obj, covariates, grp_var) {
   return(res)
 }
 
+# ------------------------------------------------------------------------------
 
-result1 <- get_summary(design_pre, dscriptive_stat_vars, analysis_grp)
-result2 <- get_summary(design_post, dscriptive_stat_vars, analysis_grp)
+result1 <- get_summary(design_pre, dscriptive_stat_vars, "analysis_grp")
+result2 <- get_summary(design_all, dscriptive_stat_vars, "nt_ch_stunt")
+
+## tableの結合
+final_table <- tbl_merge(
+  tbls = list(result1, result2),
+  tab_spanner = c("**By Intervention**", "**By Stunting Status**") # 大見出し
+)
 
 # 結果保存
 saveRDS(result1, file.path(save_path, "descriptive_stat_pre.rds"))
-saveRDS(result2, file.path(save_path, "descriptive_stat_post.rds"))
+saveRDS(result2, file.path(save_path, "descriptive_stat_by_stunted.rds"))
+result1 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_pre.png"))
+result2 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_by_stunted.png"))
+final_table %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_final.png"))
+
+
 
 
 ```
