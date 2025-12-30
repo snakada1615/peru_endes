@@ -88,14 +88,6 @@ for (yr in yearlist) {
     as_tibble()
   print(paste("Total records so far:", nrow(all_data_merged)))
   
-  # if (debug_mode) {
-  #   if ("rc_edu_acceptable" %in% names(year_data)) {
-  #     print(paste("year_data: ", get_label(year_data$rc_edu_acceptable)))
-  #     print(paste("all_data: ", get_label("all_data: ",all_data_merged$rc_edu_acceptable)))
-  #   } else {
-  #     stop(paste("failed in year", yr, ": 'rc_edu_acceptable' not found"))
-  #   }
-  # }
 }
 
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
@@ -116,45 +108,29 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # 食品摂取量データの統合（キー：department*urban*income）
 # ******************************************************************************
 # 食品群消費データの読み込み
-# df_food_consumption_org <- read_rds(file.path(gdrive_enaho_dir,
-#         "food_consumption_by_area_income.rds")) %>% 
-#   mutate(
-#     inc_quintile = labelled::to_factor(inc_quintile),
-#     ena_staple_legume = staple_legume_log1p,
-#     ena_vegetable = vegetable_log1p,
-#     ena_fruit = fruit_log1p,
-#     ena_dairy = dairy_log1p,
-#     ena_ASF = ASF_log1p,
-#     ena_oilfat = oilfat_log1p,
-#     enase_staple_legume = staple_legume_log1p_se,
-#     enase_vegetable = vegetable_log1p_se,
-#     enase_fruit = fruit_log1p_se,
-#     enase_dairy = dairy_log1p_se,
-#     enase_ASF = ASF_log1p_se,
-#     enase_oilfat = oilfat_log1p_se
-#     )　%>%
-#   select(department, 
-#          dm_rural, 
-#          inc_quintile,
-#          starts_with("ena_"),
-#          starts_with("enase_")
-#          )
-# 
-# 
-# # マージ実行(dep, rural, incomeで結合)
-# all_data_merged <- all_data_merged %>%
-#   mutate(
-#     dm_income_quintile = case_when(
-#       v190 == 1 ~ "1",
-#       v190 == 2 ~ "2",
-#       v190 == 3 ~ "3",
-#       v190 == 4 ~ "4",
-#       v190 == 5 ~ "5",
-#       TRUE ~ NA_character_
-#       ) %>% as.factor()
-#   ) %>%
-#   left_join_safe(df_food_consumption_org, c("v024" = "department", 
-#           "dm_rural" = "dm_rural", "dm_income_quintile" = "inc_quintile"))
+
+df_food_org <- readRDS(
+    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")
+  ) %>% 
+  select(-ends_with("_se")) %>%
+  select(-starts_with("se.")) %>%
+  select(-c("area_income")) %>%
+  mutate(inc_quintile = as.numeric(as.character(inc_quintile))) %>%
+  rename_with(
+  .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
+  .cols = starts_with("fbdg_")    # "fbdg_" で始まる列だけを対象
+  ) %>%
+  rename_with(
+    .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
+    .cols = starts_with("fg_")    # "fg_" で始まる列だけを対象
+  )  
+
+# 食品消費データ結合
+all_data_merged <- all_data_merged %>%
+  left_join(
+    df_food_org,
+    by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
+  )
 
 
 # ファイルをRDSで保存
