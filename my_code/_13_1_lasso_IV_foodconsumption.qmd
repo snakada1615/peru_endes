@@ -43,8 +43,6 @@ source("../myTools.R")
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
-gdrive__dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
-
 # 結果保存先
 save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
 
@@ -52,21 +50,6 @@ df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
   ) %>% filter(!is.na(nt_ch_stunt))
 
-df_food_org <- readRDS(
-    file.path(gdrive__dir_enaho, "output","food_consumption_by_area_income.rds")
-  ) %>% 
-  select(-ends_with("_se")) %>%
-  select(-starts_with("se.")) %>%
-  select(-c("area_income")) %>%
-  select(-ends_with("_log1p")) %>%
-  mutate(inc_quintile = as.numeric(as.character(inc_quintile)))
-
-# 食品消費データ結合
-df_org <- df_org %>%
-  left_join(
-    df_food_org,
-    by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
-  )
 # データベース一覧
 endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 
@@ -109,6 +92,11 @@ drop_cols_init <- c(
 "wt","state","age","treated_status","treatment_start","year_treated", 
 "dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
 )
+
+# enaho_で始まる変数を除去リストに追加（ただし_log1pで終わる変数は除外）
+drop_temp <- names(df_org)[grepl("enaho_fbdg_", names(df_org))]
+drop_cols_init <- c(drop_cols_init, drop_temp)
+rm(drop_temp)
 
 # 除外変数定義
 drop_cols_add <- c()
