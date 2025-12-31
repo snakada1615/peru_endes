@@ -44,11 +44,11 @@ source("../myTools.R")
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
-save_path <- file.path(gdrive_dir, "output", "lasso_IV01")
+save_path <- file.path(gdrive_dir, "output")
 
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
-  ) %>% filter(!is.na(nt_ch_stunt))
+  )
 
 # データベース一覧
 endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
@@ -57,21 +57,13 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
 
 
-# 介入群グループ化
-df_org <- df_org %>%
-  mutate(
-    treatment_group = case_when(
-      treatment_start == "2009" ~ 1,  # 早期介入
-      treatment_start == "2011" ~ 2,  # 後期介入
-      TRUE ~ 0                        # コントロール
-    ),
-    treatment_group = as.factor(treatment_group)
-  )
 # 変数ラベル取得
 var_labels <- df_org %>% get_label %>% as_tibble() %>% rename(labels = value)
 var_labels$varname <- names(df_org)
 
 ```
+
+
 
 ## 2. LASSO用データ前処理
 
@@ -93,12 +85,12 @@ drop_cols_init <- c(
 "dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
 )
 
-# enaho_で始まる変数を除去リストに追加（ただし_log1pで終わる変数は除外）
+# enaho_fbdg_で始まる変数を除去リストに追加
 drop_temp <- names(df_org)[grepl("enaho_fbdg_", names(df_org))]
 drop_cols_init <- c(drop_cols_init, drop_temp)
 rm(drop_temp)
 
-# 除外変数定義
+# 除外変数定義(追加)
 drop_cols_add <- c()
 
 # 目的変数と同値となる除去変数("nt_ch_sev_stunt", "nt_ch_haz", "nt_ch_stunt"のうち2つ)
@@ -107,8 +99,7 @@ y_var <- "nt_ch_stunt"
 
 
 # ID・管理用変数
-grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated",
-                   "wt", "treatment_group", y_var)
+grouping_cols <- c("caseid", "state","treated_status", "treatment_start","group_treated", "wt", "treatment_group", y_var)
 
 # *******************************************************************************
 # LASSO用データ作成関数
@@ -304,273 +295,8 @@ if(length(selected_vars) > 0) {
   saveRDS(coef_importance, file.path(save_path, "lasso_selected_vars_importance.rds"))
   write.xlsx(coef_importance, file.path(save_path, "lasso_selected_vars_importance.xlsx"))
 
-  #   # gt()で表示（列名で指定）
-  # coef_importance %>%
-  #   gt() %>%
-  #   cols_width(
-  #     labels ~ pct(15),
-  #     lambda.min ~ pct(15),
-  #     labels.y ~ pct(70)  # 残りの列（おそらくvar_labelsのラベル列）
-  #   ) %>%
-  #   fmt_number(
-  #     columns = "lambda.min",
-  #     decimals = 4
-  #   )     
 } else {
   stop("変数が選択されませんでした。λの値を調整してください。")
 }
-
-```
-
-
-
-
-## 4. LASSO選択変数を用いた2SLS分析（survey-weighted）
-ここから下は実行しない
-```{r}
-library(survey)
-
-# ================================================================================
-# 1. LASSOの結果から上位20変数を抽出（年ダミー除外）
-# ================================================================================
-selected_predictors <- c("nt_wm_ht", "ch_below_2p5", "dm_children_under12", "rc_edu", "dm_sheep_own", "rh_anc_pvskill", "dm_refrigerator", "nt_wm_ovobese", "ph_wtr_time", "dm_age_of_hh_head", "dm_city", "ph_sani_open", "dm_cooking_fuel_traditional", "dm_weath_index", "rh_prob_permit", "ms_afm_15", "ph_wtr_trt_cloth", "ch_stool_safe", "dm_dvjustify_onereas", "nt_mdd"
-)
-
-# ================================================================================
-# 2. sampling weightの年次補正
-# ================================================================================
-#
-# ***********(注意)dairy_log1p_scoreでエラー発生********************************
-#
-# 年ごとの元 v005 合計を算出
-year_totals <- df_lasso %>%
-  group_by(year) %>%
-  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
-
-# Survey designオブジェクトの作成前に変数を変換
-df_lasso <- df_lasso %>%
-  mutate(
-    v021 = as.numeric(v021),                        # Primary Sampling Unit
-    v022 = as.character(haven::as_factor(v022))    #haven_labelledをfactorに変換してからcharacter
-  )
-
-# 正規化済みサンプリングウェイトの作成
-df_lasso <- df_lasso %>%
-  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
-  left_join(year_totals, by = "year") %>%
-  mutate(
-    # 元のDHSウェイト
-    dhs_weight = v005 / 1e6,
-    # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
-    year_norm = total_v005 / sum(year_totals$total_v005),
-    # 正規化済みウェイト
-    sampling_weight_norm = dhs_weight / year_norm,
-    # 極端値トリミング
-    sampling_weight_trimmed = pmax(
-      pmin(sampling_weight_norm,
-           quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
-      quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
-    )
-  )
-
-# ================================================================================
-# 3. surveydesignオブジェクトの作成
-# ================================================================================
-library(survey)
-library(glmnet)
-
-# Survey designオブジェクトの作成
-svy_design <- svydesign(
-  ids = ~v021,          # Primary Sampling Unit (クラスター)
-  strata = ~v022,       # 層化変数
-  weights = ~sampling_weight_trimmed,
-  data = df_lasso,
-  nest = TRUE           # 入れ子構造
-)
-
-# 孤立PSUの処理
-options(survey.lonely.psu = "adjust")
-print("Survey designオブジェクトが作成されました")
-
-# ================================================================================
-# 4. 1st stage: dairy_log1p_scoreを予測（survey-weighted）
-# ================================================================================
-formula_1st <- as.formula(
-  paste("dairy_log1p_score ~", paste(c("juntos_non_participation", selected_predictors), 
-                    collapse = " + "))
-)
-
-print("1st stageの式:")
-print(formula_1st)
-
-# survey-weighted 1st stage regression
-fit1_svy <- svyglm(formula_1st, design = svy_design, family = gaussian())
-
-print("=== 1st Stage結果 ===")
-print(summary(fit1_svy))
-
-# 予測値を元のデータフレームに保存
-pred_dairy_raw <- predict(fit1_svy, type = "response")
-
-# *** 重要：予測値を標準化・スケーリング ***
-# 1st stageの標準化係数で使用したスケーリング情報を取得
-pred_dairy_mean <- mean(pred_dairy_raw, na.rm = TRUE)
-pred_dairy_sd <- sd(pred_dairy_raw, na.rm = TRUE)
-
-# スケーリング（重要な処理）
-df_lasso$pred_dairy <- (pred_dairy_raw - pred_dairy_mean) / pred_dairy_sd
-
-# 統計量確認
-cat("=== 1st Stage予測値の統計量 ===\n")
-cat("生値（raw）:\n")
-print(summary(pred_dairy_raw))
-cat("\n標準化値:\n")
-print(summary(df_lasso$pred_dairy))
-cat("標準偏差:\n")
-print(sd(df_lasso$pred_dairy, na.rm = TRUE))
-
-# F統計量（弱操作変数検定）
-f_stat <- summary(fit1_svy)$coefficients["juntos_non_participation", "t value"]^2
-print(paste("F統計量（juntos_non_participation）:", round(f_stat, 2)))
-if(f_stat > 10) {
-  print("✓ 操作変数は十分に強い（F > 10）")
-} else {
-  print("⚠ 弱操作変数の可能性（F < 10）")
-}
-
-# Survey designオブジェクトを再作成
-svy_design <- svydesign(
-  ids = ~v021,
-  strata = ~v022,
-  weights = ~sampling_weight_trimmed,
-  data = df_lasso,
-  nest = TRUE
-)
-
-print("Survey designオブジェクトを再作成しました")
-
-# ================================================================================
-# 5. 2nd stage: pred_dairyでStuntingを予測（survey-weighted）
-# ================================================================================
-formula_2nd <- as.formula(
-  paste("nt_ch_stunt ~ ", paste(c("pred_dairy", selected_predictors), 
-                    collapse = " + "))
-)
-
-print("2nd stageの式:")
-print(formula_2nd)
-
-# survey-weighted 2nd stage regression
-fit2_svy <- svyglm(formula_2nd, design = svy_design, family = quasibinomial())
-
-# 2nd stageの結果
-print("=== 2nd Stage結果 ===")
-print(summary(fit2_svy))
-
-# pred_dairyの係数と信頼区間
-coef_pred_dairy <- coef(fit2_svy)["pred_dairy"]
-ci_pred_dairy <- confint(fit2_svy)["pred_dairy", ]
-
-print("=== 乳製品摂取のStuntingへの因果効果 ===")
-print(paste("係数（標準化スケール）:", round(coef_pred_dairy, 4)))
-print(paste("95%CI: [", round(ci_pred_dairy[1], 4), ",", round(ci_pred_dairy[2], 4), "]"))
-
-# オッズ比に変換（標準化スケール）
-or_pred_dairy <- exp(coef_pred_dairy)
-or_ci <- exp(ci_pred_dairy)
-print(paste("オッズ比（SD増加当たり）:", round(or_pred_dairy, 4)))
-print(paste("95%CI: [", round(or_ci[1], 4), ",", round(or_ci[2], 4), "]"))
-
-# 元のスケールでの効果を計算
-coef_original_scale <- coef_pred_dairy / pred_dairy_sd
-or_original_scale <- exp(coef_original_scale)
-
-print("=== 元のスケール（log1p dairy consumption）での効果 ===")
-print(paste("係数（元スケール）:", round(coef_original_scale, 6)))
-print(paste("オッズ比（元スケール、1単位増加）:", round(or_original_scale, 6)))
-print(paste("オッズ比（元スケール、10%増加）:", round(exp(coef_original_scale * log(1.1)), 4)))
-
-
-```
-
-# 5. ブートストラップを用いた標準誤差の補正
- 
-```{r}
-library(boot)
-
-# ブートストラップ関数
-iv_boot_function <- function(data, indices) {
-  # リサンプリング
-  d <- data[indices, ]
-  
-  # Survey designオブジェクトを作成
-  tryCatch({
-    svy_boot <- svydesign(
-      ids = ~v021, 
-      strata = ~v022, 
-      weights = ~sampling_weight_trimmed,
-      data = d, 
-      nest = TRUE
-    )
-    
-    # 1st stage
-    fit1 <- svyglm(formula_1st, design = svy_boot, family = gaussian())
-    d$pred_dairy <- (predict(fit1, type = "response") - pred_dairy_mean) / pred_dairy_sd
-    
-    # Survey designを更新
-    svy_boot <- svydesign(
-      ids = ~v021, strata = ~v022, 
-      weights = ~sampling_weight_trimmed,
-      data = d, nest = TRUE
-    )
-    
-    # 2nd stage
-    fit2 <- svyglm(formula_2nd, design = svy_boot, family = quasibinomial())
-    
-    # pred_dairyの係数を返す
-    return(coef(fit2)["pred_dairy"])
-  }, error = function(e) {
-    return(NA)
-  })
-}
-
-# ブートストラップ実行（時間がかかります：30分〜1時間程度）
-set.seed(12345)
-boot_results <- boot(
-  data = df_lasso, 
-  statistic = iv_boot_function, 
-  R = 1000,  # 最低500、理想的には1000以上
-  parallel = "multicore",  # 並列処理（Windowsでは"snow"）
-  ncpus = 4  # CPUコア数に応じて調整
-)
-
-# 結果の確認
-print(boot_results)
-
-# ブートストラップ信頼区間
-boot.ci(boot_results, type = c("norm", "basic", "perc", "bca"))
-
-# ブートストラップ標準誤差
-boot_se <- sd(boot_results$t, na.rm = TRUE)
-print(paste("ブートストラップ標準誤差:", round(boot_se, 4)))
-
-# 元の推定値との比較
-original_coef <- coef(fit2_svy)["pred_dairy"]
-original_se <- summary(fit2_svy)$coefficients["pred_dairy", "Std. Error"]
-
-cat("\n=== 標準誤差の比較 ===\n")
-cat("元の標準誤差（過小推定）:", round(original_se, 4), "\n")
-cat("ブートストラップ標準誤差:", round(boot_se, 4), "\n")
-cat("増加率:", round((boot_se / original_se - 1) * 100, 1), "%\n")
-
-# 修正後のp値
-z_boot <- original_coef / boot_se
-p_boot <- 2 * pnorm(-abs(z_boot))
-cat("\n修正後のp値:", format.pval(p_boot), "\n")
-
-# 修正後の95%信頼区間（正規近似）
-ci_boot <- original_coef + c(-1.96, 1.96) * boot_se
-cat("修正後の95%CI:", round(ci_boot[1], 4), "～", round(ci_boot[2], 4), "\n")
-
 
 ```

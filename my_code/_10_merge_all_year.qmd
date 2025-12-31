@@ -132,6 +132,58 @@ all_data_merged <- all_data_merged %>%
     by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
   )
 
+all_data_merged <- all_data_merged %>% 
+  # stuntingデータの欠損値除去
+  filter(!is.na(nt_ch_stunt)) %>%
+  
+  # 介入群グループ化
+  mutate(
+    treatment_group = case_when(
+      treatment_start == "2009" ~ 1,  # 早期介入
+      treatment_start == "2011" ~ 2,  # 後期介入
+      TRUE ~ 0                        # コントロール
+    ),
+    treatment_group = as.factor(treatment_group)
+  ) %>%
+  mutate(
+    analysis_grp = case_when(
+      treatment_group == 0 & year < 2009  ~ "control_pre(<2009)",
+      treatment_group == 0 & year >= 2009  ~ "control_post(>=2009)",
+      treatment_group == 1 & year < 2009  ~ "treat_pre",
+      treatment_group == 1 & year >= 2009  ~ "treat_post",
+      treatment_group == 2 & year < 2011  ~ "treat_pre",
+      treatment_group == 2 & year >= 2011  ~ "treat_post"
+    )
+  ) %>%
+  mutate(
+    analysis_grp = factor(analysis_grp, 
+                          levels =c("control_pre(<2009)", "treat_pre",
+                                    "control_post(>=2009)", "treat_post"))  
+  ) %>%
+  
+  # 一部のカテゴリ変数をダミー化
+  mutate(
+    dm_child_more_than3 = ifelse(dm_children_under12 > 3, 1, 0),
+    rc_edu_secondary = case_when(
+      rc_edu %in% c("Complete secondary", "Higher") ~ 1,
+      TRUE ~ 0
+      ),
+    dm_sheeep_own = ifelse(dm_sheep_own == 1, 1, 0),  
+    ph_wtr_far = ifelse(ph_wtr_time == 2, 1, 0),
+    dm_hh_head_30plus = ifelse(dm_age_of_hh_head == 1 | dm_age_of_hh_head == 2, 0, 1),
+    dm_sani_open_yes = ifelse(ph_sani_open == 1, 1, 0),
+    ch_stool_safe_no = ifelse(ch_stool_safe == 0, 1, 0),
+  ) %>%
+  set_variable_labels(
+      dm_child_more_than3 = "more than 3 child under 12",
+      rc_edu_secondary = "secondary or higher education",
+      dm_sheeep_own = "own a sheep",
+      ph_wtr_far = "water fetching over 30min",
+      dm_hh_head_30plus = "HH head over 29",
+      dm_sani_open_yes = "open defication",
+      ch_stool_safe_no = "stool improper handling"
+    )
+
 
 # ファイルをRDSで保存
 saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
