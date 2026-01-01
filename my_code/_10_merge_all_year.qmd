@@ -164,10 +164,6 @@ all_data_merged <- all_data_merged %>%
   # 一部のカテゴリ変数をダミー化
   mutate(
     dm_child_more_than3 = ifelse(dm_children_under12 > 3, 1, 0),
-    rc_edu_secondary = case_when(
-      rc_edu %in% c("Complete secondary", "Higher") ~ 1,
-      TRUE ~ 0
-      ),
     dm_sheeep_own = ifelse(dm_sheep_own == 1, 1, 0),  
     ph_wtr_far = ifelse(ph_wtr_time == 2, 1, 0),
     dm_hh_head_30plus = ifelse(dm_age_of_hh_head == 1 | dm_age_of_hh_head == 2, 0, 1),
@@ -176,7 +172,6 @@ all_data_merged <- all_data_merged %>%
   ) %>%
   set_variable_labels(
       dm_child_more_than3 = "more than 3 child under 12",
-      rc_edu_secondary = "secondary or higher education",
       dm_sheeep_own = "own a sheep",
       ph_wtr_far = "water fetching over 30min",
       dm_hh_head_30plus = "HH head over 29",
