@@ -1,0 +1,356 @@
+---
+title: "lasso_psm_analysis"
+author: "nakada shunichi"
+format:
+  html: default
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+## 1. データ読み込み
+
+```{r}
+# ================================================================================
+# 0. 初期設定・パッケージ読み込み
+# ================================================================================
+library(here)
+library(haven)
+library(labelled)
+library(glmnet)
+library(tidyverse)
+# library(fastDummies)
+library(nnet)      # 多項ロジスティック回帰
+library(survey)    # 重み付き統計解析
+library(did)       # Staggered DID用（必要に応じて）
+library(sjlabelled)　# ラベル付きデータ処理用
+library(tableone)
+library(fixest)   # 回帰分析の推定結果から係数表（推定値、標準誤差、t値、p値など）を抽出
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+gdrive__dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+df_org <- readRDS(
+    file.path(gdrive_dir, "output","all_data_merged.rds")
+  )
+
+# データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+hide_column <- c("var0", "var_label", "val_label", "all_label", "item", "Coefficient", "SE")  # 非表示にしたい列名を指定
+
+```
+# 2. svydesignオブジェクト作成準備
+
+```{r}
+# ================================================================================
+# 2. sampling weightの年次補正
+# ================================================================================
+# 年ごとの元 v005 合計を算出
+year_totals <- df_org %>%
+  group_by(year) %>%
+  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
+
+# Survey designオブジェクトの作成前に変数を変換
+df_org <- df_org %>%
+  mutate(
+    v021 = as.numeric(v021),                # Primary Sampling Unit
+    v022 = as.character(haven::as_factor(v022)) #haven_labelledをfactorに変換してからcharacter
+  )
+
+# 正規化済みサンプリングウェイトの作成
+df_org <- df_org %>%
+  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
+  left_join(year_totals, by = "year") %>%
+  mutate(
+    # 元のDHSウェイト
+    dhs_weight = v005 / 1e6,
+    # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
+    year_norm = total_v005 / sum(year_totals$total_v005),
+    # 正規化済みウェイト
+    sampling_weight_norm = dhs_weight / year_norm,
+    # 極端値トリミング
+    sampling_weight_trimmed = pmax(
+      pmin(sampling_weight_norm,
+           quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
+      quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
+    )
+  )
+
+# 元データのラベル適正化
+library(labelled)
+
+# 1. 元のhaven_labelledデータから変換
+df_org <- df_org %>%
+  mutate(across(where(is.labelled), labelled::to_factor))
+
+# ================================================================================
+# 3. surveydesignオブジェクトの作成
+# ================================================================================
+library(survey)
+library(glmnet)
+
+# Survey designオブジェクトの作成
+svy_design <- svydesign(
+  ids = ~v021,          # Primary Sampling Unit (クラスター)
+  strata = ~v022,       # 層化変数
+  weights = ~sampling_weight_trimmed,
+  data = df_org,
+  nest = TRUE           # 入れ子構造
+)
+
+# 孤立PSUの処理
+options(survey.lonely.psu = "adjust")
+print("Survey designオブジェクトが作成されました")
+
+# Survey designオブジェクトを保存
+saveRDS(svy_design,
+        file.path(save_path, "svy_design_org.rds")
+)
+
+# 後で使うラベル一覧を取得
+#' *******************************************************************************
+#' @title create_new_label
+#' @description 変数ラベルと値ラベルを組み合わせた新しいラベルデータフレームを作成
+#' @param df データフレーム
+#' @param var_name 変数名（文字列）
+#' @return データフレーム(variable, val_label, all_label)
+#' *******************************************************************************
+create_new_label <- function(df, var_name){
+  var_label <- ifelse(is.null(var_label(df[[var_name]])),
+                      var_name,
+                      var_label(df[[var_name]]))
+  val_labels <- val_labels(df[[var_name]])
+  if (length(unique(df[[var_name]])) >= 30) {
+    # 連続変数の場合は変数ラベルのみ返す
+    label_str <- var_label
+    variable <- var_name
+    var_label <- var_label
+    val_label_vec <- NA_character_
+    label_ref <- var_name
+  } else if (length(unique(val_labels)) > 0) {
+    # カテゴリ変数で、かつ値ラベルが存在する場合、変数ラベル＋値ラベルを返す
+    label_str <- paste0(var_label, ":", unique(val_labels))
+    variable <- rep(var_name, length(unique(val_labels)))
+    var_label <- var_label
+    val_label_vec <- unique(val_labels)
+    label_ref <- paste0(var_name, unique(val_labels))
+  } else {
+    # カテゴリ変数で、値ラベルが存在しない場合、変数ラベルのみ返す
+    label_str <- var_label
+    variable <- var_name
+    var_label <- var_label
+    val_label_vec <- NA_character_
+    label_ref <- var_name
+  }
+  return(data.frame(var0 = variable,
+                    var_label = var_label,
+                    val_label = val_label_vec,
+                    all_label = label_str,
+                    label_ref = label_ref, # svyglm()とリンクするためのキー列
+                    stringsAsFactors = FALSE))
+}
+# ---- 関数ここまで ------------------------------------------------------------
+
+
+# すべての変数に対してラベルを作成
+all_var_labels <- var_label(svy_design$variables)
+label_df <- data.frame()
+for (var in names(all_var_labels)) {
+  temp <- create_new_label(svy_design$variables, var)
+  label_df <- rbind(label_df, temp)
+}
+
+
+```
+
+
+# 3. 記述統計の作成
+
+```{r}
+library(survey)
+library(gtsummary)
+
+# *******************************************************************************
+# '@title グループ別記述統計量の取得関数
+# '@param design_obj srvyr::as_survey_designオブジェクト
+# '@param covariates 記述統計量を取得する変数のベクトル
+# '@param grp_var グループ変数の文字列
+# '@param dummy_vars ダミー変数のベクトル
+# '@return gtsummaryオブジェクト
+# *******************************************************************************
+get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
+  # ★ value引数用のリストを事前に作成
+  value_list <- lapply(dummy_vars, function(x) "1")
+  names(value_list) <- dummy_vars
+    
+  res <- design_obj %>%
+    tbl_svysummary(
+      by = grp_var,
+      include = all_of(covariates),
+      type = list(
+        contains("capita_score_ok") ~ "continuous",
+        all_of(dummy_vars) ~ "dichotomous" # ダミー変数は二値変数として扱う
+      ),
+      # ★ ダミー変数の場合は1のみを表示
+      value = value_list,
+      statistic = list(all_continuous() ~ "{mean} ({sd})"),
+      missing = "no"
+    ) %>%
+    add_p(
+      test = list(
+        all_continuous()  ~ "svy.t.test",
+        all_categorical() ~ "svy.wald.test"
+      )
+    ) %>%
+    modify_table_body(
+      ~ .x |>
+        mutate(
+          across(
+            starts_with("stat_2"),
+            ~ if_else(
+              is.na(p.value),  # ★ まずNAをチェック
+              .,               # NAならそのまま
+              case_when(
+                p.value < 0.001 ~ paste0(., " ***"),
+                p.value < 0.01  ~ paste0(., " **"),
+                p.value < 0.05  ~ paste0(., " *"),
+                TRUE ~ .
+              )
+            ),
+            .names = "{.col}"          )
+        )
+    ) %>%
+    modify_table_styling(
+      columns = "p.value",
+      hide    = TRUE
+    ) %>%
+    add_n() %>%
+    bold_labels()
+
+  return(res)
+}
+
+# ------------------------------------------------------------------------------
+
+# 1. 解析群変数と追加変数の設定
+options(survey.lonely.psu = "adjust")
+
+covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_acceptable",
+                "dm_sheeep_own", "rh_anc_pvskill", "dm_refrigerator", 
+                "nt_wm_ovobese", "ph_wtr_far", "dm_hh_head_30plus", 
+                "dm_city", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
+                "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
+                "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
+
+food_vars <- c("nt_mdd", "nt_mmf","nt_grains", "nt_root", "nt_nuts", 
+               "nt_meatfish", "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", 
+               "nt_frtveg", "nt_root", 
+                names(df_org)[grep("_log1p$", 
+                                              names(df_org))],
+                names(df_org)[grep("_score_ok$", 
+                                              names(df_org))]
+               )
+
+outcome_var <- c("nt_ch_stunt", "nt_ch_wast", "nt_ch_any_anem", "nt_ch_haz")
+
+descriptive_stat_vars <- c(covariates, food_vars, outcome_var)
+
+# ダミー変数リスト(テーブル表示の際に、0/1のうち片方のみを表示させるため)
+dummy_vars <- c(
+  "nt_wm_ht", 
+  "ch_below_2p5", 
+  "dm_child_more_than3", 
+  "rc_edu_acceptable",
+   "dm_sheeep_own", 
+  "rh_anc_pvskill", 
+  "dm_refrigerator",            
+  "nt_wm_ovobese", 
+  "ph_wtr_far", 
+  "dm_hh_head_30plus",           
+  "dm_city", 
+  "dm_sani_open_yes", 
+  "dm_cooking_fuel_traditional",           
+  "rh_prob_permit", 
+  "ms_afm_15",      
+  "ph_wtr_trt_cloth", 
+  "ch_stool_safe_no", 
+  "dm_dvjustify_onereas",
+  "nt_mdd", 
+  "nt_mmf",
+  "nt_grains", 
+  "nt_root", 
+  "nt_nuts",
+  "nt_meatfish", 
+  "nt_milk", 
+  "nt_dairy", 
+  "nt_eggs", 
+  "nt_vita",
+  "nt_frtveg", 
+  "nt_ch_stunt", 
+  "nt_ch_wast", 
+  "nt_ch_any_anem"
+)
+
+# stuntedでの集計用に、stunted変数を除いたダミー変数リストを作成
+dummy_vars_no_stunted <- setdiff(dummy_vars, c("nt_ch_stunt"))
+
+# 2. svydesignの更新
+design_all <- svy_design
+
+# subsetの前にラベルを保存
+var_labels_list <- var_label(design_all$variables)
+
+# サブセット作成
+design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
+
+design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
+
+# サブセット後にラベルを復元
+var_label(design_pre$variables) <- var_labels_list
+var_label(design_post$variables) <- var_labels_list
+
+# 3. tbl_svysummaryで記述統計表を作成
+
+result1 <- get_summary(design_pre, descriptive_stat_vars, "analysis_grp", dummy_vars)
+result2 <- get_summary(design_all, descriptive_stat_vars, "nt_ch_stunt",
+                       dummy_vars_no_stunted)
+
+## tableの結合
+final_table <- tbl_merge(
+  tbls = list(result1, result2),
+  tab_spanner = c("**By Intervention**", "**By Stunting Status**") # 大見出し
+)
+
+# 結果保存
+saveRDS(result1, file.path(save_path, "descriptive_stat_pre.rds"))
+saveRDS(result2, file.path(save_path, "descriptive_stat_by_stunted.rds"))
+result1 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_pre.png"))
+result2 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_by_stunted.png"))
+final_table %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_final.png"))
+
+```
+
