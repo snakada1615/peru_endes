@@ -109,6 +109,10 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # ******************************************************************************
 # 食品群消費データの読み込み
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 2bb315c6cfa46f64905b0efbc696178d3acc1872
 dummy_vars <- c(
   "nt_wm_ht", 
   "ch_below_2p5", 
@@ -132,6 +136,7 @@ dummy_vars <- c(
   "nt_mmf",
   "nt_grains", 
   "nt_root", 
+<<<<<<< HEAD
   "nt_nuts",
   "nt_meatfish", 
   "nt_milk", 
@@ -142,6 +147,9 @@ dummy_vars <- c(
   "nt_ch_stunt", 
   "nt_ch_wast", 
   "nt_ch_any_anem"
+=======
+  "nt_nuts"
+>>>>>>> 2bb315c6cfa46f64905b0efbc696178d3acc1872
 )
 
 df_food_org <- readRDS(
