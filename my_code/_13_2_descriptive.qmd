@@ -189,12 +189,13 @@ for (var in names(all_var_labels)) {
 # 3. 記述統計の作成
 
 ```{r}
-library(survey)
+library(tidyverse)
+library(srvyr)
 library(gtsummary)
-library(huxtable)
+library(survey)
 
 # *******************************************************************************
-# '@title グループ別記述統計量の取得関数
+# '@title グループ別記述統計量の取得関数（修正版v2）
 # '@param design_obj srvyr::as_survey_designオブジェクト
 # '@param covariates 記述統計量を取得する変数のベクトル
 # '@param grp_var グループ変数の文字列
@@ -202,19 +203,83 @@ library(huxtable)
 # '@return gtsummaryオブジェクト
 # *******************************************************************************
 get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
-  # ★ value引数用のリストを事前に作成
+  
+  # ---------------------------------------------------------------------------
+  # 【データチェック・変換処理】
+  # ---------------------------------------------------------------------------
+  
+  for (v in dummy_vars) {
+    # 1. 変数の存在チェック
+    if (!v %in% names(design_obj$variables)) {
+      stop(sprintf("エラー: 指定された変数 '%s' がデータ内に見つかりません。", v))
+    }
+    
+    # データを抽出
+    current_val <- design_obj$variables[[v]]
+    
+    # NAを除いたユニークな値を取得し、ソートする
+    # ※ as.characterを噛ませることで、既存factorのレベル順序に依存せず、
+    #    ラベル文字(No/Yesなど)に基づいてソート・判定します
+    unique_vals <- sort(unique(na.omit(as.character(current_val))))
+    
+    # 2. 値の数チェック
+    if (length(unique_vals) > 2) {
+      stop(sprintf(
+        "エラー: 変数 '%s' は2値変数ではありません。観測された値: %s", 
+        v, paste(unique_vals, collapse = ", ")
+      ))
+    }
+    
+    # 3. レベルが "0", "1" かどうかの判定と変換
+    # 既存がfactorであっても、levelsが c("0", "1") でなければ変換対象とします
+    is_perfect_dummy <- is.factor(current_val) && identical(levels(current_val), c("0", "1"))
+    
+    if (!is_perfect_dummy) {
+      # 値が2種類ある場合 (通常ケース)
+      if (length(unique_vals) == 2) {
+        val_0 <- unique_vals[1] # ソート順で先頭 (例: "No", 0, "Female")
+        val_1 <- unique_vals[2] # ソート順で後尾 (例: "Yes", 1, "Male")
+        
+        message(sprintf("変換情報: 変数 '%s' (値: %s, %s) を factor(0, 1) に正規化しました。[0 assigned: %s, 1 assigned: %s]", 
+                        v, val_0, val_1, val_0, val_1))
+        
+        # design_obj内の変数を更新
+        # 元の値をレベルとして指定し、ラベルを0,1に強制変換します
+        design_obj$variables[[v]] <- factor(as.character(current_val), 
+                                            levels = c(val_0, val_1), 
+                                            labels = c("0", "1"))
+        
+      } else if (length(unique_vals) == 1) {
+        # 値が1種類しかない場合 (例: 全員 "No" の場合など)
+        # ※この場合、その唯一の値を "0" とするのか "1" とするのかは文脈依存ですが、
+        #   ここではソート順の1番目なので "0" に割り当て、警告を出します。
+        val_exist <- unique_vals[1]
+        message(sprintf("警告: 変数 '%s' は値が1種類(%s)しか存在しません。これを '0' としてfactor化します。", v, val_exist))
+        
+        design_obj$variables[[v]] <- factor(as.character(current_val),
+                                            levels = val_exist,
+                                            labels = "0") 
+        # 注意: レベルが1つだけ(0のみ)の場合、記述統計で1(割合)が出力されない可能性があります
+      }
+    }
+  }
+  
+  # ---------------------------------------------------------------------------
+  # 【集計処理】
+  # ---------------------------------------------------------------------------
+  
+  # ダミー変数はすべて "0"/"1" のfactorに変換済みのため、value="1" で統一して指定可能
   value_list <- lapply(dummy_vars, function(x) "1")
   names(value_list) <- dummy_vars
-    
+  
   res <- design_obj %>%
     tbl_svysummary(
-      by = grp_var,
+      by = all_of(grp_var),
       include = all_of(covariates),
       type = list(
         contains("capita_score_ok") ~ "continuous",
-        all_of(dummy_vars) ~ "dichotomous" # ダミー変数は二値変数として扱う
+        all_of(dummy_vars) ~ "dichotomous"
       ),
-      # ★ ダミー変数の場合は1のみを表示
       value = value_list,
       statistic = list(all_continuous() ~ "{mean} ({sd})"),
       missing = "no"
@@ -226,13 +291,13 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
       )
     ) %>%
     modify_table_body(
-      ~ .x |>
+      ~ .x %>%
         mutate(
           across(
             starts_with("stat_2"),
             ~ if_else(
-              is.na(p.value),  # ★ まずNAをチェック
-              .,               # NAならそのまま
+              is.na(p.value),
+              .,
               case_when(
                 p.value < 0.001 ~ paste0(., " ***"),
                 p.value < 0.01  ~ paste0(., " **"),
@@ -240,7 +305,8 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
                 TRUE ~ .
               )
             ),
-            .names = "{.col}"          )
+            .names = "{.col}"
+          )
         )
     ) %>%
     modify_table_styling(
@@ -249,11 +315,10 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
     ) %>%
     add_n() %>%
     bold_labels()
-
+  
   return(res)
 }
-
-# ------------------------------------------------------------------------------
+# ---- 関数ここまで ------------------------------------------------------------
 
 # 1. 解析群変数と追加変数の設定
 options(survey.lonely.psu = "adjust")
@@ -360,3 +425,58 @@ final_table %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_final.
 
 ```
 
+## 4. データ検証（変数選定のため）
+
+```{r}
+
+descriptive_stat_vars <- c(
+  "nt_ch_stunt","rc_hins_priv","rc_hins_other","rc_hins_any","rh_anc_prgcomp",
+  "rh_anc_bldpres","rh_anc_urine","rh_anc_bldsamp","ph_sani_improve_dummy",
+  "ph_wtr_improve"
+  
+)
+
+dummy_vars <- descriptive_stat_vars
+
+# stuntedでの集計用に、stunted変数を除いたダミー変数リストを作成
+dummy_vars_no_stunted <- setdiff(dummy_vars, c("nt_ch_stunt"))
+
+# 2. svydesignの更新
+design_all <- svy_design
+
+# subsetの前にラベルを保存
+var_labels_list <- var_label(design_all$variables)
+
+# subsetの前に変数をダミー化
+design_all$variables <- design_all$variables %>%
+  mutate(
+    ph_wtr_improve = case_when(
+      ph_wtr_improve == "improved" ~ 1,
+      ph_wtr_improve == "missing" ~ NA_real_,
+      TRUE ~ 0
+    )
+  )
+
+# サブセット作成
+design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
+
+design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
+
+
+# サブセット後にラベルを復元
+var_label(design_pre$variables) <- var_labels_list
+var_label(design_post$variables) <- var_labels_list
+
+# 3. tbl_svysummaryで記述統計表を作成
+
+result1_extract <- get_summary(design_pre, descriptive_stat_vars, "analysis_grp", dummy_vars)
+result2_extract <- get_summary(design_all, descriptive_stat_vars, "nt_ch_stunt",
+                       dummy_vars_no_stunted)
+
+
+as_hux_xlsx(result1_extract, file.path(save_path, "temp_descriptive_stat_pre.xlsx"))
+as_hux_xlsx(result2_extract, file.path(save_path, "temp_descriptive_stat_by_stunted.xlsx"))
+
+```
