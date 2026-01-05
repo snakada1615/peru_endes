@@ -191,6 +191,7 @@ for (var in names(all_var_labels)) {
 ```{r}
 library(survey)
 library(gtsummary)
+library(huxtable)
 
 # *******************************************************************************
 # '@title グループ別記述統計量の取得関数
@@ -348,6 +349,11 @@ final_table <- tbl_merge(
 # 結果保存
 saveRDS(result1, file.path(save_path, "descriptive_stat_pre.rds"))
 saveRDS(result2, file.path(save_path, "descriptive_stat_by_stunted.rds"))
+
+as_hux_xlsx(result1, file.path(save_path, "descriptive_stat_pre.xlsx"))
+as_hux_xlsx(result2, file.path(save_path, "descriptive_stat_by_stunted.xlsx"))
+as_hux_xlsx(final_table, file.path(save_path, "descriptive_stat_final.xlsx"))
+
 result1 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_pre.png"))
 result2 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_by_stunted.png"))
 final_table %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_final.png"))
