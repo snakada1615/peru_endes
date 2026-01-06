@@ -109,10 +109,6 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # ******************************************************************************
 # 食品群消費データの読み込み
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 2bb315c6cfa46f64905b0efbc696178d3acc1872
 dummy_vars <- c(
   "nt_wm_ht", 
   "ch_below_2p5", 
@@ -226,7 +222,6 @@ all_data_merged <- all_data_merged %>%
         ~ as_factor(.)  # labelled型のラベルを保持
       )
     )
-
 
 # ファイルをRDSで保存
 saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
