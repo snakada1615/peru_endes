@@ -51,30 +51,53 @@ library(dplyr)
 # データクリーニング + 異常値除外
 df_REC6_clean <- df_REC6 %>%
   filter(
-    !is.na(hc1), !is.na(hc3), !is.na(hc27),
-    hc1 >= 0 & hc1 < 60,           
-    hc3 >= 450 & hc3 <= 1200,      
-    hc27 %in% c(1, 2)              
+    !is.na(hc1), !is.na(hc3), !is.na(hc27), !is.na(hc2),
+    hc1 >= 0 & hc1 < 60,           # 月齢
+    hc3 >= 450 & hc3 <= 1200,      # 身長×10
+    hc2 >= 20 & hc2 <= 250,        # 体重×10（≈2〜25kg）
+    hc27 %in% c(1, 2)
   ) %>%
   mutate(
-    age_months = hc1,                        
-    age_days = hc1 * (365.25 / 12),         
-    height_cm = hc3 / 10,                    
-    weight_kg = hc2 / 10                     
+    age_months = hc1,
+    age_days   = hc1 * (365.25 / 12),
+    height_cm  = hc3 / 10,
+    weight_kg  = hc2 / 10
   )
 
-# HAZ計算
+# WHO 2006基準でHAZを計算（年齢を日数で指定）
 df_REC6_clean <- addWGSR(
   data = df_REC6_clean,
-  sex = "hc27",                    
-  firstPart = "height_cm",         
-  secondPart = "age_days",         
-  index = "hfa"                    
+  sex = "hc27",                    # 性別（1=男, 2=女）
+  firstPart = "height_cm",         # 身長（cm）
+  secondPart = "age_days",         # 年齢（日数）★
+  index = "hfa"                    # Height-for-Age
 )
 
-# WHOガイドラインに基づく異常値除外（±6 SD以上）
+# WAZ, WHZを追加計算
+df_REC6_clean <- addWGSR(
+  data       = df_REC6_clean,
+  sex        = "hc27",
+  firstPart  = "weight_kg",   # WAZ/WHZでは体重がfirstPart
+  secondPart = "age_days",    # WAZ: age_days, WHZ: height_cm を別途計算でもOK
+  index      = "wfa"          # WAZ
+)
+
+df_REC6_clean <- addWGSR(
+  data       = df_REC6_clean,
+  sex        = "hc27",
+  firstPart  = "weight_kg",
+  secondPart = "height_cm",
+  index      = "wfh"          # WHZ
+)
+
+# WHO推奨のzスコア範囲で最終クリーニング
 df_REC6_final <- df_REC6_clean %>%
-  filter(hfaz >= -6 & hfaz <= 6)
+  filter(
+    hfaz >= -6 & hfaz <= 6,        # HAZ
+    wfaz >= -6 & wfaz <= 5,        # WAZ
+    wfhz  >= -5 & wfhz  <= 5         # WHZ
+  )
+
 
 # 除外された観測数
 cat("除外された異常値:", nrow(df_REC6_clean) - nrow(df_REC6_final), "件\n")
@@ -83,36 +106,24 @@ cat("最終サンプルサイズ:", nrow(df_REC6_final), "\n\n")
 # 最終結果
 cat("=== 最終結果（異常値除外後）===\n")
 summary(df_REC6_final$hfaz)
+summary(df_REC6_final$wfaz)
+summary(df_REC6_final$wfhz)
 
 # Stunting prevalence（クリーン後）
 stunting_prev_final <- mean(df_REC6_final$hfaz < -2, na.rm = TRUE) * 100
 severe_stunting_final <- mean(df_REC6_final$hfaz < -3, na.rm = TRUE) * 100
+wasting_prev_final <- mean(df_REC6_final$wfhz < -2, na.rm = TRUE) * 100
+severe_wasting_final <- mean(df_REC6_final$wfhz < -3, na.rm = TRUE) * 100
+underweight_prev_final <- mean(df_REC6_final$wfaz < -2, na.rm = TRUE) * 100
+severe_underweight_final <- mean(df_REC6_final$wfaz < -3, na.rm = TRUE) * 100
 
 cat("\nStunting有病率 (HAZ < -2 SD):", round(stunting_prev_final, 2), "%\n")
 cat("重度Stunting有病率 (HAZ < -3 SD):", round(severe_stunting_final, 2), "%\n")
+cat("Wasting有病率 (WHZ < -2 SD):", round(wasting_prev_final, 2), "%\n")
+cat("重度Wasting有病率 (WHZ < -3 SD):", round(severe_wasting_final, 2), "%\n")
+cat("Underweight有病率 (WAZ < -2 SD):", round(underweight_prev_final, 2), "%\n")
+cat("重度Underweight有病率 (WAZ < -3 SD):", round(severe_underweight_final, 2), "%\n")
 
-# 平均HAZの95%信頼区間（単純）
-mean_haz <- mean(df_REC6_final$hfaz, na.rm = TRUE)
-se_haz <- sd(df_REC6_final$hfaz, na.rm = TRUE) / sqrt(nrow(df_REC6_final))
-ci_lower <- mean_haz - 1.96 * se_haz
-ci_upper <- mean_haz + 1.96 * se_haz
-
-cat("\n平均HAZ:", round(mean_haz, 3), 
-    " (95% CI: [", round(ci_lower, 3), ",", round(ci_upper, 3), "])\n")
-
-# 分布の可視化
-hist(df_REC6_final$hfaz, 
-     breaks = 50,
-     main = "HAZ分布（WHO 2006基準）",
-     xlab = "Height-for-Age Z-score",
-     ylab = "度数",
-     col = "lightblue")
-abline(v = -2, col = "red", lwd = 2, lty = 2)  # Stuntingカットオフ
-abline(v = -3, col = "darkred", lwd = 2, lty = 2)  # 重度Stuntingカットオフ
-legend("topright", 
-       legend = c("HAZ < -2 (Stunting)", "HAZ < -3 (重度)"),
-       col = c("red", "darkred"),
-       lty = 2, lwd = 2)
 
 
 ```
