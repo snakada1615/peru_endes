@@ -11,6 +11,7 @@
 # Variables created in this file:
 # nt_ch_sev_stunt		"Severely stunted child under 5 years"
 # nt_ch_stunt			  "Stunted child under 5 years"
+# nt_ch_haz 			  "z-score for height-for-age for children under 5 years"
 # nt_ch_mean_haz		"Mean z-score for height-for-age for children under 5 years"
 # nt_ch_sev_wast		"Severely wasted child under 5 years"
 # nt_ch_wast			  "Wasted child under 5 years"
