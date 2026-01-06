@@ -203,6 +203,10 @@ library(survey)
 # '@return gtsummaryオブジェクト
 # *******************************************************************************
 get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
+  # ラベルをあらかじめ取得
+  var_labels_list <- var_label(design_obj$variables)
+  
+  # names(value_list) <- dummy_vars
   
   # ---------------------------------------------------------------------------
   # 【データチェック・変換処理】
@@ -271,6 +275,10 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
   # ダミー変数はすべて "0"/"1" のfactorに変換済みのため、value="1" で統一して指定可能
   value_list <- lapply(dummy_vars, function(x) "1")
   names(value_list) <- dummy_vars
+  
+  # ラベルを復元
+  var_label(design_obj$variables) <- var_labels_list
+
   
   res <- design_obj %>%
     tbl_svysummary(
@@ -423,17 +431,21 @@ result1 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_pre.png"))
 result2 %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_by_stunted.png"))
 final_table %>% as_gt() %>% gtsave(file.path(save_path, "descriptive_stat_final.png"))
 
+stop("作業完了しました！ここで終了です。")
+
 ```
 
 ## 4. データ検証（変数選定のため）
 
 ```{r}
+## ここは、データチェックのためのセクション（任意）
 
 descriptive_stat_vars <- c(
   "nt_ch_stunt","rc_hins_priv","rc_hins_other","rc_hins_any","rh_anc_prgcomp",
   "rh_anc_bldpres","rh_anc_urine","rh_anc_bldsamp","ph_sani_improve_dummy",
-  "ph_wtr_improve"
-  
+  "ph_wtr_improve", "ch_ari", "ch_fever", "nt_mdd","nt_mmf",
+  "ph_sani_improve_dummy", "ph_wtr_improve", "ph_wtr_trt_none", 
+  "ch_stool_safe_no"
 )
 
 dummy_vars <- descriptive_stat_vars
