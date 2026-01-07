@@ -37,12 +37,9 @@
 
 
 # MEDIAN AGE FUNCTION ----------------------------------------------------------
-calc_median_age <-function(temp_df, dhssvy2, beg_age) {
-
-  cat("i am here01")
+calc_median_age <- function(temp_df, dhssvy2, beg_age) {
   # create a age at first marriage (afm) dataframe with cumulative proportions by each age, use survey weights
   median_df <- data.frame(prop_cumulative = unclass(round(cumsum(prop.table(svytable(~ms_age, design=dhssvy2))),4)))
-  cat("i am here03")
   median_df$age <- as.numeric(row.names(median_df))
   
   # find age groups before and after the cumulative 50% 
@@ -54,20 +51,22 @@ calc_median_age <-function(temp_df, dhssvy2, beg_age) {
   
   # age group before the cumulative 50%
   m1 <- median_df$age[median_df$age_before50==1]
-
+  
   # cumulative proportion for the age group before the cumulative 50%
   p1 <- median_df$prop_cumulative[median_df$age_before50==1]
   
   # cumulative proportion for the age group after the cumulative 50%
   p2 <- median_df$prop_cumulative[median_df$age_after50==1]
   
- # calculate median age
+  # calculate median age
   median_age <- round((m1 + ((0.5-p1)/(p2-p1)) + 1),1)
   
   # replace with NA if 50% of subgroup has not been married before start of subgroup
-  median_age <- ifelse(median_age > beg_age, "NA", median_age)
-  print(median_age)
+  median_age <- ifelse(median_age > beg_age, NA_real_, median_age)  # ← "NA" → NA_real_
+  
+  return(median_age)  # ← 明示的に値を返す
 }
+
 
 
 		
@@ -242,36 +241,38 @@ IRdata <- IRdata %>%
 	beg_age_list <- c(15, 20, 25, 30, 35, 40, 45)
 	
 	# create empty dataframe to fill in with results
-	median_mar <- data.frame("age group"=NA, "median afm"=NA)
+	median_mar <- data.frame(age_group = character(), median_age = numeric())
 	
 	
 # create loop for each age group
 for (a in beg_age_list) {
   beg_age <- a
   end_age <- a+4
-	    cat("finding median for ages", beg_age, "to", end_age)
-	  	    
-	    #subset the age group using a beginning and ending age and subgroup
-	    temp_df <- IRdata %>% filter(v012>= beg_age & v012<= end_age) %>%
-	      select(ms_age, v021, v022, v005)
-	    cat("i am here02")
-	    
-	    # weight data
-	    dhssvy2 <- svydesign(
-	      id = temp_df$v021, 
-	      strata=temp_df$v022, 
-	      weights = temp_df$v005/1000000, 
-	      data=temp_df, 
-	      nest = TRUE
-	      )
-	    
-	    median_age <- calc_median_age(temp_df, dhssvy2, beg_age)
-
-	   #save results
-     data_row <- data.frame(paste0(beg_age,"-",end_age), median_age)
-	   median_mar <- rbind(median_mar, setnames(data_row, names(median_mar)))
-	   
+  cat("\n----\nchecking ages", beg_age, "to", end_age, "\n")
   
+  temp_df <- IRdata %>%
+    filter(v012 >= beg_age & v012 <= end_age) %>%
+    select(ms_age, v021, v022, v005)
+  
+  cat("nrow(temp_df) =", nrow(temp_df), "\n")
+    
+    # weight data
+    dhssvy2 <- svydesign(
+      id = temp_df$v021, 
+      strata=temp_df$v022, 
+      weights = temp_df$v005/1000000, 
+      data=temp_df, 
+      nest = TRUE
+      )
+    
+    median_age <- calc_median_age(temp_df, dhssvy2, beg_age)
+    cat("length(median_age) =", length(median_age), "\n")
+    print(median_age)
+    
+
+   #save results
+   data_row <- data.frame(paste0(beg_age,"-",end_age), median_age)
+   median_mar <- rbind(median_mar, setnames(data_row, names(median_mar)))
 }
 	
 	
