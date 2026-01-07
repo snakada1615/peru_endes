@@ -461,11 +461,11 @@ open_endes_file <- function(myyear, fileType) {
 #' @param columns 文字列ベクトル。追加・並び替え対象の列名。
 #' @return 指定した列名がすべて存在するデータフレーム。
 #' ******************************************************************************
-add_missing_columns <- function(df, columns) {
+add_missing_columns <- function(df, columns, isnumber = FALSE) {
   for(col in columns) {
     if(!col %in% colnames(df)) {
       print(paste("Adding missing column:", col))
-      df[[col]] <- NA
+      df[[col]] <- if_else(isnumber, NA_real_, NA) 
     }
   }
   return(df)

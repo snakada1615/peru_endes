@@ -178,6 +178,7 @@ if (!is.null(IRdata$v171a)){
 
 IRdata <- IRdata %>%
   mutate(rc_empl = case_when(
+    is.na(v731) ~ NA_real_,
     v731 == 0 ~ 0,
     v731 == 1 ~ 1,
     v731 == 2 | v731 == 3 ~ 2,
@@ -191,6 +192,7 @@ IRdata <- IRdata %>%
   set_variable_labels(rc_empl = "Employment status") %>%
 
   mutate(emp = case_when(
+    is.na(v731) ~ NA_real_,
     v731 == 1 | v731 == 2 | v731 == 3  ~ 1,
     TRUE ~ 0)) %>%
 
