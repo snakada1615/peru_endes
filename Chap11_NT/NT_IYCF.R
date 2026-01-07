@@ -213,25 +213,20 @@ KRiycf <- KRiycf %>%
 # データ構造が異なるのでかなり変更した
 KRiycf <- KRiycf %>%
   mutate(
-    v414p_ = as.numeric(v414p),
-    v411_ = as.numeric(v411),
-    v411a_ = as.numeric(v411a),
-    v412_ = as.numeric(v412)
+    v414p_ = if_else(as.numeric(zap_labels(v414p)) == 8 | is.na(v414p), 0, as.numeric(zap_labels(v414p))),
+    v411_ = if_else(as.numeric(zap_labels(v411)) == 8 | is.na(v411), 0, as.numeric(zap_labels(v411))),
+    v411a_ = if_else(as.numeric(zap_labels(v411a)) == 8 | is.na(v411a), 0, as.numeric(zap_labels(v411a))),
+    v412_ = if_else(as.numeric(zap_labels(v412)) == 8 | is.na(v412), 0, as.numeric(zap_labels(v412)))
   ) %>%
-  replace_with_na(replace = list(v414p_ = c(8)))%>%
-  replace_with_na(replace = list(v411_ = c(8)))%>%
-  replace_with_na(replace = list(v411a_ = c(8)))%>%
-  replace_with_na(replace = list(v412_ = c(8)))%>%
-  mutate(v414p_ = coalesce(v414p_, 0),
-         v411_ = coalesce(v411_, 0),
-         v411a_ = coalesce(v411a_, 0),
-         v412_ = coalesce(v412_, 0)) %>%
-  mutate(totmilkf= v414p_ + v411_ + v411a_ + v412_) %>%
-  mutate(nt_fed_milk  = 
-           case_when(totmilkf>=2 | m4==95 & inrange(age,6,23) ~ 1 , 
-                     totmilkf <2 | m4!=95 & inrange(age,6,23) ~ 0)) %>%
-  set_value_labels(nt_fed_milk = c("Yes" = 1, "No"=0  )) %>%
+  mutate(totmilkf = v414p_ + v411_ + v411a_ + v412_) %>%
+  mutate(nt_fed_milk = 
+           case_when(
+             totmilkf >= 2 | m4 == 95 & inrange(age, 6, 23) ~ 1, 
+             totmilkf < 2 | m4 != 95 & inrange(age, 6, 23) ~ 0
+           )) %>%
+  set_value_labels(nt_fed_milk = c("Yes" = 1, "No" = 0)) %>%
   set_variable_labels(nt_fed_milk = "Child given milk or milk products- last-born 6-23 months")
+
 
 # //Min dietary diversity
 KRiycf <- KRiycf %>%
