@@ -1,10 +1,14 @@
+# 目的
 
-## Calculate HAZ using WHO 2006 standards
+2005年、2006年のDHSデータ構造が一部異なるので、stunting, wasting, underweight, overweight, anemiaについて別途集計
+
+## 1. データ準備
 
 ```{r}
-
 rm(list = ls(all = TRUE))
 
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
 library(tidyselect) # used to select variables in FP_EVENTS.R
 library(haven)      # used for Haven labeled DHS variables
 library(labelled)   # used for Haven labeled variable creation
@@ -23,6 +27,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2006")
+my_year <- "2006"
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -35,21 +40,101 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 
 endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
 
-# データ読み込み例 (2005年のRECH6データ)
-df_REC6 <- open_endes_file("2006", "RECH6.sav") %>%
+print(paste("Processing year:", my_year))
+# 出力用のルートフォルダを指定
+output_dir <- file.path(gdrive_dir, "output", my_year) %>%
+  normalizePath() %>%
+  trimws() # 正規化してトリムする
+# 出力用のルートフォルダが存在しない場合は作成
+if (!dir_exists(output_dir)) {
+  dir_create(output_dir)
+}
+
+# 必要なデータセットの抽出
+print("必要なデータセットを抽出します")
+
+keep_RECH1 <- c("hhid", "hvidx", "hv103") # hv103: 前夜在宅
+keep_RECH6 <- c("hhid", "hc0","hc1", "hc2", "hc3", "hc27", "hc56", "hc60")
+keep_REC0111 <- c("hhid", "v003", "caseid")
+keep_index <- c("year", "hhid", "hc27", "caseid")
+
+# 1. データ読み込み
+df_REC1 <- open_endes_file(my_year, "RECH1.sav") %>%
+  rename_with(~ tolower(.x)) 
+df_REC6 <- open_endes_file(my_year, "RECH6.sav") %>%
   rename_with(~ tolower(.x))
 
-keep_RECH6 <- c("hc1", "hc2", "hc3", "hc27")
+# 2. REC0111 から hhid と v003 を作成
+#    CASEID は文字列、V001=郡コード、V002=世帯番号、V003=行番号
+df_REC0111 <- process_endes_with_hhid(my_year, "REC0111.sav") %>%
+  mutate(
+    v003 = as.integer(v003)
+  )  %>%
+  select(all_of(keep_REC0111))
 
+# 3. RECH1 から hhid と hvidx を抽出
+df_REC1 <- df_REC1 %>%
+  mutate(
+    hhid  = as.character(hhid),
+    hvidx = as.integer(hvidx)  # 世帯構成員行番号
+  ) %>%
+  select(all_of(keep_RECH1))
+
+# 4. RECH6 を整形
 df_REC6 <- df_REC6 %>%
+  mutate(
+    hhid  = as.character(hhid),
+    hc60  = as.integer(hc60),   # 母親の行番号
+  ) %>%
   select(all_of(keep_RECH6))
+
+# 5. 段階1: RECH6 と RECH1 の結合 (母親行番号と世帯構成員をマッチ)
+tmp <- df_REC6 %>%
+  inner_join(df_REC1,
+             by = c("hhid" = "hhid",
+                    "hc60" = "hvidx"))
+
+# 6. 段階2: tmp と REC0111 の結合 (女性個人データからCASEIDを取得)
+result <- tmp %>%
+  inner_join(df_REC0111,
+             by = c("hhid" = "hhid",
+                    "hc60" = "v003"))
+
+# 7. 不要な列を除外して最終データセット作成
+PRdata <- result
+
+duplicate_check(PRdata, c("caseid"), "PRdata")
+print("データセットの結合が完了しました")
+print(paste("レコード数:", nrow(PRdata)))
+
+# Peru ENDESにおける最年少児童抽出
+PRdata <- PRdata %>%
+  # 24ヶ月未満 & 前夜在宅のみ
+  filter(hc1 < 24, hv103 == 1) %>%
+  # HHID単位で年齢順に並べる（最年少が上）
+  arrange(hhid, hc1) %>%
+  # 世帯ごとに最年少の1名だけ抽出
+  group_by(hhid) %>%
+  slice(1) %>%
+  ungroup()
+
+print("月齢24ヶ月未満の子供に制限しました")
+print(paste("レコード数:", nrow(PRdata)))
+duplicate_check(PRdata, c("hhid"), "PRdata after filtering to youngest child under 24 months")
+  
+
+```
+
+## 2. haz, waz, whzの計算
+
+```{r}
 
 # libraries needed
 library(zscorer)
 library(dplyr)
 
 # データクリーニング + 異常値除外
-df_REC6_clean <- df_REC6 %>%
+PRdata <- PRdata %>%
   filter(
     !is.na(hc1), !is.na(hc3), !is.na(hc27), !is.na(hc2),
     hc1 >= 0 & hc1 < 60,           # 月齢
@@ -65,8 +150,8 @@ df_REC6_clean <- df_REC6 %>%
   )
 
 # WHO 2006基準でHAZを計算（年齢を日数で指定）
-df_REC6_clean <- addWGSR(
-  data = df_REC6_clean,
+PRdata <- addWGSR(
+  data = PRdata,
   sex = "hc27",                    # 性別（1=男, 2=女）
   firstPart = "height_cm",         # 身長（cm）
   secondPart = "age_days",         # 年齢（日数）★
@@ -74,16 +159,16 @@ df_REC6_clean <- addWGSR(
 )
 
 # WAZ, WHZを追加計算
-df_REC6_clean <- addWGSR(
-  data       = df_REC6_clean,
+PRdata <- addWGSR(
+  data       = PRdata,
   sex        = "hc27",
   firstPart  = "weight_kg",   # WAZ/WHZでは体重がfirstPart
   secondPart = "age_days",    # WAZ: age_days, WHZ: height_cm を別途計算でもOK
   index      = "wfa"          # WAZ
 )
 
-df_REC6_clean <- addWGSR(
-  data       = df_REC6_clean,
+PRdata <- addWGSR(
+  data       = PRdata,
   sex        = "hc27",
   firstPart  = "weight_kg",
   secondPart = "height_cm",
@@ -91,169 +176,187 @@ df_REC6_clean <- addWGSR(
 )
 
 # WHO推奨のzスコア範囲で最終クリーニング
-df_REC6_final <- df_REC6_clean %>%
+PRdata <- PRdata %>%
   filter(
     hfaz >= -6 & hfaz <= 6,        # HAZ
     wfaz >= -6 & wfaz <= 5,        # WAZ
     wfhz  >= -5 & wfhz  <= 5         # WHZ
   )
 
+# 列名変更
+PRdata <- PRdata %>%
+  rename(
+    nt_ch_haz = hfaz,
+    nt_ch_waz = wfaz,
+    nt_ch_whz = wfhz,
+  ) %>%
+  set_variable_labels(
+    nt_ch_haz = "Height-for-Age Z-score (HAZ)",
+    nt_ch_waz = "Weight-for-Age Z-score (WAZ)",
+    nt_ch_whz = "Weight-for-Height Z-score (WHZ)"
+  )
 
-# 除外された観測数
-cat("除外された異常値:", nrow(df_REC6_clean) - nrow(df_REC6_final), "件\n")
-cat("最終サンプルサイズ:", nrow(df_REC6_final), "\n\n")
+# //Severely stunted
+PRdata <- PRdata %>%
+  mutate(nt_ch_sev_stunt =
+           case_when(
+             hv103==1 &  nt_ch_haz< -3  ~ 1 ,
+             hv103==1 &  nt_ch_haz>= -3 ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_sev_stunt = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_sev_stunt = "Severely stunted child under 5 years")
 
-# 最終結果
-cat("=== 最終結果（異常値除外後）===\n")
-summary(df_REC6_final$hfaz)
-summary(df_REC6_final$wfaz)
-summary(df_REC6_final$wfhz)
+# //Stunted
+PRdata <- PRdata %>%
+  mutate(nt_ch_stunt =
+           case_when(
+             hv103==1 &  nt_ch_haz< -2  ~ 1 ,
+             hv103==1 &  nt_ch_haz>= -2 ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_stunt = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_stunt = "Stunted child under 5 years")
 
-# Stunting prevalence（クリーン後）
-stunting_prev_final <- mean(df_REC6_final$hfaz < -2, na.rm = TRUE) * 100
-severe_stunting_final <- mean(df_REC6_final$hfaz < -3, na.rm = TRUE) * 100
-wasting_prev_final <- mean(df_REC6_final$wfhz < -2, na.rm = TRUE) * 100
-severe_wasting_final <- mean(df_REC6_final$wfhz < -3, na.rm = TRUE) * 100
-underweight_prev_final <- mean(df_REC6_final$wfaz < -2, na.rm = TRUE) * 100
-severe_underweight_final <- mean(df_REC6_final$wfaz < -3, na.rm = TRUE) * 100
-overweight_prev_final <- mean(df_REC6_final$wfhz > 2, na.rm = TRUE) * 100
-severe_overweight_final <- mean(df_REC6_final$wfhz > 3, na.rm = TRUE) * 100
+# //Severely wasted 
+PRdata <- PRdata %>%
+  mutate(nt_ch_sev_wast =
+           case_when(
+             hv103==1 &  nt_ch_whz< -3  ~ 1 ,
+             hv103==1 &  nt_ch_whz>= -3 ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_sev_wast = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_sev_wast = "Severely wasted child under 5 years")
 
-# 結果表示
-cat("\nStunting有病率 (HAZ < -2 SD):", round(stunting_prev_final, 2), "%\n")
-cat("重度Stunting有病率 (HAZ < -3 SD):", round(severe_stunting_final, 2), "%\n")
-cat("Wasting有病率 (WHZ < -2 SD):", round(wasting_prev_final, 2), "%\n")
-cat("重度Wasting有病率 (WHZ < -3 SD):", round(severe_wasting_final, 2), "%\n")
-cat("Underweight有病率 (WAZ < -2 SD):", round(underweight_prev_final, 2), "%\n")
-cat("重度Underweight有病率 (WAZ < -3 SD):", round(severe_underweight_final, 2), "%\n")
-cat("Overweight有病率 (WHZ > +2 SD):", round(overweight_prev_final, 2), "%\n")
-cat("重度Overweight有病率 (WHZ > +3 SD):", round(severe_overweight_final, 2), "%\n")
+# //Wasted
+PRdata <- PRdata %>%
+  mutate(nt_ch_wast =
+           case_when(
+             hv103==1 &  nt_ch_whz< -2  ~ 1 ,
+             hv103==1 &  nt_ch_whz>= -2  ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_wast = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_wast = "Wasted child under 5 years")
+
+# //Overweight for height
+PRdata <- PRdata %>%
+  mutate(nt_ch_ovwt_ht =
+           case_when(
+             hv103==1 &  nt_ch_whz> 2  ~ 1 ,
+             hv103==1 &  nt_ch_whz<= 2 ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_ovwt_ht = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_ovwt_ht = "Overweight for height child under 5 years")
+
+# //Severely underweight
+PRdata <- PRdata %>%
+  mutate(nt_ch_sev_underwt =
+           case_when(
+             hv103==1 &  nt_ch_waz< -3  ~ 1 ,
+             hv103==1 &  nt_ch_waz>= -3  ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_sev_underwt = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_sev_underwt = "Severely underweight child under 5 years")
+
+# //Underweight
+PRdata <- PRdata %>%
+  mutate(nt_ch_underwt =
+           case_when(
+             hv103==1 &  nt_ch_waz< -2  ~ 1 ,
+             hv103==1 &  nt_ch_waz>= -2   ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_underwt = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_underwt = "Underweight child under 5 years")
+# 
+# //Overweight for age
+PRdata <- PRdata %>%
+  mutate(nt_ch_ovwt_age =
+           case_when(
+             hv103==1 &  nt_ch_waz> 2  ~ 1 ,
+             hv103==1 &  nt_ch_waz<= 2  ~ 0 ,
+             TRUE ~ NA)) %>%
+  set_value_labels(nt_ch_ovwt_age = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_ovwt_age = "Overweight for age child under 5 years")
+
+# # 除外された観測数
+# cat("除外された異常値:", nrow(PRdata) - nrow(df_REC6_final), "件\n")
+# cat("最終サンプルサイズ:", nrow(df_REC6_final), "\n\n")
+# 
+# # 最終結果
+# cat("=== 最終結果（異常値除外後）===\n")
+# summary(df_REC6_final$hfaz)
+# summary(df_REC6_final$wfaz)
+# summary(df_REC6_final$wfhz)
+# 
+# # Stunting prevalence（クリーン後）
+# stunting_prev_final <- mean(df_REC6_final$hfaz < -2, na.rm = TRUE) * 100
+# severe_stunting_final <- mean(df_REC6_final$hfaz < -3, na.rm = TRUE) * 100
+# wasting_prev_final <- mean(df_REC6_final$wfhz < -2, na.rm = TRUE) * 100
+# severe_wasting_final <- mean(df_REC6_final$wfhz < -3, na.rm = TRUE) * 100
+# underweight_prev_final <- mean(df_REC6_final$wfaz < -2, na.rm = TRUE) * 100
+# severe_underweight_final <- mean(df_REC6_final$wfaz < -3, na.rm = TRUE) * 100
+# overweight_prev_final <- mean(df_REC6_final$wfhz > 2, na.rm = TRUE) * 100
+# severe_overweight_final <- mean(df_REC6_final$wfhz > 3, na.rm = TRUE) * 100
+# 
+# # 結果表示
+# cat("\nStunting有病率 (HAZ < -2 SD):", round(stunting_prev_final, 2), "%\n")
+# cat("重度Stunting有病率 (HAZ < -3 SD):", round(severe_stunting_final, 2), "%\n")
+# cat("Wasting有病率 (WHZ < -2 SD):", round(wasting_prev_final, 2), "%\n")
+# cat("重度Wasting有病率 (WHZ < -3 SD):", round(severe_wasting_final, 2), "%\n")
+# cat("Underweight有病率 (WAZ < -2 SD):", round(underweight_prev_final, 2), "%\n")
+# cat("重度Underweight有病率 (WAZ < -3 SD):", round(severe_underweight_final, 2), "%\n")
+# cat("Overweight有病率 (WHZ > +2 SD):", round(overweight_prev_final, 2), "%\n")
+# cat("重度Overweight有病率 (WHZ > +3 SD):", round(severe_overweight_final, 2), "%\n")
 
 
 
 ```
 
+## 3. Anemiaの検出
 
 ```{r}
-library(tidyselect) # used to select variables in FP_EVENTS.R
-library(haven)      # used for Haven labeled DHS variables
-library(labelled)   # used for Haven labeled variable creation
-library(expss)      # for creating tables with Haven labeled data
-library(rJava)      # required for xlsx package
-library(naniar)     # to use replace_with_na function
-library(here)       # to get R project path
-library(fs)         # for file path manipulation
-library(openxlsx) 　# for exporting to excel
-library(dplyr)          # For %>%, mutate(), case_when()
-library(naniar)         # For replace_with_na()
+
+# //Any anemia
+PRdata <- PRdata %>%
+  mutate(nt_ch_any_anem =
+           case_when(
+             hv103==1 & hc1>5 & hc1<60 & hc56<110 ~ 1 ,
+             hv103==1 & hc1>5 & hc1<60 & hc56>=110 ~ 0)) %>%
+  set_value_labels(nt_ch_any_anem = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_any_anem = "Any anemia - child 6-59 months")
+
+# //Mild anemia
+PRdata <- PRdata %>%
+  mutate(nt_ch_mild_anem =
+           case_when(
+             hv103==1 & hc1>5 & hc1<60 & hc56>99 & hc56<110 ~ 1 ,
+             hv103==1 & hc1>5 & hc1<60 & hc56<=99 | hc56>=110 ~ 0)) %>%
+  set_value_labels(nt_ch_mild_anem = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_mild_anem = "Mild anemia - child 6-59 months")
+
+# //Moderate anemia
+PRdata <- PRdata %>%
+  mutate(nt_ch_mod_anem =
+           case_when(
+             hv103==1 & hc1>5 & hc1<60 & hc56>69 & hc56<100 ~ 1 ,
+             hv103==1 & hc1>5 & hc1<60 & hc56<=69 | hc56>=100 ~ 0)) %>%
+  set_value_labels(nt_ch_mod_anem = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_mod_anem = "Moderate anemia - child 6-59 months")
+
+# //Severe anemia
+PRdata <- PRdata %>%
+  mutate(nt_ch_sev_anem =
+           case_when(
+             hv103==1 & hc1>5 & hc1<60 & hc56<70 ~ 1 ,
+             hv103==1 & hc1>5 & hc1<60 & hc56>=70 ~ 0)) %>%
+  set_value_labels(nt_ch_sev_anem = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_sev_anem = "Severe anemia - child 6-59 months")
 
 
-# 各種の関数セット読み込み
-source("myTools.R")  # プロジェクトルートから読み込む
 
-# 対象とする年のリスト
-yearlist <- c("2005", "2006")
+```
 
-# DHSデータのルートフォルダを指定
-gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+## 4. 最終データ保存
 
-# データベース一覧
-
-endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
-
-# 変数ラベル一覧
-
-endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
-
-go_analysis <- function(my_year){
-  print(paste("Processing year:", my_year))
-  # 出力用のルートフォルダを指定
-  output_dir <- file.path(gdrive_dir, "output", my_year) %>%
-    normalizePath() %>%
-    trimws() # 正規化してトリムする
-  # 出力用のルートフォルダが存在しない場合は作成
-  if (!dir_exists(output_dir)) {
-    dir_create(output_dir)
-  }
-  
-  # 必要なデータセットの抽出
-  print("必要なデータセットを抽出します")
-  
-  keep_RECH1 <- c("hhid", "hvidx", "hv103") # hv103: 前夜在宅
-  keep_RECH6 <- c("hc1", "hc27", "hc56", "hc70", "hc71", "hc72", "hhid", "hc0", 
-                  "hc60")
-  keep_REC0111 <- c("hhid", "v003", "caseid")
-  keep_index <- c("year", "hhid", "hc27", "caseid")
-  
-  # 1. データ読み込み
-  df_REC1 <- open_endes_file(my_year, "RECH1.sav") %>%
-    rename_with(~ tolower(.x)) 
-  df_REC6 <- open_endes_file(my_year, "RECH6.sav") %>%
-    rename_with(~ tolower(.x))
-
-  # 2. REC0111 から hhid と v003 を作成
-  #    CASEID は文字列、V001=郡コード、V002=世帯番号、V003=行番号
-  df_REC0111 <- process_endes_with_hhid(my_year, "REC0111.sav") %>%
-    mutate(
-      v003 = as.integer(v003)
-    )  %>%
-    select(all_of(keep_REC0111))
-
-  # 3. RECH1 から hhid と hvidx を抽出
-  df_REC1 <- df_REC1 %>%
-    mutate(
-      hhid  = as.character(hhid),
-      hvidx = as.integer(hvidx)  # 世帯構成員行番号
-    ) %>%
-    select(all_of(keep_RECH1))
-  
-  # 4. RECH6 を整形
-  df_REC6 <- df_REC6 %>%
-    mutate(
-      hhid  = as.character(hhid),
-      hc60  = as.integer(hc60),   # 母親の行番号
-    ) %>%
-    select(all_of(keep_RECH6))
-  
-  # 5. 段階1: RECH6 と RECH1 の結合 (母親行番号と世帯構成員をマッチ)
-  tmp <- df_REC6 %>%
-    inner_join(df_REC1,
-               by = c("hhid" = "hhid",
-                      "hc60" = "hvidx"))
-  
-  # 6. 段階2: tmp と REC0111 の結合 (女性個人データからCASEIDを取得)
-  result <- tmp %>%
-    inner_join(df_REC0111,
-               by = c("hhid" = "hhid",
-                      "hc60" = "v003"))
-
-  # 7. 不要な列を除外して最終データセット作成
-  PRdata <- result
-  
-  duplicate_check(PRdata, c("caseid"), "PRdata")
-  print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(PRdata)))
-  
-  # Peru ENDESにおける最年少児童抽出
-  PRdata <- PRdata %>%
-    # 24ヶ月未満 & 前夜在宅のみ
-    filter(hc1 < 24, hv103 == 1) %>%
-    # HHID単位で年齢順に並べる（最年少が上）
-    arrange(hhid, hc1) %>%
-    # 世帯ごとに最年少の1名だけ抽出
-    group_by(hhid) %>%
-    slice(1) %>%
-    ungroup()
-  
-  print("月齢24ヶ月未満の子供に制限しました")
-  print(paste("レコード数:", nrow(PRdata)))
-  duplicate_check(PRdata, c("hhid"), "PRdata after filtering to youngest child under 24 months")
-  
-  chap <- "Chap11_NT"
-  
-  source(here(paste0(chap,"/NT_CH_NUT.R")), local = environment())
-  # Purpose: 	Code child's anthropometry indicators
-  
+```{r}
   # 年をデータフレームに追加
   PRdata <- PRdata %>%
     mutate(year = my_year)
@@ -275,12 +378,6 @@ go_analysis <- function(my_year){
   print("save PRdata into output folder")
   saveRDS(PRdata, paste0(output_dir, "/PRData.rds"))
   print(paste("Data for year", my_year, "saved to", paste0(output_dir, "/PRData.rds")))
-  
-  return(PRdata)
-}  
 
-for (my_year in yearlist) {
-  go_analysis(my_year)
-}
-print("All years processed.")
 
+```
