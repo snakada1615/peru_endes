@@ -181,7 +181,8 @@ IRdata <- IRdata %>%
            case_when(
              v445<1200 | v445>6000 | v213==1 | age<2 ~ 99,
              v445< 3000   ~ 0, 
-             v445>=3000 & v445<=6000  ~ 1 )) %>%
+             v445>=3000 & v445<=6000  ~ 1,
+             TRUE ~ NA)) %>%
   replace_with_na(replace = list(nt_wm_obese = c(99))) %>%
   set_value_labels(nt_wm_obese = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(nt_wm_obese = "Obese BMI - women")
@@ -195,7 +196,8 @@ IRdata <- IRdata %>%
              m46<60  ~ 1, 
              m46>=60 & m46<90 ~ 2,
              m46>=90 & m46<=300 ~ 3,
-             m46>=998 | m45>=8 ~ 4)) %>%
+             m46>=998 | m45>=8 ~ 4,
+             TRUE ~ NA)) %>%
   replace_with_na(replace = list(nt_wm_micro_iron = c(99))) %>%
   set_value_labels(nt_wm_micro_iron = c("None"=0, "<60"=1, "60-89"=2, "90+"=3, "Don't know/missing"=4)) %>%
   set_variable_labels(nt_wm_micro_iron = "Number of days women took iron supplements during last pregnancy")
