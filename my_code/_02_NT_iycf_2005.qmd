@@ -1,0 +1,307 @@
+---
+title: "test script"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+execute-dir: project
+---
+
+## 1. 共通データのセット
+
+```{r}
+
+rm(list = ls(all = TRUE))
+
+# libraries needed
+library(tidyverse)  # most variable creation here uses tidyverse 
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(purrr)      # for functional programming, e.g., map
+
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+
+# 対象とする年のリスト
+yearlist <- c("2007", "2008", "2009", "2010", "2011",
+"2012", "2013", "2014", "2015", "2016") 
+yearlist <- c("2005")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+dhs_source_folder <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/peru_DHS"
+
+
+# データベース一覧
+
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+# データ抽出に必要な列の設定
+  
+  keep_rec0111 <- c("v005", "v008", "caseid", "v001", "v002", "v000", "v003", 
+                    "v013", "v022", "v025", "v026", "v024", "v106", "v190")
+  keep_REC21 <- c("b3", "b4", "b5", "b9", "caseid", "bidx")
+  keep_REC41 <- c("m4", "midx", "m34", "m38", "m39", "m55a", "m55b", "m55c", "m55d", 
+                  "m55e", "m55f", "m55g", "m55h", "m55i", "m55j", "m55k", 
+                  "m55l", "m55m", "m55n", "m55x", "m55z", "caseid", "midx")
+  keep_REC42 <- c("v409", "v409a", "v410", "v410a", "v410b", "v410c", "v410d", 
+                  "v411", "v411a", "v414a", "v414b", "v414c", "v414d", "v414e", 
+                  "v414f", "v414g", "v414h", "v414i", "v414j", "v414k", "v414l", 
+                  "v414m", "v414n", "v414o", "v414p", "v414q", "v414r", "v414s", 
+                  "v414t", "v414u", "v412", "v412a", "v412b", "v413", "v413a",
+                  "v413a", "v413b", "v413c", "v413d", "caseid")
+  keep_REC43 <- c("h33m", "h33d", "h33y", "h34", "H42", "caseid", "hidx")
+  
+  # addition for womens health status (IRdata)
+  keep_rec0111_women <-c("v005", "v008", "v042")
+  keep_RE223132_women <- c("caseid","v208","v213")
+  keep_REC21_women <- c("b3", "b9")
+  keep_REC41_women <- c("m45", "m46", "m60")
+  keep_REC42_women <- c("v438", "v445", "v455","v457")
+  keep_IRdata <- c(keep_REC21_women, keep_REC41_women,keep_REC42_women,  
+                   keep_rec0111_women, keep_RE223132_women, "b3_01")
+  
+  keep_rec0111 <- unique(c(keep_rec0111, keep_rec0111_women))
+  keep_RE223132 <- keep_RE223132_women  
+  keep_REC21 <- unique(c(keep_REC21, keep_REC21_women))
+  keep_REC41 <- unique(c(keep_REC41, keep_REC41_women))
+  keep_REC42 <- unique(c(keep_REC42, keep_REC42_women))
+  
+  keep_KRdata <- unique(c(keep_REC21, keep_rec0111, keep_REC41, keep_REC42, 
+                          keep_REC43))
+  
+  # keep_REC21 <- lapply(keep_REC21, tolower)
+  
+  
+  # 指定したルートフォルダ以下に存在するすべてのDHSファイル名の取得（-> dhsFiles）
+  source("../getDHSfiles.R")
+  
+  dhsFiles <- get_dhs_file(
+    yearlist = yearlist,
+    root_folder = dhs_source_folder
+  )  
+
+```
+
+## 2. データ処理関数
+
+```{r}
+# 解析を実行する関数(各年ごとに実施)
+go_analysis <- function(year){
+
+# *******************************************************************************
+  print(paste("Processing year:", year))
+  
+  # 6. 出力用のルートフォルダを指定
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws() # 正規化してトリムする
+  # 出力用のルートフォルダが存在しない場合は作成
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+  
+  
+  
+  # 8. レコードの重複チェック(結合のため)
+  print("レコードの重複チェックを行います")
+  duplicate_check <- function(df, key_vars, df_name) {
+    temp <- df %>%
+      group_by(across(all_of(key_vars))) %>%
+      summarise(n = n(), .groups = 'drop') %>%
+      filter(n > 1)
+    
+    if (nrow(temp) > 0) {
+      print(paste("重複レコードがあります in", df_name))
+      print(temp)
+      print(paste("レコード数：", nrow(df)))
+    } else {
+      print(paste("重複レコードはありません in", df_name))
+      print(paste("レコード数：", nrow(df)))
+    }
+  }
+    
+  
+  # 設定した年に基づいて四種類のファイル名を取得します。
+  KRdatafile <- dhsFiles[[as.character(year)]]$KR
+  PRdatafile <- dhsFiles[[as.character(year)]]$PR
+  IRdatafile <- dhsFiles[[as.character(year)]]$IR
+  HRdatafile <- dhsFiles[[as.character(year)]]$HR
+
+
+  # ファイルのパスとして結合
+  print(HRdatafile)
+  HRdata <-  read_dta(HRdatafile)
+
+  # rename IDs
+  HRdata <- HRdata %>%
+    mutate(v001=hv001) %>%
+    mutate(v002=hv002) 
+  
+  # 対象の列名
+  vars_to_keep <- c("v001", "v002", "hv234a")
+  # 存在する列だけ抽出
+  existing_vars <- vars_to_keep[vars_to_keep %in% names(HRdata)]
+  # 存在しない列をNAで作成
+  missing_vars <- setdiff(vars_to_keep, existing_vars)
+  for (var in missing_vars) {
+    HRdata[[var]] <- NA  # NAを代入（必要ならどのNAかも指定可能：NA_character_など）
+  }
+  # 順序を保って選択
+  HRtemp <- HRdata[, vars_to_keep]
+  
+  # * open IR dataset
+  print(KRdatafile)
+  KRdata <-  read_dta(KRdatafile) %>% group_by(caseid) %>% 
+    filter(bidx == 1) %>% ungroup() %>%   # 一番若い児童のbidxを抽出
+    rename_with(tolower)
+
+  #perform merge
+  print("merging HR data into KRdata")
+  KRdata <- merge(KRdata,HRtemp,by=c("v001", "v002")) %>%
+    add_missing_columns(keep_KRdata) %>% 
+    dplyr::select(all_of(keep_KRdata))
+  rm(HRtemp)
+
+  # 児童の健康関連指標
+  print(IRdatafile)
+  IRdata <-  read_dta(IRdatafile) %>% group_by(caseid) %>% 
+    filter(bidx_01 == 1) %>% ungroup() %>%   # 一番若い児童のbidxを抽出
+    rename_with(tolower)
+
+  # 女性の健康状態関連指標
+  IRdata <- IRdata %>%     
+    add_missing_columns(keep_IRdata) %>% 
+    dplyr::select(all_of(keep_IRdata)) %>% group_by(caseid)
+  
+  # 11. 再度重複チェック
+  duplicate_check(KRdata, c("caseid"), "KRdata")
+  duplicate_check(IRdata, c("caseid"), "IRdata")
+  
+  print("データセットの結合が完了しました")
+  print(paste("KRdataレコード数:", nrow(KRdata)))
+  print(paste("IRdataレコード数:", nrow(IRdata)))
+  
+  # 12. Calculate age of child. use v008 - b3
+  KRdata <- KRdata %>%
+    mutate(
+      age = v008 - b3,
+      wt = v005 / 1000000
+    )
+  IRdata <- IRdata %>%
+    mutate(
+      age = v008 - b3_01,
+      wt = v005 / 1000000
+    )
+  print("wtおよび年齢変数を追加しました")
+
+
+  # 13. 月齢24ヶ月未満の子供に制限
+  #create subset of KRfile to select for children for IYCF indicators
+  KRdata <- KRdata %>%
+    filter(age < 24 & b9==0)
+  IRdata <- IRdata %>%
+    filter(age < 24)
+  print("月齢24ヶ月未満の子供に制限しました")
+  print(paste("KRdataレコード数:", nrow(KRdata)))
+  print(paste("IRdataレコード数:", nrow(IRdata)))  
+    
+  chap <- "Chap11_NT"
+  
+  # 14. 各種の指標計算(NT_CH_MICRO)
+  source(here(paste0(chap,"/NT_CH_MICRO.R")), local = environment())
+  # Purpose: 	Code micronutrient indicators
+  
+  
+  # 15. 各種の指標計算(NT_BF_INIT)
+  source(here(paste0(chap,"/NT_BF_INIT.R")), local = environment())
+  # Purpose:   Code initial breastfeeding indicators
+  
+  # 16. 各種の指標計算(NT_WM_NT)
+  source(here(paste0(chap,"/NT_WM_NUT.R")), local = environment())
+  # Purpose: 	Code women's anthropometric indicators
+
+    
+  # 17.オリジナルのコードに合わせるためデータファイルの名称変更
+  KRiycf <- KRdata  # IYCF indicators are calculated on KRdata
+  
+  
+  # 18. 各種の指標計算(NT_IYCF)
+  source(here(paste0(chap,"/NT_IYCF.R")), local = environment())
+  # Purpose: 			Code to compute infant and child feeding indicators
+
+    
+  # 19. 年をデータフレームに追加
+  KRiycf <- KRiycf %>%
+    mutate(year = year)
+  IRdata <- IRdata %>%
+    mutate(year = year)
+  print("add year variable")
+
+  # 20. 出力用の変数を指定
+  vars_to_keep <- KRiycf %>%
+    dplyr::select(starts_with("nt")) %>%
+    names() %>%
+    append(c("year", "caseid", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
+             "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
+  
+  # print(vars_to_keep)
+  
+  vars_to_keep_IR<- IRdata %>%
+    dplyr::select(starts_with("nt")) %>%
+    names() %>%
+    append(c("year", "caseid")) # add the variables we need to keep
+  print(vars_to_keep_IR)
+
+  # 順序を保って選択
+  KRiycf <- KRiycf[, vars_to_keep]
+  IRdata <- IRdata[, vars_to_keep_IR]
+  
+  # 21. KRiycfをoutput folderにdta形式で保存
+  print("save KRiycf into output folder")
+  saveRDS(KRiycf, paste0(output_dir, "/KRiycf-nt.rds"))
+  print("complete KRiycf into output folder")
+  
+  print("save IRdata into output folder")
+  saveRDS(IRdata, paste0(output_dir, "/IRdata-nt.rds"))
+  print("complete IRdata into output folder")
+    
+  
+ } 
+
+```
+
+## 3. ループ実行
+
+```{r}
+for (myYear in yearlist) {
+  go_analysis(myYear)
+}
+
+print("All done!")
+```
+
+## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:
