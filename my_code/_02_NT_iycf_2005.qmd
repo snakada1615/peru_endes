@@ -289,7 +289,6 @@ go_analysis <- function(year){
   saveRDS(IRdata, paste0(output_dir, "/IRdata-nt.rds"))
   print("complete IRdata into output folder")
     
-  
  } 
 
 ```
