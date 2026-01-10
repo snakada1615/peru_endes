@@ -113,8 +113,11 @@ goAnalysis <- function(year){
   }
   
   # create analytic variables
+  print("create MS variables")
   source(here(paste0(chap,"/MS_MAR.R")), local = environment())
+  print("complete MS_MAR.R")
   source(here(paste0(chap,"/MS_SEX.R")), local = environment())
+  print("complete MS_SEX.R")
 
   IRdata <- IRdata %>%
     mutate(year = year)

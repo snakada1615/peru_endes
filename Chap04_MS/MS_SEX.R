@@ -28,38 +28,6 @@
 # median_sex_subgroup_men datafile with median age at first sex (MAFS) by subgroup characteristics among men 25-59 and 30-59 (age range may vary in survey)
 
 
-# MEDIAN AGE FUNCTION ----------------------------------------------------------
-calc_median_age <-function(temp_df, dhssvy2, beg_age) {
-  
-  # create a age at first sex dataframe with cumulative proportions by each age, use survey weights
-  median_df <- data.frame(prop_cumulative = unclass(round(cumsum(prop.table(svytable(~ms_age, design=dhssvy2))),4)))
-  median_df$age <- as.numeric(row.names(median_df))
-  
-  # find age groups before and after the cumulative 50% 
-  median_df <- median_df %>%
-    mutate(age_before50 = case_when(prop_cumulative<0.5 & lead(prop_cumulative>0.5) ~ 1, TRUE ~ 0),
-           age_after50 = case_when(prop_cumulative>=0.5 & lag(prop_cumulative<0.5) ~ 1, TRUE ~ 0))
-  
-  # use equation for interpolated median for completed time periods (see https://www.dhsprogram.com/data/Guide-to-DHS-Statistics.cfm)
-  
-  # age group before the cumulative 50%
-  m1 <- median_df$age[median_df$age_before50==1]
-  
-  # cumulative proportion for the age group before the cumulative 50%
-  p1 <- median_df$prop_cumulative[median_df$age_before50==1]
-  
-  # cumulative proportion for the age group after the cumulative 50%
-  p2 <- median_df$prop_cumulative[median_df$age_after50==1]
-  
-  # calculate median age
-  median_age <- round((m1 + ((0.5-p1)/(p2-p1)) + 1),1)
-  
-  # replace with NA if 50% of subgroup has not been married before start of subgroup
-  median_age <- ifelse(median_age > beg_age, "NA", median_age)
-  print(median_age)
-}
-
-
 
 
 # AGE AT FIRST SEX (AFS) (WOMEN)------------------------------------------------------
@@ -225,9 +193,60 @@ IRdata <- IRdata %>%
 #  the same manner
 
 
+# MEDIAN AGE FUNCTION ----------------------------------------------------------
+calc_median_age <- function(dhssvy2, beg_age) {
+  # 年齢別の加重頻度表を作成
+  age_table <- svytable(~ms_age, design = dhssvy2)
+  
+  # 観測値がない場合は早期リターン
+  if (sum(age_table) == 0) {
+    return(NA_real_)
+  }
+  
+  # 累積割合を計算
+  median_df <- data.frame(
+    prop_cumulative = unclass(round(cumsum(prop.table(age_table)), 4))
+  )
+  median_df$age <- as.numeric(row.names(median_df))
+  
+  # 0.5を跨ぐ年齢群を特定
+  median_df <- median_df %>%
+    mutate(
+      age_before50 = case_when(
+        prop_cumulative < 0.5 & lead(prop_cumulative) > 0.5 ~ 1, 
+        TRUE ~ 0
+      ),
+      age_after50 = case_when(
+        prop_cumulative >= 0.5 & lag(prop_cumulative) < 0.5 ~ 1, 
+        TRUE ~ 0
+      )
+    )
+  
+  # 0.5に到達しない場合はNAを返す
+  if (max(median_df$prop_cumulative, na.rm = TRUE) < 0.5) {
+    return(NA_real_)
+  }
+  
+  # 年齢群の抽出（安全なインデックス操作）
+  m1 <- median_df$age[median_df$age_before50 == 1]
+  p1 <- median_df$prop_cumulative[median_df$age_before50 == 1]
+  p2 <- median_df$prop_cumulative[median_df$age_after50 == 1]
+  
+  # 長さチェック
+  if (length(m1) == 0 || length(p1) == 0 || length(p2) == 0) {
+    return(NA_real_)
+  }
+  
+  # 中央値の計算（DHS式に従う）
+  median_age <- round((m1 + ((0.5 - p1) / (p2 - p1)) + 1), 1)
+  
+  # 開始年齢より大きい場合はNA
+  median_age <- ifelse(median_age > beg_age, NA_real_, median_age)
+  
+  return(median_age)
+}
 
 # MEDIAN AGE AT FIRST  (MAFS) BY AGE GROUP  (WOMEN)---------------------------------
-
 # if respondent has not had sex (v531==0) then replace with 99 to put these at the tail end of distribution for median
 IRdata <- IRdata %>% mutate(ms_age =case_when(v531==0 ~ 99, TRUE ~ as.numeric(v531)))
 
@@ -249,32 +268,53 @@ for (a in beg_age_list) {
   temp_df <- IRdata %>% filter(v012>= beg_age & v012<= end_age) %>%
     select(ms_age, v021, v022, v005)
   
-  # weight data
-  dhssvy2 <- svydesign(
-    id = temp_df$v021, 
-    strata=temp_df$v022, 
-    weights = temp_df$v005/1000000, 
-    data=temp_df,
-    nest = TRUE
+  if (nrow(temp_df) == 0) {
+    cat("No data available for ages", beg_age, "to", end_age, "\n")
+    median_age <- NA_real_
+  } else {
+    cat("Data available: nrow =", nrow(temp_df), "\n")
+    
+    # Create NEW survey design object for each subset
+    sub_design <- svydesign(
+      id = ~v021,
+      strata = temp_df$v022, 
+      weights = temp_df$v005 / 1000000,
+      data = temp_df,
+      nest = TRUE
     )
-  
-  median_age <- calc_median_age(temp_df, dhssvy2, beg_age)
-  
-  
-  #save results
-  data_row <- data.frame(paste0(beg_age,"-",end_age), median_age)
-  median_sex <- rbind(median_sex, setnames(data_row, names(median_sex)))
-  cat("here 02")
-  
-  
+    
+    median_age <- calc_median_age(sub_design, beg_age)
+    
+    # Safety check
+    if (length(median_age) == 0) {
+      median_age <- NA_real_
+    }
+  }
+
+  # #save results
+  # data_row <- data.frame(paste0(beg_age,"-",end_age), median_age)
+  # median_sex <- rbind(median_sex, setnames(data_row, names(median_sex)))
+  # cat("here 02")
+
+  # save results to list
+  results_list[[paste0(beg_age, "-", end_age)]] <- data.frame(
+    age_group = paste0(beg_age, "-", end_age),
+    median_age = median_age,
+    stringsAsFactors = FALSE
+  )
 }
+
+# combine all results
+median_sex <- do.call(rbind, results_list)
 
 
 # MEDIAN AGE AT FIRST SEX (MAFS) BY AGE GROUP AND SUBGROUP (WOMEN)----------------------
 
 
 # mutate a dummy variable to loop through all women instead of subgroup
-IRdata <- IRdata %>% mutate(all = 1) %>% set_variable_labels(all = "total") %>% set_value_labels(all = c("total"=1))
+IRdata <- IRdata %>% mutate(all = 1) %>% 
+  set_variable_labels(all = "total") %>% 
+  set_value_labels(all = c("total"=1))
 
 # list of subgroup characteristics (residence, education, wealth, total)
 subgroup <- c("v025", "v106", "v190", "all")
@@ -284,7 +324,10 @@ beg_age_list <- c( 20, 25)
 end_age <- max(IRdata$v012)   
 
 # create empty dataframe to fill in with results
-median_sex_subgroup <- data.frame("age group"=NA, "subgroup"=NA, "level"=NA, "median afs"=NA)
+# median_sex_subgroup <- data.frame(
+#   "age group"=NA, "subgroup"=NA, "level"=NA, "median afs"=NA)
+# create empty list to store results
+results_subgroup_list <- list()
 
 
 
@@ -301,32 +344,64 @@ for (a in beg_age_list) {
     for(x in z) {
       cat("finding median for ages", beg_age, "to", end_age, "subgroup:", y, "level=", x)
       
-      #subset the age group using a beginning and ending age and subgroup
-      temp_df <- IRdata %>% filter(v012>= beg_age & v012<= end_age) %>%
-        select(ms_age, v025, v106, v190, all, v021, v022, v005)
-      temp_df <- temp_df[ temp_df[y]==x, ]
+      # Subset data frame by age AND subgroup level
+      temp_df <- IRdata %>% 
+        filter(v012 >= beg_age & v012 <= end_age & .data[[y]] == x)
       
-      # weight data
-      dhssvy2 <- svydesign(
-        id = temp_df$v021, 
-        strata=temp_df$v022, 
-        weights = temp_df$v005/1000000, 
-        data=temp_df,
-        nest = TRUE
+      if (nrow(temp_df) == 0) {
+        cat("No data available for ages", beg_age, "to", end_age, 
+            "subgroup:", y, "level=", x, "\n")
+        median_age <- NA_real_
+      } else {
+        # Create NEW survey design object for each subset
+        sub_design <- svydesign(
+          id = ~v021,
+          strata = ~v022,
+          weights = temp_df$v005 / 1000000,
+          data = temp_df,
+          nest = TRUE
         )
+        median_age <- calc_median_age(sub_design, beg_age)
+        
+        if (length(median_age) == 0) {
+          median_age <- NA_real_
+        }
+      }
       
-      median_age <- calc_median_age(temp_df, dhssvy2, beg_age)
+      # Get labels safely
+      subgroup_label <- tryCatch(
+        var_label(IRdata[[y]]), 
+        error = function(e) y
+      )
+      level_label <- tryCatch(
+        val_label(IRdata[[y]], x), 
+        error = function(e) x
+      )
       
+      # Save results
+      results_subgroup_list[[paste(beg_age, y, x, sep = "_")]] <- data.frame(
+        "age group" = paste0(beg_age, "-", end_age),
+        "subgroup" = subgroup_label,
+        "level" = level_label,
+        "median sex_age" = median_age,
+        stringsAsFactors = FALSE
+      )
       
-      #save results
-      data_row <- data.frame(paste0(beg_age,"-",end_age), var_label(IRdata[,y]), val_label(IRdata[,y],x), median_age)
-      median_sex_subgroup <- rbind(median_sex_subgroup, setnames(data_row, names(median_sex_subgroup)))
+      # #save results
+      # data_row <- data.frame(
+      #   paste0(beg_age,"-",end_age), 
+      #   var_label(IRdata[,y]), 
+      #   val_label(IRdata[,y],x), 
+      #   median_age)
+      # 
+      # median_sex_subgroup <- rbind(median_sex_subgroup, setnames(data_row, names(median_sex_subgroup)))
       
     }
   }
-  
 }
 
+# combine all results
+median_sex_subgroup <- do.call(rbind, results_subgroup_list)
 
 
 
