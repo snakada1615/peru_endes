@@ -66,13 +66,27 @@ HRdata <- HRdata %>%
   set_variable_labels(ph_rooms_sleep = "Rooms for sleeping")
 
 # //Place for cooking
+# Place for cooking - unclass()を使用してラベルを数値に変換
+
+cat("Encoding place for cooking variable\n")
+# Place for cooking
 HRdata <- HRdata %>%
-  mutate(ph_cook_place =
-           case_when(
-             hv241<9  ~ hv241 ,
-             hv226==95  ~ 4,
-             hv241>=9 | is.na(hv241) ~ 9)) %>%
-  set_value_labels(ph_cook_place = c("Missing"=9, "Other" =6, "No food cooked in household" =4, "Outdoors" =3, "In a seperate building"=2, "In the house"=1)) %>%
+  mutate(
+    hv241_num = unclass(hv241),
+    hv226_num = unclass(hv226),
+    ph_cook_place = case_when(
+      hv241_num < 9  ~ hv241_num,
+      hv226_num == 95  ~ 4,
+      hv241_num >= 9 | is.na(hv241_num) ~ 9
+    )
+  ) %>%
+  select(-hv241_num, -hv226_num) %>%
+  set_value_labels(ph_cook_place = c("Missing" = 9, 
+                                     "Other" = 6, 
+                                     "No food cooked in household" = 4, 
+                                     "Outdoors" = 3, 
+                                     "In a seperate building" = 2, 
+                                     "In the house" = 1)) %>%
   set_variable_labels(ph_cook_place = "Place for cooking")
 
 # //Type of cooking fuel

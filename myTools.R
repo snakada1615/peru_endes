@@ -1203,3 +1203,27 @@ add_labels <- function(df, var_name, var_label, val_labels = NULL) {
 }
 # --- 関数定義ここまで ---------------------------------------------------------
 
+grep_files <- function(word, dir = NULL, filetype = "qmd") {
+  if (is.null(dir)) {
+    dir <- getwd()
+  }
+  
+  # 拡張子用の正規表現を作成
+  ext_pattern <- paste0("\\.", filetype, "$")
+  
+  files <- list.files(
+    path       = dir,
+    pattern    = ext_pattern,  # 例: \\.qmd$
+    full.names = TRUE,
+    recursive  = TRUE
+  )
+  
+  hit_files <- files[
+    vapply(files, function(f) {
+      any(grepl(word, readLines(f, warn = FALSE), fixed = TRUE))
+    }, logical(1))
+  ]
+  
+  return(hit_files)
+}
+

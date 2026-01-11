@@ -17,6 +17,7 @@ editor:
 execute-dir: project
 ---
 
+
 ## 1. 共通データのセット
 
 ```{r}
@@ -43,7 +44,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 # 対象とする年のリスト
 yearlist <- c("2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2006")
+yearlist <- c("2005")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -66,47 +67,27 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 # ソースコードのルートフォルダを指定
 chap <- "Chap02_PH"
 
-goAnalysis <- function(year){
   
-  # 母親の雇用状態を追加
-  keep_RECH23 <- c("hhid", "hv201", "hv201a", "hv204", "hv205", "hv206", "hv207",
-                  "hv208", "hv209", "hv210", "hv211", "hv213", "hv216", "hv221", 
-                  "hv225", "hv226", "hv237", "hv237a", "hv237b", "hv237c", "hv237d", 
-                  "hv237e", "hv237f", "hv237g", "hv237h", "hv237i", "hv237j", 
-                  "hv237k", "hv237x", "hv241", "hv241z", "hv243a", "hv243c", 
-                  "hv243d", "hv244", "hv246")
-  keep_RECH0 <- c("hhid", "hv000", "hv005", "hv006", "hv007")
-
-  # 設定した年に基づいてファイルを読み込む
-  df_REC23 <- open_endes_file(year, "RECH23.sav") %>%
-    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_RECH23) %>% dplyr::select(all_of(keep_RECH23))
-  df_REC0 <- open_endes_file(year, "RECH0.sav") %>%
-    rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
-    add_missing_columns(keep_RECH0) %>% dplyr::select(all_of(keep_RECH0))
-
-  # 重複チェック
-  duplicate_check(df_REC23, c("hhid"), "REC23")
-  duplicate_check(df_REC0, c("hhid"), "REC0")
-
-  print("データセットを結合します")
-  HRdata <- df_REC23 %>%
-    left_join(df_REC0, by = c("hhid" = "hhid")) %>%
-    mutate(year = year)
-
-  print("データセットの結合が完了しました")
-  print(paste("レコード数:", nrow(HRdata)))
-
+goAnalysis <- function(year){
+  cat("DHSデータの確認を行います\n")
+  HRdata <- read_spss("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/HR/PEHR51FL.SAV") %>%
+    rename_with(~ tolower(.x))  # すべての列名を小文字に変換
+  
+  cat("PH_HOUS.Rを実行\n")
   source(here(paste0(chap,"/PH_HOUS.R")), local = environment())
   # Purpose:	Code housing indicators such as house material, assets, cooking fuel and place, and smoking in the home
   
-  WASHdata <- HRdata
+  cat("PH_SANI.Rを実行\n")
+  WASHdata <- HRdata %>% 
+    mutate(ph_sani_type = hv205)
   source(here(paste0(chap,"/PH_SANI.R")), local = environment())
   # Purpose: 	Code Sanitation indicators
   
+  cat("PH_WATER.Rを実行")
   source(here(paste0(chap,"/PH_WATER.R")), local = environment())
   # Purpose: 	Code Water Source indicators
   
+  cat("WASHdataから必要な変数を抽出")
   # WASHdataから必要な変数を選択
   vars_to_keep <- WASHdata %>%
     dplyr::select(starts_with("ph")) %>%

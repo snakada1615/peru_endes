@@ -57,7 +57,9 @@
 
 
 # create a variable for sanitation type, this var will be overwritten if country-specific coding is needed
-WASHdata <- WASHdata %>% mutate(ph_sani_type = hv205)
+# 国別コードの前に追加
+WASHdata <- WASHdata %>%
+  mutate(hv205 = as.numeric(unclass(hv205)))
 
 
 # 	recode country-specific responses to standard codes ------------------------
@@ -1112,29 +1114,32 @@ if (WASHdata$hv000[1]=="ZW5")  {
 # Types of sanitation ----------------------------------------------------------
 
 # label type of sanitation 
-
-WASHdata <- WASHdata %>% mutate(ph_sani_type = case_when(
-  is.na(ph_sani_type) ~ 99,
-  TRUE ~ ph_sani_type)) %>%
+WASHdata <- WASHdata %>% 
+  mutate(ph_sani_type_num = as.numeric(unclass(ph_sani_type))) %>%
+  mutate(ph_sani_type = case_when(
+    is.na(ph_sani_type_num) ~ as.double(99),
+    TRUE ~ as.double(ph_sani_type_num)
+  )) %>%
+  select(-ph_sani_type_num) %>%
   set_value_labels(ph_sani_type = 
-                   c("flush - to piped sewer system" = 11,
-                     "flush - to septic tank"	= 12,
-                     "flush - to pit latrine"	= 13,	
-                     "flush - to somewhere else" = 14,
-                     "flush - don't know where/unspecified" = 15,
-                     "pit latrine - ventilated improved pit (vip)" = 21,	
-                     "pit latrine - with slab" = 22,
-                     "pit latrine - without slab / open pit" = 23,
-                     "no facility/bush/field/river/sea/lake" = 31, 		
-                     "composting toilet" = 41,
-                     "bucket toilet" = 42,
-                     "hanging toilet/latrine" = 43,		
-                     "other improved" = 51,
-                     "other" = 96,
-                     "missing" = 99)) %>%
+                     c("flush - to piped sewer system" = 11,
+                       "flush - to septic tank" = 12,
+                       "flush - to pit latrine" = 13,	
+                       "flush - to somewhere else" = 14,
+                       "flush - don't know where/unspecified" = 15,
+                       "pit latrine - ventilated improved pit (vip)" = 21,	
+                       "pit latrine - with slab" = 22,
+                       "pit latrine - without slab / open pit" = 23,
+                       "no facility/bush/field/river/sea/lake" = 31, 		
+                       "composting toilet" = 41,
+                       "bucket toilet" = 42,
+                       "hanging toilet/latrine" = 43,		
+                       "other improved" = 51,
+                       "other" = 96,
+                       "missing" = 99)) %>%
   set_variable_labels(ph_sani_type = "Type of sanitation")
 
-
+# Improved sanitation ----------------------------------------------------------
 # create improved sanitation indicator 
 WASHdata <- WASHdata %>% mutate(ph_sani_improve = case_when(
   ph_sani_type %in% c(11, 12, 13, 15, 21, 22, 41, 51) ~ 1,

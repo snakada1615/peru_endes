@@ -194,4 +194,37 @@ print(annual_mean)
 
 ```
 
-## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:
+
+# DHSデータの確認
+
+```{r}
+
+library(dplyr)
+library(haven)
+
+print("DHSデータの確認を行います")
+dat_2005 <- read_dta("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/peru_DHS/R/output/2005/merge_all_2005.dta") %>%
+  rename_with(~ tolower(.x))  # すべての列名を小文字に変換
+print(paste("2005年のデータセットのレコード数:", nrow(dat_2005)))
+
+dat_all <- readRDS("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/output/all_data_merged.rds") %>%
+  rename_with(~ tolower(.x))  # すべての列名を小文字に変換
+
+names_2005 <- names(dat_2005)
+names_all <- names(dat_all)
+
+common_names <- intersect(names_2005, names_all)
+print(paste("2005年と全期間データセットの共通変数数:", length(common_names)))
+
+lacking_in_2005 <- setdiff(names_all, names_2005)
+print("2005年に存在しない変数:")
+print(lacking_in_2005)
+
+lacking_in_all <- setdiff(names_2005, names_all)
+print("全期間データセットに存在しない2005年の変数:")
+print(lacking_in_all)
+
+```
+grep -Rl --include="*.qmd" "_over_" .
+
+grep -Rl --include="*.qmd" "state" /Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/peru_DHS/R/code/my_code 

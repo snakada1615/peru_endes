@@ -66,6 +66,22 @@
 
 
 # create water treatment indicators --------------------------------------------
+# convert hv237 to numeric 
+WASHdata <- WASHdata %>%
+  mutate(
+         hv237a = as.numeric(unclass(hv237a)),
+         hv237b = as.numeric(unclass(hv237b)),
+         hv237c = as.numeric(unclass(hv237c)),
+         hv237d = as.numeric(unclass(hv237d)),
+         hv237f = as.numeric(unclass(hv237f)),
+         hv237e = as.numeric(unclass(hv237f)),
+         hv237g = as.numeric(unclass(hv237g)),
+         hv237h = as.numeric(unclass(hv237h)),
+         hv237j = as.numeric(unclass(hv237j)),
+         hv237k = as.numeric(unclass(hv237k)),
+         hv237x = as.numeric(unclass(hv237x)),
+         hv201 = as.numeric(unclass(hv201))
+  )
 
 
 # treated water by boiling
