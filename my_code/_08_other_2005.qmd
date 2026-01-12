@@ -1,0 +1,693 @@
+---
+title: "test script"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+execute-dir: project
+---
+
+## 1. 共通データのセット
+
+```{r}
+# ============================================================================
+# ENDES データ処理・統合関数
+# 目的: 複数のテーブルから必要な変数を組み合わせて統合データセットを作成
+# ============================================================================
+
+
+rm(list = ls(all = TRUE))
+
+# 設定
+chap <- "Chap02_PH"
+
+# libraries needed
+library(tidyselect) # used to select variables in FP_EVENTS.R
+library(haven)      # used for Haven labeled DHS variables
+library(labelled)   # used for Haven labeled variable creation
+library(expss)      # for creating tables with Haven labeled data
+library(rJava)      # required for xlsx package
+library(naniar)     # to use replace_with_na function
+library(here)       # to get R project path
+library(fs)         # for file path manipulation
+library(openxlsx) 　# for exporting to excel
+library(survey)       # for survey design
+library(tidyverse)  # most variable creation here uses tidyverse 
+
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("_tool_SaveLabel.R")
+
+# 対象とする年のリスト
+yearlist <- c("2007", "2008", "2009", "2010", "2011",
+              "2012", "2013", "2014", "2015", "2016")
+yearlist <- c("2005")
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# データベース一覧
+
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+```
+
+## 2. 変数定義
+
+```{r}
+# ============================================================================
+# 1. 変数定義セクション
+# ============================================================================
+
+# 各テーブルから抽出する変数を定義
+get_variable_lists <- function() {
+  list(
+    RECH1 = c("hhid", "hv102", "hv105"),
+    RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
+    REC0111 = c("caseid", "hhid", "v161"),
+    RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
+                 "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
+                 "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
+                 "v822", "v850a", "v850b"),
+    RECH23 = c("hhid", "hv209", "hv270", "hv271","hv238", "hv244", "hv241", 
+                     "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
+                     "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
+                     "hv219", "hv220"),
+    child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
+    child_count = c("hhid", "dm_children_under12")
+  )
+}
+
+```
+
+## 3. ヘルパー関数
+
+```{r}
+# ============================================================================
+# 2. ヘルパー関数セクション
+# ============================================================================
+
+# データファイルを読み込む共通関数
+load_endes_data <- function(year, filename, keep_vars) {
+  cat("Loading:", filename, "\n")
+  cat("Variables to keep:", paste(keep_vars, collapse = ", "), "\n")
+  
+  df <- open_endes_file(year, filename) %>%
+    rename_with(~ tolower(.x)) %>%
+    add_missing_columns(keep_vars) %>% 
+    dplyr::select(all_of(keep_vars))
+  
+  return(df)
+}
+
+# 出力ディレクトリを準備する関数
+setup_output_directory <- function(year) {
+  output_dir <- file.path(gdrive_dir, "output", year) %>%
+    normalizePath() %>%
+    trimws()
+  
+  if (!dir_exists(output_dir)) {
+    dir_create(output_dir)
+  }
+  
+  return(output_dir)
+}
+
+# # REC0111のHHIDを年度に応じて生成する関数
+# *******この関数はmyTools.rに移管しました
+# process_endes_with_hhid <- function(year, filename) {
+#   df <- open_endes_file(year, filename) %>%
+#     rename_with(~ tolower(.x))
+#   
+#   # 年度に応じたHHID生成
+#   if (year <= 2011) {
+#     df <- df %>% 
+#       mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
+#   } else {
+#     df <- df %>% 
+#       mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
+#   }
+#   
+#   return(df)
+# }
+
+
+```
+## 4. データ処理関数
+
+```{r}
+# ============================================================================
+# 3. データ処理関数セクション
+# ============================================================================
+# 家族の子供の総数を計算
+library(dplyr)
+library(tidyr)
+library(vctrs)   # 明示的に呼んでおくと安心
+
+calculate_child_count_fixed2 <- function(HRdata) {
+  cat("計算中: 家族の子供の総数（DHS ワイド形式）\n")
+  
+  age_cols       <- grep("^hv105\\$", names(HRdata), value = TRUE)
+  residence_cols <- grep("^hv102\\$", names(HRdata), value = TRUE)
+  
+  cat("年齢変数:", length(age_cols), "個,  居住変数:", length(residence_cols), "個\n")
+  
+  # 1. labelled を「生の numeric」に剥がす
+  suppressWarnings({
+    HR_clean <- HRdata %>%
+      mutate(
+        hv009 = as.numeric(vec_data(hv009)),     # 世帯人数も numeric に
+        across(all_of(c(age_cols, residence_cols)),
+               ~ as.numeric(vec_data(.)))        # ★ labelled → numeric（属性削除）
+      )
+  })
+  
+  # 変換の確認（任意）
+  cat("hv102$01 変換後の分布:\n")
+  print(table(HR_clean$`hv102$01`, useNA = "always"))
+  cat("hv105$01 変換後の分布（先頭20）:\n")
+  print(table(HR_clean$`hv105$01`, useNA = "always")[1:20])
+  
+  # 2. ロングにしてから、行番号でフィルタ → 再ワイド
+  df_long <- HR_clean %>%
+    select(hhid, caseid, hv009, all_of(c(age_cols, residence_cols))) %>%
+    pivot_longer(
+      cols      = -c(hhid, caseid, hv009),
+      names_to  = c("variable", "line_number"),
+      names_sep = "\\$",
+      values_to = "value"
+    ) %>%
+    mutate(line_number = as.numeric(line_number)) %>%
+    filter(line_number <= hv009) %>%
+    pivot_wider(
+      names_from  = variable,
+      values_from = value
+    )
+  
+  cat("hv105 非NA:", sum(!is.na(df_long$hv105)),
+      " 12歳以下:", sum(df_long$hv105 <= 12, na.rm = TRUE), "\n")
+  cat("hv102==1 の人数:", sum(df_long$hv102 == 1, na.rm = TRUE), "\n")
+  
+  # 3. 12歳以下かつ de jure(=hv102==1) をカウント
+  child_count_core <- df_long %>%
+    filter(
+      !is.na(hv105),
+      !is.na(hv102),
+      hv105 <= 12,
+      hv102 == 1               # 0=No, 1=Yes（元のラベル定義どおり）
+    ) %>%
+    group_by(hhid, caseid) %>%
+    summarise(dm_children_under12 = n(), .groups = "drop")
+  
+  # 4. すべての世帯に結合し、存在しない世帯は 0
+  all_households <- HRdata %>%
+    select(hhid, caseid)
+  
+  child_count <- all_households %>%
+    left_join(child_count_core, by = c("hhid", "caseid")) %>%
+    mutate(dm_children_under12 = tidyr::replace_na(dm_children_under12, 0L))
+  
+  cat("子供の数の分布:\n")
+  print(table(child_count$dm_children_under12))
+  cat("合計世帯数:", nrow(child_count), "\n")
+  cat("子供がいる世帯数:", sum(child_count$dm_children_under12 > 0), "\n")
+  
+  return(child_count)
+}
+
+
+
+# 家庭での燃料使用状況を処理
+process_cooking_fuel <- function(IRdata) {
+  cat("処理中: 家庭での燃料使用状況\n")
+  
+  cooking_fuel <- IRdata %>%
+    mutate(
+      dm_cooking_fuel = v161,
+      dm_cooking_fuel_traditional = ifelse(dm_cooking_fuel < 7, 0, 1),
+      dm_cooking_fuel_traditional = ifelse(is.na(dm_cooking_fuel_traditional), 0, dm_cooking_fuel_traditional)
+    ) %>%
+    dplyr::select(caseid, hhid, dm_cooking_fuel, dm_cooking_fuel_traditional)
+  
+  cat("調理燃料の分布:\n")
+  print(table(cooking_fuel$dm_cooking_fuel))
+  print(table(cooking_fuel$dm_cooking_fuel_traditional))
+  
+  return(cooking_fuel)
+}
+
+```
+
+## 5. データ統合関数
+
+```{r}
+# ============================================================================
+# 4. データ統合関数セクション
+# ============================================================================
+
+# データセットを安全に結合
+safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
+  cat("結合中:", join_name, "\n")
+  
+  # 重複チェック
+  duplicate_check(base_data, by_vars, "base_data")
+  duplicate_check(join_data, by_vars, join_name)
+  
+  # 結合実行
+  result <- base_data %>%
+    left_join_safe(join_data, by = by_vars)
+  
+  cat(sprintf("%sを結合しました\n", join_name))
+  duplicate_check(result, by_vars, "結合後データ")
+  
+  return(result)
+}
+
+
+# ***************************************************************
+# HRデータとIRデータをhhid_joinでマージする関数
+# @title merge_HR_IR
+# @param HRdata HRデータフレーム
+# @param IRdata IRデータフレーム
+# @return マージされたデータフレーム
+# ***************************************************************
+library(dplyr)
+library(stringr)
+
+merge_HR_IR <- function(HRdata, IRdata) {
+  
+  # ステップ1: IRからhhid_joinを作成（オリジナルcaseidも保持）
+  IRdata_with_hhid <- IRdata %>%
+    mutate(
+      hhid_join = str_trim(str_replace_all(caseid, "\\s+\\d+$", "")),
+      hhid_join = str_trim(str_replace_all(hhid_join, "\\s+", " "))
+    )
+  
+  cat("ステップ1完了")
+  # ステップ2: HRでhhid_joinを作成（オリジナルは保持）
+  HRdata_with_join <- HRdata %>%
+    mutate(
+      hhid_join = str_trim(str_replace_all(hhid, "\\s+", " "))
+    )
+  
+  cat("ステップ2完了")
+  # ステップ4: hhid_joinでマッチング
+  matched_data <- inner_join(
+    IRdata_with_hhid,
+    HRdata_with_join,
+    by = "hhid_join",
+    suffix = c("", ".y")   # df2 側に .y を付ける
+  ) %>%
+    # 不要な重複列を削除
+    select(-ends_with(".y"))
+
+  
+  # ステップ5: マッチ結果
+  cat("\n=== マッチング結果 ===\n")
+  cat("マッチ成功（行数）:", nrow(matched_data), "\n")
+  cat("マッチ成功（ユニークhhid_join数）:", n_distinct(matched_data$hhid_join), "\n")
+  
+  # ステップ6: オリジナルIDが保持されていることを確認
+  cat("\nIRのオリジナルcaseidが存在:", all(!is.na(matched_data$caseid)), "\n")
+  cat("HRのオリジナルhhidが存在:", all(!is.na(matched_data$hhid)), "\n")
+  
+  # # ステップ7: マッチしなかったケースの確認
+  # ir_only <- anti_join(IRdata_with_hhid, HRdata_with_join, by = "hhid_join")
+  # hr_only <- anti_join(HRdata_with_join, IRdata_with_hhid, by = "hhid_join")
+  # 
+  # cat("\n=== マッチ失敗ケース ===\n")
+  # cat("IRのみ（マッチ失敗）:", nrow(ir_only), "\n")
+  # cat("IRのみ（ユニークhhid_join数）:", n_distinct(ir_only$hhid_join), "\n")
+  # cat("HRのみ（マッチ失敗）:", nrow(hr_only), "\n")
+  # cat("HRのみ（ユニークhhid_join数）:", n_distinct(hr_only$hhid_join), "\n")
+  
+  # ステップ8: 世帯内の複数女性の確認
+  # cat("\n=== 世帯内の複数女性分布 ===\n")
+  # matched_data %>%
+  #   group_by(hhid_join) %>%
+  #   summarise(n_women = n(), .groups = "drop") %>%
+  #   group_by(n_women) %>%
+  #   summarise(n_households = n(), .groups = "drop") %>%
+  #   arrange(n_women) %>%
+  #   print()
+  
+  return(matched_data)
+}
+# -----------関数ここまで------------------------------------------------
+
+```
+
+## 6. 変数作成関数
+
+```{r}
+# ============================================================================
+# 5. 変数作成関数セクション（修正版）
+# ============================================================================
+
+# 人口統計学的変数を作成（修正版）
+create_demographic_variables <- function(data) {
+  data %>%
+    # rename(
+    #   v001 = hv001,  # クラスターID
+    #   v002 = hv002,  # 世帯ID
+    #   v022 = hv022   # 層ID
+    # ) %>%
+    mutate(
+      # 地域タイプ（logical → numeric変換）
+      dm_rural = as.numeric(ifelse(hv026 == 3, 1, 0)),
+      dm_town = as.numeric(ifelse(hv026 == 2, 1, 0)),
+      dm_city = as.numeric(ifelse(hv026 == 1, 1, 0)),
+      dm_capital = as.numeric(ifelse(hv026 == 0, 1, 0)),
+      
+      # 資産五分位（logical → numeric変換）
+      dm_poorest = as.numeric(ifelse(hv270 == 1, 1, 0)),
+      dm_poorer = as.numeric(ifelse(hv270 == 2, 1, 0)),
+      dm_middle = as.numeric(ifelse(hv270 == 3, 1, 0)),
+      dm_richer = as.numeric(ifelse(hv270 == 4, 1, 0)),
+      dm_richest = as.numeric(ifelse(hv270 == 5, 1, 0)),
+      dm_weath_index = hv271/100000
+    )
+}
+
+# 住居・設備関連変数を作成（修正版）
+create_housing_variables <- function(data) {
+  data %>%
+    mutate(
+      # トイレ・調理場所（logical → numeric変換）
+      dm_shared_toilet = as.numeric(ifelse(hv238 == 95, 1, 0)),
+      dm_cooking_house = as.numeric(ifelse(hv241 == 1, 1, 0)),
+      dm_cooking_outdoor = as.numeric(ifelse(hv241 == 3, 1, 0)),
+      dm_cooking_separate = as.numeric(ifelse(hv241 == 2, 1, 0)),
+      
+      # 農地・家畜（logical → numeric変換）
+      dm_ag_land_ha = ifelse(hv244 == 0, 0, hv245),
+      dm_cattle_own = as.numeric(ifelse(hv246a > 0 & hv246a < 98, 1, 0)),
+      dm_goat_own = as.numeric(ifelse(hv246d > 0 & hv246d < 98, 1, 0)),
+      dm_sheep_own = as.numeric(ifelse(hv246e > 0 & hv246e < 98, 1, 0)),
+      dm_poultry_own = as.numeric(ifelse(hv246g > 0 & hv246g < 98, 1, 0))
+    )
+}
+
+# 世帯主関連変数を作成（修正版）
+create_household_head_variables <- function(data, var_refrigerator = "hv209") {
+  data %>%
+    mutate(
+      dm_refrigerator = as.numeric(ifelse(get(var_refrigerator) == 1, 1, 0)),
+      dm_female_headed = as.numeric(ifelse(hv219 == 2, 1, 0)),
+      dm_age_of_HH_head = as.numeric(case_when(
+        hv220 < 20 ~ 1,
+        hv220 >= 20 & hv220 < 30 ~ 2,
+        hv220 >= 30 & hv220 < 40 ~ 3,
+        hv220 >= 40 & hv220 < 50 ~ 4,
+        hv220 >= 50 & hv220 < 60 ~ 5,
+        hv220 >= 60 & hv220 < 70 ~ 6,
+        hv220 >= 70 & hv220 < 80 ~ 7,
+        hv220 >= 80 ~ 8,
+        TRUE ~ NA_real_
+      ))
+    )
+}
+
+
+```
+
+## 7. ラベル作成関数
+
+```{r}
+# ============================================================================
+# 6. ラベル設定関数セクション
+# ============================================================================
+
+# 変数ラベルを設定
+set_all_variable_labels <- function(data) {
+  data %>%
+    set_variable_labels(
+      v001 = "Cluster number",
+      v002 = "Household number",
+      dm_children_under12 = "Number of children under 12 years old",
+      dm_cooking_fuel = "type of cooking fuel",
+      dm_cooking_fuel_traditional = "using traditional cooking fuel",
+      dm_rural = "living in rural area",
+      dm_town = "living in small town",
+      dm_city = "living in medium city",
+      dm_capital = "living in capital city",
+      dm_poorest = "poorest wealth quintile",
+      dm_poorer = "poorer wealth quintile",
+      dm_middle = "middle wealth quintile",
+      dm_richer = "richer wealth quintile",
+      dm_richest = "richest wealth quintile",
+      dm_weath_index = "wealth index (normalized score)",
+      dm_shared_toilet = "shared toilet(10 or more HH)",
+      dm_ag_land_ha = "agricultural land (hectare)",
+      dm_cooking_house = "cooking inside house",
+      dm_cooking_outdoor = "cooking outdoor",
+      dm_cooking_separate = "cooking in separate building",
+      dm_cattle_own = "owns cattle",
+      dm_goat_own = "owns goats",
+      dm_sheep_own = "owns sheep",
+      dm_poultry_own = "owns poultry",
+      dm_refrigerator = "owns refrigerator",
+      dm_female_headed = "female headed household",
+      dm_age_of_HH_head = "Age of head of household",
+      year = "Survey year",
+      v005 = "Sample weight",
+      v022 = "Stratum"
+    )
+}
+
+# 値ラベルを設定
+set_all_value_labels <- function(data) {
+  data %>%
+    set_value_labels(
+      dm_cooking_fuel = c(
+        "electricity" = 1, "lpg" = 2, "natural gas" = 3, "biogas" = 4, 
+        "kerosene" = 5, "coal, lignite" = 6, "charcoal" = 7, "wood" = 8, 
+        "straw / shrubs / grass" = 9, "agricultural crop" = 10, 
+        "animal dung" = 11, "no food cooked in hh" = 95, "other" = 96, 
+        "not dejure resident" = 97
+      ),
+      dm_cooking_fuel_traditional = c("Yes" = 1, "No" = 0),
+      dm_rural = c("Yes" = 1, "No" = 0),
+      dm_town = c("Yes" = 1, "No" = 0),
+      dm_city = c("Yes" = 1, "No" = 0),
+      dm_capital = c("Yes" = 1, "No" = 0),
+      dm_poorest = c("Yes" = 1, "No" = 0),
+      dm_poorer = c("Yes" = 1, "No" = 0),
+      dm_middle = c("Yes" = 1, "No" = 0),
+      dm_richer = c("Yes" = 1, "No" = 0),
+      dm_richest = c("Yes" = 1, "No" = 0),
+      dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
+      dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
+      dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
+      dm_cooking_separate = c("Yes (cooking in separate building)" = 1, "No (cooking inside house or outdoor)" = 0),
+      dm_cattle_own = c("Yes (owns cattle)" = 1, "No (does not own cattle)" = 0),
+      dm_goat_own = c("Yes (owns goats)" = 1, "No (does not own goats)" = 0),
+      dm_sheep_own = c("Yes (owns sheep)" = 1, "No (does not own sheep)" = 0),
+      dm_poultry_own = c("Yes (owns poultry)" = 1, "No (does not own poultry)" = 0),
+      dm_refrigerator = c("Yes" = 1, "No" = 0),
+      dm_female_headed = c("Yes" = 1, "No" = 0),
+      dm_age_of_HH_head = c("10s" = 1, "20s" = 2, "30s" = 3, "40s" = 4,
+                            "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
+    )
+}
+
+
+```
+
+## 8. メインループ
+
+```{r}
+# ============================================================================
+# 7. メイン処理関数
+# ============================================================================
+library(dplyr)
+library(stringr)
+
+goAnalysis <- function(year) {
+  cat("============================================================================\n")
+  cat("ENDES データ統合処理開始:", year, "\n")
+  cat("============================================================================\n\n")
+  
+  # 変数リストを取得
+  var_lists <- get_variable_lists()
+  
+  # 出力ディレクトリを準備
+  output_dir <- setup_output_directory(year)
+  
+  # ============================================================================
+  # データ読み込み
+  # ============================================================================
+  cat("## 1. データファイル読み込み\n")
+  
+  HRdata <- read_spss("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/HR/PEHR51FL.SAV") %>%
+    rename_with(~ tolower(.x))
+  IRdata <- read_spss("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/IR/PEIR51FL.SAV") %>%
+    rename_with(~ tolower(.x))
+
+  cat("HRdata レコード数:", nrow(HRdata), "\n")
+  cat("IRdata レコード数:", nrow(IRdata), "\n")
+
+  # ============================================================================
+  # データ統合
+  # ============================================================================
+  cat("\n## 3. データセット統合\n")
+  
+  # 基本データから開始(ラベル保存)
+  labels_IR <- save_labels(IRdata, columns = c("caseid"))
+  labels_HR <- save_labels(HRdata, columns = c("hhid"))
+  # 方法 1: IRdataの結合用ラベル削除
+  IRdata_safe <- IRdata %>%
+  dplyr::mutate(
+    dplyr::across(c(caseid), ~{
+      attr(., "label")  <- NULL
+      attr(., "labels") <- NULL
+      class(.) <- setdiff(class(.), c("labelled", "haven_labelled"))
+      .
+    })
+  )
+  HRdata_safe <- HRdata %>%
+  dplyr::mutate(
+    dplyr::across(c(hhid), ~{
+      attr(., "label")  <- NULL
+      attr(., "labels") <- NULL
+      class(.) <- setdiff(class(.), c("labelled", "haven_labelled"))
+      .
+    })
+  )
+
+  IR_HR_data <- merge_HR_IR(HRdata_safe, IRdata_safe)
+  # IRdata <- safe_join_datasets(
+  #   IRdata_safe, cooking_fuel_safe, by=c("hhid", "caseid"), "IRdata-cooking_fuel")
+  # IRdata <- safe_join_datasets(
+  #   IRdata, child_count_safe, by=c("hhid", "caseid"), "IRdata-child_count")
+  # ラベル復元
+  IRdata <- restore_labels(IR_HR_data, labels_IR, columns = c("caseid"))
+  IRdata <- restore_labels(IRdata, labels_HR, columns = c("hhid_HR"))
+  
+    # ============================================================================
+  # データ処理
+  # ============================================================================
+  cat("## 2. データ処理\n")
+  
+  # 子供の数を計算
+  child_count <- calculate_child_count_fixed2(IRdata)
+  print("子供の数の分布確認:")
+  print(names(child_count))
+  
+  
+  # 調理燃料を処理
+  cooking_fuel <- process_cooking_fuel(IRdata)
+  print("調理燃料の分布確認:")
+  print(names(cooking_fuel))
+  
+  # データ結合
+  IRdata <- safe_join_datasets(
+    IRdata, cooking_fuel, by=c("hhid", "caseid"), "IRdata-cooking_fuel")
+  IRdata <- safe_join_datasets(
+    IRdata, child_count, by=c("hhid", "caseid"), "IRdata-child_count")
+
+  # 調理燃料マッチング確認
+  cat("調理燃料マッチング確認:\n")
+  print(table(IRdata$dm_cooking_fuel))
+  matched_count <- IRdata %>% summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
+  print(matched_count)
+  
+
+  # 年情報を追加
+  IRdata <- IRdata %>% mutate(year = year)
+
+  cat("統合完了 - レコード数:", nrow(IRdata), "\n\n")
+  
+
+  # ============================================================================
+  # 女性のエンパワーメント指標作成
+  # ============================================================================
+  cat("## 4. 女性エンパワーメント指標作成\n")
+  source(here("Chap15_WE", "WE_EMPW_update.R"), local = environment())
+
+  cat("エンパワーメント指標作成後の確認:\n")
+  print(table(WEdata$dm_cooking_fuel))
+  print(table(WEdata$dm_children_under12))
+  print(table(WEdata$dm_decide_health))
+
+  # ============================================================================
+  # 最終変数作成
+  # ============================================================================
+  cat("\n## 5. 最終変数作成\n")
+  
+  HRdata <- WEdata
+  print(names(WEdata))
+  HRdata <- WEdata %>%
+    create_demographic_variables() %>%
+    create_housing_variables() %>%
+    create_household_head_variables() %>%
+    mutate(year = year)
+
+  # 必要な変数のみ選択
+  vars_to_keep <- HRdata %>%
+    dplyr::select(starts_with("dm")) %>%
+    names() %>%
+    append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
+
+  HRdata <- HRdata %>% dplyr::select(all_of(vars_to_keep))
+  # 
+  # # 最終重複チェック
+  duplicate_check(HRdata, c("caseid"), "HRdata")
+  
+  # ============================================================================
+  # ラベル設定
+  # ============================================================================
+  cat("## 6. ラベル設定\n")
+  # ラベル設定でエラーが発生した時以下の行を実行
+  # diagnose_value_label_issues(HRdata)
+  if (year == "2016") {
+    cat("2016年の変数ラベルを更新します\n")
+    HRdata <- HRdata %>%
+      set_all_variable_labels() %>%
+      set_all_value_labels_safe()
+  } else {
+    HRdata <- HRdata %>%
+      set_all_variable_labels() %>%
+      set_all_value_labels()
+    }
+
+  # ============================================================================
+  # 保存
+  # ============================================================================
+  cat("## 7. ファイル保存\n")
+  saveRDS(HRdata, paste0(output_dir, "/HRdata-dm.rds"))
+  cat("WASHdata保存完了:", year, "\n")
+  
+  cat("============================================================================\n")
+  cat("処理完了:", year, ": データ数", nrow(HRdata), "\n")
+  cat("============================================================================\n")
+  
+  return(HRdata)
+}
+
+```
+
+## 9. 実行
+```{r}
+#** ここから実行
+temp <- list()
+for (yr in yearlist) {
+  temp[[yr]] <-  goAnalysis(yr)
+}
+
+```

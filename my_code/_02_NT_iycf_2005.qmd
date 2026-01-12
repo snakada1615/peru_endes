@@ -266,14 +266,17 @@ go_analysis <- function(year){
     dplyr::select(starts_with("nt")) %>%
     names() %>%
     append(c("year", "caseid", "age", "v001", "v002", "v003", "v005", "v013", "v022", 
-             "v025", "v026", "b4", "v024", "v106", "v190")) # add the variables we need to keep
+             "v025", "v026", "b4", "v024", "v106", "v190")) %>% 
+    # add the variables we need to keep
+    unique()
   
   # print(vars_to_keep)
   
   vars_to_keep_IR<- IRdata %>%
     dplyr::select(starts_with("nt")) %>%
     names() %>%
-    append(c("year", "caseid")) # add the variables we need to keep
+    append(c("year", "caseid")) %>% # add the variables we need to keep
+    unique()
   print(vars_to_keep_IR)
 
   # 順序を保って選択
