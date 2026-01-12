@@ -43,9 +43,10 @@ library(survey)       # for survey design
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("_tool_SaveLabel2.R")  # survey用関数群
 
 # 対象とする年のリスト
-yearlist <- c("2007", "2008", "2009", "2010", "2011",
+yearlist <- c("2005", "2006","2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
 # yearlist <- c("2015")
 # my_year <- yearlist[8]
@@ -72,24 +73,39 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 ```{r}
 
 library(sjmisc)  # add_rowsのために追加
-all_data_merged <- NULL   # 空のリストまたはデータフレームとして初期化
+library(data.table)
 
-# 各年ごとのデータセットを読み込み、結合
+data_list <- list()
+
 for (yr in yearlist) {
   root_folder <- file.path(gdrive_dir, "output", yr) %>%
     normalizePath() %>%
     trimws()
+  
   year_data <- read_rds(file.path(root_folder, "data_merged.rds")) %>%
     filter(!is.na(hhid))
-
-  print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
-  # bind_rowsの代わりにadd_rowsを使用
-  all_data_merged <- add_rows(all_data_merged, year_data) %>%
-    as_tibble()
-  print(paste("Total records so far:", nrow(all_data_merged)))
   
+  if (yr == "2010") {
+    labels_memory <- save_labels_to_memory(year_data)
+  }
+  
+  year_data <- remove_labels(year_data)
+  
+  print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
+  
+  data_list[[yr]] <- year_data
 }
 
+all_data_merged <- rbindlist(data_list, fill = TRUE, ignore.attr = TRUE)
+
+all_data_merged <- as_tibble(all_data_merged)
+
+print(paste("Total records:", nrow(all_data_merged)))
+
+# ラベル属性を復元
+all_data_merged <- restore_labels(all_data_merged, labels_memory)
+
+# 重複チェック
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 
 # 分析用の共通変数の読み込み
@@ -158,14 +174,27 @@ df_food_org <- readRDS(
   rename_with(
     .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
     .cols = starts_with("fg_")    # "fg_" で始まる列だけを対象
-  )  
+  ) %>%
+  mutate(
+    department = as.numeric(department),
+    dm_rural = as.numeric(dm_rural),
+    inc_quintile = as.numeric(inc_quintile)
+    )
 
 # 食品消費データ結合
+labels_memory <- save_labels_to_memory(all_data_merged)
+all_data_merged <- remove_labels(all_data_merged)
+all_data_merged <- all_data_merged %>% 
+  mutate(v024 = as.numeric(v024),
+         dm_rural = as.numeric(dm_rural),
+         v190 = as.numeric(v190)
+         )
 all_data_merged <- all_data_merged %>%
   left_join(
     df_food_org,
     by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
   )
+all_data_merged <- restore_labels(all_data_merged, labels_memory)
 
 all_data_merged <- all_data_merged %>% 
   # stuntingデータの欠損値除去

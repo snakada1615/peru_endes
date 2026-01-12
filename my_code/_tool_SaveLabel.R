@@ -121,3 +121,21 @@ with_labels_and_clean <- function(data) {
   
   return(data)
 }
+
+# # 使用例:
+# # Step 1: バックアップを埋め込む
+# df_backup <- with_labels(df)
+# 
+# # Step 2: ラベル属性を削除して通常の処理をする
+# df_result <- df_backup %>%
+#   mutate(across(everything(), ~{
+#     attr(., "label") <- NULL
+#     class(.) <- setdiff(class(.), "labelled")
+#     .
+#   })) %>%
+#   mutate(新変数 = 既存変数 + 別の変数) %>%
+#   filter(条件)
+# 
+# # Step 3: ラベルを復元
+# df_final <- restore_from_backup(df_result)
+

@@ -1,129 +1,32 @@
+# 最終的なデータ構造の確認
+cat("=== 最終マージ結果の確認 ===\n")
+cat("総行数:", nrow(data_merged), "\n")
+cat("総列数:", ncol(data_merged), "\n\n")
 
-# ***************************************************************
-# HRデータとIRデータをhhid_joinでマージする関数
-# @title merge_HR_IR
-# @param HRdata HRデータフレーム
-# @param IRdata IRデータフレーム
-# @return マージされたデータフレーム
-# ***************************************************************
-library(dplyr)
-library(stringr)
-
-merge_HR_IR <- function(HRdata, IRdata) {
-  
-  # ステップ1: IRからhhid_joinを作成（オリジナルcaseidも保持）
-  IRdata_with_hhid <- IRdata %>%
-    mutate(
-      hhid_join = str_trim(str_replace_all(caseid, "\\s+\\d+$", "")),
-      hhid_join = str_trim(str_replace_all(hhid_join, "\\s+", " "))
-    )
-  
-  # ステップ2: HRでhhid_joinを作成（オリジナルは保持）
-  HRdata_with_join <- HRdata %>%
-    mutate(
-      hhid_join = str_trim(str_replace_all(hhid, "\\s+", " "))
-    ) %>%
-    rename(hhid_HR = hhid)  # オリジナルのhhidを hhid_HR に変更
-  
-  # ステップ4: hhid_joinでマッチング
-  matched_data <- inner_join(
-    IRdata_with_hhid,
-    HRdata_with_join,
-    by = "hhid_join"
-  )
-  
-  # ステップ5: マッチ結果
-  cat("\n=== マッチング結果 ===\n")
-  cat("マッチ成功（行数）:", nrow(matched_data), "\n")
-  cat("マッチ成功（ユニークhhid_join数）:", n_distinct(matched_data$hhid_join), "\n")
-  
-  # ステップ6: オリジナルIDが保持されていることを確認
-  cat("\nIRのオリジナルcaseidが存在:", all(!is.na(matched_data$caseid)), "\n")
-  cat("HRのオリジナルhhidが存在:", all(!is.na(matched_data$hhid_HR)), "\n")
-  
-  # # ステップ7: マッチしなかったケースの確認
-  # ir_only <- anti_join(IRdata_with_hhid, HRdata_with_join, by = "hhid_join")
-  # hr_only <- anti_join(HRdata_with_join, IRdata_with_hhid, by = "hhid_join")
-  # 
-  # cat("\n=== マッチ失敗ケース ===\n")
-  # cat("IRのみ（マッチ失敗）:", nrow(ir_only), "\n")
-  # cat("IRのみ（ユニークhhid_join数）:", n_distinct(ir_only$hhid_join), "\n")
-  # cat("HRのみ（マッチ失敗）:", nrow(hr_only), "\n")
-  # cat("HRのみ（ユニークhhid_join数）:", n_distinct(hr_only$hhid_join), "\n")
-  
-  # ステップ8: 世帯内の複数女性の確認
-  # cat("\n=== 世帯内の複数女性分布 ===\n")
-  # matched_data %>%
-  #   group_by(hhid_join) %>%
-  #   summarise(n_women = n(), .groups = "drop") %>%
-  #   group_by(n_women) %>%
-  #   summarise(n_households = n(), .groups = "drop") %>%
-  #   arrange(n_women) %>%
-  #   print()
-  
-  return(matched_data)
-}
-# -----------関数ここまで------------------------------------------------
-
-# ステップ1: IRからhhid_joinを作成（オリジナルcaseidも保持）
-IRdata_with_hhid <- IRdata %>%
-  mutate(
-    hhid_join = str_trim(str_replace_all(caseid, "\\s+\\d+$", "")),
-    hhid_join = str_trim(str_replace_all(hhid_join, "\\s+", " "))
-  )
-
-# ステップ2: HRでhhid_joinを作成（オリジナルは保持）
-HRdata_with_join <- HRdata %>%
-  mutate(
-    hhid_join = str_trim(str_replace_all(hhid, "\\s+", " "))
-  ) %>%
-  rename(hhid_HR = hhid)  # オリジナルのhhidを hhid_HR に変更
-
-# ステップ3: マッチング前の確認
-cat("=== マッチング前の統計 ===\n")
-cat("IRの総行数:", nrow(IRdata_with_hhid), "\n")
-cat("IRのユニークhhid_join数:", n_distinct(IRdata_with_hhid$hhid_join), "\n")
-cat("HRの総行数:", nrow(HRdata_with_join), "\n")
-cat("HRのユニークhhid_join数:", n_distinct(HRdata_with_join$hhid_join), "\n")
-
-# ステップ4: hhid_joinでマッチング
-matched_data <- inner_join(
-  IRdata_with_hhid,
-  HRdata_with_join,
-  by = "hhid_join"
-)
-
-# ステップ5: マッチ結果
-cat("\n=== マッチング結果 ===\n")
-cat("マッチ成功（行数）:", nrow(matched_data), "\n")
-cat("マッチ成功（ユニークhhid_join数）:", n_distinct(matched_data$hhid_join), "\n")
-
-# ステップ6: オリジナルIDが保持されていることを確認
-cat("\n=== オリジナルIDの保持確認 ===\n")
-matched_data %>%
-  select(caseid, hhid_join, hhid_HR) %>%
-  head(10) %>%
+# キー変数の確認
+cat("キー変数の確認:\n")
+data_merged %>%
+  select(caseid, hhid, year) %>%
+  slice(1:10) %>%
   print()
 
-cat("\nIRのオリジナルcaseidが存在:", all(!is.na(matched_data$caseid)), "\n")
-cat("HRのオリジナルhhidが存在:", all(!is.na(matched_data$hhid_HR)), "\n")
+# WASHデータのマッチング率
+cat("\nWASHデータのマッチング状況:\n")
+wash_vars <- setdiff(names(data_all[["WASHdata-ws"]]), 
+                     c("hhid", "hhid_clean", "hhid_normalized"))
+for (var in wash_vars[1:min(3, length(wash_vars))]) {
+  n_na <- sum(is.na(data_merged[[var]]))
+  match_rate <- (nrow(data_merged) - n_na) / nrow(data_merged) * 100
+  cat(sprintf("  %s: %.1f%% マッチ (%d/%d)\n", 
+              var, match_rate, nrow(data_merged) - n_na, nrow(data_merged)))
+}
 
-# ステップ7: マッチしなかったケースの確認
-ir_only <- anti_join(IRdata_with_hhid, HRdata_with_join, by = "hhid_join")
-hr_only <- anti_join(HRdata_with_join, IRdata_with_hhid, by = "hhid_join")
-
-cat("\n=== マッチ失敗ケース ===\n")
-cat("IRのみ（マッチ失敗）:", nrow(ir_only), "\n")
-cat("IRのみ（ユニークhhid_join数）:", n_distinct(ir_only$hhid_join), "\n")
-cat("HRのみ（マッチ失敗）:", nrow(hr_only), "\n")
-cat("HRのみ（ユニークhhid_join数）:", n_distinct(hr_only$hhid_join), "\n")
-
-# ステップ8: 世帯内の複数女性の確認
-cat("\n=== 世帯内の複数女性分布 ===\n")
-matched_data %>%
-  group_by(hhid_join) %>%
-  summarise(n_women = n(), .groups = "drop") %>%
-  group_by(n_women) %>%
+# hhidごとの構造確認（複数の母親が同じ世帯に属するか）
+cat("\n世帯内の母親数の分布:\n")
+data_merged %>%
+  group_by(hhid) %>%
+  summarise(n_mothers = n()) %>%
+  group_by(n_mothers) %>%
   summarise(n_households = n(), .groups = "drop") %>%
-  arrange(n_women) %>%
+  arrange(n_mothers) %>%
   print()

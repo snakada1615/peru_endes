@@ -95,6 +95,14 @@ goAnalysis <- function(year){
     append(c("hhid")) # add the variables we need to keep
       
   WASHdata <- WASHdata[, vars_to_keep]
+  
+  # # 2005年のみhhidの空白をトリム(元データがおかしいのでマッチしない)
+  # if (year == "2005") {
+  #   WASHdata <- WASHdata %>%
+  #     mutate(
+  #       hhid = str_trim(str_replace_all(hhid, "\\s+", " "))
+  #     )  
+  #   }
 
   # 出力用のルートフォルダを指定
   output_dir <- file.path(gdrive_dir, "output", year) %>%

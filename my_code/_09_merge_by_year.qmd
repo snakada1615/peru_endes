@@ -43,7 +43,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 # 対象とする年のリスト
 yearlist <- c("2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2005")
+yearlist <- c("2005", "2006")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -206,10 +206,63 @@ goAnalysis <- function(year){
   }
     
   print("(11) Merging with WASHdata-ws")
+ if (year == "2005") {
+  # HRdata-dmからhhidキーを抽出
+  hr_hhid_clean <- data_all[["HRdata-dm"]] %>%
+    select(caseid, hhid) %>%
+    mutate(
+      caseid_key = paste(map_chr(str_split(str_squish(caseid), " "), 1),
+                         map_chr(str_split(str_squish(caseid), " "), 2),
+                         sep = " "),
+      hhid_normalized = str_squish(hhid)
+    ) %>%
+    filter(!is.na(hhid)) %>%
+    select(caseid_key, hhid_normalized) %>%
+    distinct()
+  
+  # data_mergedの既存hhidを削除してから、新しいhhidを追加
+  data_merged <- data_merged %>%
+    select(-any_of("hhid")) %>%  # ← 既存のhhidを削除
+    mutate(
+      caseid_key = paste(map_chr(str_split(str_squish(caseid), " "), 1),
+                         map_chr(str_split(str_squish(caseid), " "), 2),
+                         sep = " ")
+    ) %>%
+    left_join(hr_hhid_clean, by = "caseid_key", relationship = "many-to-one") %>%
+    rename(hhid = hhid_normalized) %>%
+    select(-caseid_key)
+  
+  # WASH merge
+  data_all[["WASHdata-ws"]] <- data_all[["WASHdata-ws"]] %>%
+    select(-any_of(c("hhid_clean")))
+  
+  data_merged <- data_merged %>%
+    mutate(hhid_normalized = str_squish(hhid))
+  
+  data_all[["WASHdata-ws"]] <- data_all[["WASHdata-ws"]] %>%
+    mutate(hhid_normalized = str_squish(hhid))
+  
   data_merged <- left_join_safe(data_merged, 
-    data_all[["WASHdata-ws"]], by = c("hhid"))
+    data_all[["WASHdata-ws"]] %>% select(-hhid),
+    by = c("hhid_normalized"))
+  
+  data_merged <- data_merged %>%
+    select(-any_of(c("hhid_clean", "hhid_normalized"))) %>%
+    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+  
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
+  }
+  
+  cat("=== WASH merge completed for year 2005 ===\n")
+  cat("Final rows:", nrow(data_merged), "\n")
+  
+  } else {
+    data_merged <- left_join_safe(data_merged, 
+      data_all[["WASHdata-ws"]], by = c("hhid"))
+    if (nrow(data_merged) == 0) {
+      stop("Merging resulted in zero rows. Please check the join keys and data.")
+    }
   }
 
   print("(12) Merging with PRdata")
