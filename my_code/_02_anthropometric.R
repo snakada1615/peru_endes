@@ -22,7 +22,6 @@ source("myTools.R")  # プロジェクトルートから読み込む
 # 対象とする年のリスト
 yearlist <- c("2007", "2008", "2009", "2010", "2011",
               "2012", "2013", "2014", "2015", "2016") 
-# yearlist <- c("2005", "2006")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"

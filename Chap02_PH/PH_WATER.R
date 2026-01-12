@@ -169,11 +169,14 @@ WASHdata <- WASHdata %>% mutate(ph_wtr_trt_appr = case_when(
   set_variable_labels(ph_wtr_trt_appr = "Appropriately treated water before drinking")
 
 # time to obtain drinking water (round trip)
-WASHdata <- WASHdata %>% mutate(ph_wtr_time = case_when(
-  hv204 %in% c(0, 996) ~ 0,
-  between(hv204, 1, 30) ~ 1,
-  between(hv204, 31,900) ~ 2,
-  hv204>=998 ~ 3)) %>%
+WASHdata <- WASHdata %>% 
+  mutate(
+    hv204_num = unclass(hv204),
+    ph_wtr_time = case_when(
+      hv204_num %in% c(0, 996) ~ 0,
+      between(hv204_num, 1, 30) ~ 1,
+      between(hv204_num, 31,900) ~ 2,
+      hv204_num>=998 ~ 3)) %>%
   set_value_labels(ph_wtr_time = 
                      c("water on premises" = 0,
                        "30 minutes or less" = 1,
