@@ -233,6 +233,8 @@ all_data_merged <- all_data_merged %>%
     dm_hh_head_30plus = ifelse(dm_age_of_hh_head == 1 | dm_age_of_hh_head == 2, 0, 1),
     dm_sani_open_yes = ifelse(ph_sani_open == 1, 1, 0),
     ch_stool_safe_no = ifelse(ch_stool_safe == 0, 1, 0),
+    rc_agri_yes = ifelse(rc_agri == 1, 1, 0),
+    ph_wtr_improve_dummy = ifelse(as.numeric(ph_wtr_improve) == 1, 1, 0)
   ) %>%
   set_variable_labels(
       dm_child_more_than3 = "more than 3 child under 12",
@@ -240,7 +242,9 @@ all_data_merged <- all_data_merged %>%
       ph_wtr_far = "water fetching over 30min",
       dm_hh_head_30plus = "HH head over 29",
       dm_sani_open_yes = "open defication",
-      ch_stool_safe_no = "stool improper handling"
+      ch_stool_safe_no = "stool improper handling",
+      rc_agri_yes = "engaged in agriculture",
+      ph_wtr_improve_dummy = "improved water source"
     )
 
   # ★ ラベル情報を保持しながらfactor型に変換

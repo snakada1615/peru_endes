@@ -85,8 +85,8 @@ drop_cols_init <- c(
 "dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
 )
 
-# enaho_fbdg_で始まる変数を除去リストに追加
-drop_temp <- names(df_org)[grepl("enaho_fbdg_", names(df_org))]
+# enaho_で始まる変数を除去リストに追加
+drop_temp <- names(df_org)[grepl("enaho_", names(df_org))]
 drop_cols_init <- c(drop_cols_init, drop_temp)
 rm(drop_temp)
 

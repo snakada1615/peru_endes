@@ -1,0 +1,536 @@
+---
+title: "lasso_psm_analysis"
+author: "nakada shunichi"
+format:
+  pdf:
+    pdf-engine: lualatex
+    keep-tex: false
+    mainfont: "IPAexMincho"     # 日本語本文用明朝体
+    sansfont: "IPAexGothic"     # 日本語本文のゴシック体（強調や見出しなどに自動切替）
+    monofont: "IPAexGothic"     # コードチャンク等の等幅フォント
+    mainfontoptions: "Scale=MatchLowercase,Ligatures=TeX"
+    sansfontoptions: "Scale=MatchLowercase"
+    monofontoptions: "Scale=MatchLowercase"
+editor: 
+  markdown: 
+    wrap: 72
+---
+
+## 1. データ読み込み
+
+```{r}
+# ================================================================================
+# 0. 初期設定・パッケージ読み込み
+# ================================================================================
+library(here)
+library(haven)
+library(labelled)
+library(glmnet)
+library(tidyverse)
+# library(fastDummies)
+library(nnet)      # 多項ロジスティック回帰
+library(survey)    # 重み付き統計解析
+library(did)       # Staggered DID用（必要に応じて）
+library(sjlabelled)　# ラベル付きデータ処理用
+library(tableone)
+library(fixest)   # 回帰分析の推定結果から係数表（推定値、標準誤差、t値、p値など）を抽出
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+gdrive__dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+
+# 変数ラベル一覧
+endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+
+
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+
+df_org <- readRDS(
+  file.path(gdrive_dir, "output", "all_data_merged.rds")
+)
+
+# ================================================================================
+# 2. 介入前データ抽出
+# ================================================================================
+
+df_pre <- df_org[df_org$treated_status %in% c("never_treated", "not_yet_treated"), ]
+
+# treatment_group定義
+df_pre <- df_pre %>%
+  mutate(
+    treatment_group = case_when(
+      treatment_start == "2009" ~ 1,  # 早期介入
+      treatment_start == "2011" ~ 2,  # 後期介入
+      TRUE ~ 0                        # コントロール
+    ),
+    treatment_group = as.factor(treatment_group)
+  )
+
+cat("介入前データの群別サンプル数:\n")
+print(table(df_pre$treatment_group))
+
+# ================================================================================
+# 3. PSM共変量選択（メディエーター除外版）
+# ================================================================================
+
+# Con変数を明示的に定義（30個）
+con_vars <- c(
+  # Health status (4)
+  "ch_below_2p5", "nt_wm_ht", "nt_wm_any_anem", "nt_wm_ovobese",
+  
+  # Health service (4)
+  "rh_anc_pvskill", "rh_anc_urine", "rh_prob_minone", "nt_wm_micro_dwm",
+  
+  # Water & hygiene (3)
+  "ph_sani_improve_dummy", "ph_wtr_improve_dummy", "ph_wtr_far",
+  
+  # Social environment (4)
+  "dm_hh_head_30plus", "rc_edu_acceptable", "dm_child_more_than3", "ms_afm_15",
+  
+  # Assets (11)
+  "dm_weath_index", "ph_electric", "ph_mobile", "ph_radio", "ph_moto",
+  "rc_agri_yes", "dm_cattle_own", "dm_sheeep_own", "dm_ag_land_ha",
+  "dm_cooking_fuel_traditional"
+)
+
+# アウトカム変数
+outcome_vars <- c("nt_ch_stunt", "nt_ch_haz")
+
+# メディエーター変数（PSMから除外）
+mediator_vars <- c(
+  "re_anc_4vs", "rh_anc_4mo", "nt_bf_start_1hr",
+  "dm_sani_open_yes", "ch_stool_safe_no", "ph_wtr_trt_none",
+  "nt_mdd", "nt_grains", "nt_root", "nt_nuts", "nt_meatfish",
+  "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", "nt_frtveg"
+)
+
+# PSM用共変量（メディエーターを除外）
+covariate_names <- con_vars
+
+
+
+```
+
+
+## 2. 多項GLM-PSM（介入前データで学習）
+
+```{r}
+
+
+# ================================================================================
+# 4. データ整合性チェック
+# ================================================================================
+
+# メディエーター混入チェック
+stopifnot(!any(mediator_vars %in% covariate_names))
+cat("✓ メディエーター混入なし確認\n")
+
+# データ内に存在する変数のみ抽出
+existing_covariates <- intersect(covariate_names, names(df_pre))
+missing_covariates <- setdiff(covariate_names, names(df_pre))
+
+if(length(missing_covariates) > 0) {
+  cat("警告: 以下の変数がデータに存在しません:\n")
+  print(missing_covariates)
+}
+
+cat("PSM共変量: ", length(existing_covariates), "個（期待: 30個）\n")
+
+# 最終的なPSM共変量
+covariate_names <- existing_covariates
+
+# ================================================================================
+# 5. 欠損値処理
+# ================================================================================
+
+# NA値の多い列を除去（10%以上NA）
+keep_cols <- covariate_names[
+  sapply(df_pre[, covariate_names], function(x) sum(is.na(x)) <= nrow(df_pre) * 0.1)
+]
+
+if(length(keep_cols) < length(covariate_names)) {
+  cat("NA値の多い列を", length(covariate_names) - length(keep_cols), "個削除:\n")
+  print(setdiff(covariate_names, keep_cols))
+}
+
+covariate_names <- keep_cols
+
+# 共変量のNAがある行を除去
+required_cols <- c(covariate_names, "treatment_group", "v001", "v005", "v022")
+existing_required <- intersect(required_cols, names(df_pre))
+complete_idx <- complete.cases(df_pre[, existing_required])
+
+initial_rows <- nrow(df_pre)
+df_pre <- df_pre[complete_idx, ]
+cat("NA値を含む行を", initial_rows - nrow(df_pre), "行削除\n")
+cat("最終的な介入前データサイズ:", nrow(df_pre), "行\n\n")
+
+# ================================================================================
+# 6. 多項ロジスティック回帰でPSM実装
+# ================================================================================
+
+if(length(covariate_names) > 0) {
+  
+  # PSM用データ準備
+  psm_data <- df_pre[, c("treatment_group", covariate_names)]
+  psm_data <- psm_data[complete.cases(psm_data), ]
+  
+  cat("PSM実行サンプル数:", nrow(psm_data), "\n")
+  cat("PSM共変量数:", length(covariate_names), "\n")
+  
+  # 多項ロジスティック回帰の式
+  psm_formula <- as.formula(
+    paste("treatment_group ~", paste(covariate_names, collapse = " + "))
+  )
+  
+  cat("\n多項ロジスティック回帰で傾向スコア推定中...\n")
+  psm_model <- multinom(psm_formula, data = psm_data, trace = FALSE)
+  
+  # モデル要約
+  cat("\n=== PSMモデル要約 ===\n")
+  print(summary(psm_model))
+  
+  # 傾向スコア（各群の確率）を計算
+  pscore_matrix <- predict(psm_model, type = "probs")
+  
+  # デバッグ情報
+  cat("\npscore_matrix の次元:", dim(pscore_matrix), "\n")
+  cat("treatment_group の水準:", levels(psm_data$treatment_group), "\n")
+  cat("treatment_group の分布:\n")
+  print(table(psm_data$treatment_group))
+  
+  # データフレーム形式に変換
+  if(is.vector(pscore_matrix)) {
+    # 2群の場合
+    pscore_df <- data.frame(
+      prob_0 = 1 - pscore_matrix,
+      prob_1 = pscore_matrix
+    )
+    colnames(pscore_df) <- paste0("prob_", levels(psm_data$treatment_group))
+  } else {
+    # 3群以上の場合
+    pscore_df <- as.data.frame(pscore_matrix)
+    colnames(pscore_df) <- paste0("prob_", colnames(pscore_matrix))
+  }
+  
+  cat("\n傾向スコア列名:\n")
+  print(colnames(pscore_df))
+  cat("\n傾向スコア要約統計:\n")
+  print(summary(pscore_df))
+  
+  # ================================================================================
+  # 7. IPTW重み計算
+  # ================================================================================
+  
+  psm_data$iptw_weight <- numeric(nrow(psm_data))
+  
+  for(i in 1:nrow(psm_data)) {
+    group_level <- as.character(psm_data$treatment_group[i])
+    prob_col <- paste0("prob_", group_level)
+    
+    if(prob_col %in% colnames(pscore_df)) {
+      prob_value <- pscore_df[i, prob_col]
+      
+      # 極小確率値の処理（ゼロ除算防止）
+      if(prob_value > 0.001) {
+        psm_data$iptw_weight[i] <- 1 / prob_value
+      } else {
+        psm_data$iptw_weight[i] <- 1 / 0.001  # 最大重み1000
+        if(i <= 5) cat("警告: 極小確率値を調整（行", i, "、prob=", prob_value, "）\n")
+      }
+    } else {
+      cat("エラー: 群", group_level, "の確率列", prob_col, "が見つかりません\n")
+      psm_data$iptw_weight[i] <- 1
+    }
+  }
+  
+  cat("\n=== PSM完了 ===\n")
+  cat("重みの要約統計:\n")
+  print(summary(psm_data$iptw_weight))
+  
+  # 極端な重みの確認
+  weight_quantiles <- quantile(psm_data$iptw_weight, c(0.01, 0.95, 0.99), na.rm = TRUE)
+  cat("\n重みの分位点:\n")
+  print(weight_quantiles)
+  
+  extreme_weights_99 <- psm_data$iptw_weight > weight_quantiles["99%"]
+  extreme_weights_01 <- psm_data$iptw_weight < weight_quantiles["1%"]
+  
+  if(sum(extreme_weights_99, na.rm = TRUE) > 0) {
+    cat("警告: 極端に大きな重み（99th超）が", 
+        sum(extreme_weights_99, na.rm = TRUE), "個あります\n")
+  }
+  
+  if(sum(extreme_weights_01, na.rm = TRUE) > 0) {
+    cat("警告: 極端に小さな重み（1st未満）が", 
+        sum(extreme_weights_01, na.rm = TRUE), "個あります\n")
+  }
+  
+  # ================================================================================
+  # 8. 元のdf_preにIPTW重みをマージ
+  # ================================================================================
+  
+  df_pre_temp <- df_pre[complete.cases(df_pre[, c(covariate_names, "treatment_group")]), ]
+  df_pre_temp$iptw_weight <- psm_data$iptw_weight
+  
+  df_pre$iptw_weight <- NA
+  df_pre[rownames(df_pre_temp), "iptw_weight"] <- df_pre_temp$iptw_weight
+  
+  cat("\nIPTW重みを元データにマージ完了\n")
+  cat("重み付き観測数:", sum(!is.na(df_pre$iptw_weight)), "/", nrow(df_pre), "\n")
+  
+  # ================================================================================
+  # 9. サンプリングウェイトとの結合
+  # ================================================================================
+  
+  df_pre$sampling_weight_norm <- df_pre$v005 / 1000000
+  df_pre$w_combined <- df_pre$iptw_weight * df_pre$sampling_weight_norm
+  
+  # トリミング（1st - 99th percentile）
+  weight_quantiles_combined <- quantile(df_pre$w_combined, c(0.01, 0.99), na.rm = TRUE)
+  df_pre$w_combined_trimmed <- pmax(
+    pmin(df_pre$w_combined, weight_quantiles_combined[2]), 
+    weight_quantiles_combined[1]
+  )
+  
+  cat("\n=== 最終重みの要約統計 ===\n")
+  cat("Combined weight (IPTW × sampling):\n")
+  print(summary(df_pre$w_combined))
+  cat("\nTrimmed weight (1st-99th percentile):\n")
+  print(summary(df_pre$w_combined_trimmed))
+  
+  # ================================================================================
+  # 10. バランスチェック関数定義
+  # ================================================================================
+  
+  calculate_smd_robust <- function(data, group_var, vars) {
+    results <- data.frame(
+      variable = character(0),
+      smd = numeric(0),
+      mean_control = numeric(0),
+      mean_treated = numeric(0),
+      var_type = character(0),
+      stringsAsFactors = FALSE
+    )
+    
+    for(var in vars) {
+      if(!var %in% names(data)) next
+      
+      tryCatch({
+        control_data <- data[data[[group_var]] == 0, var]
+        treated_data <- data[data[[group_var]] == 1, var]
+        
+        if(length(control_data) == 0 || length(treated_data) == 0) next
+        
+        var_class <- class(data[[var]])[1]
+        
+        # 数値変数
+        if(var_class %in% c("numeric", "integer")) {
+          mean_c <- mean(control_data, na.rm = TRUE)
+          mean_t <- mean(treated_data, na.rm = TRUE)
+          var_c <- var(control_data, na.rm = TRUE)
+          var_t <- var(treated_data, na.rm = TRUE)
+          
+          if(is.na(mean_c) || is.na(mean_t) || is.na(var_c) || is.na(var_t)) next
+          
+          if(var_c + var_t > 0) {
+            smd <- abs((mean_t - mean_c) / sqrt((var_t + var_c) / 2))
+          } else {
+            smd <- abs(mean_t - mean_c)
+          }
+          
+          results <- rbind(results, data.frame(
+            variable = var, smd = smd,
+            mean_control = mean_c, mean_treated = mean_t,
+            var_type = "numeric", stringsAsFactors = FALSE
+          ))
+          
+        # バイナリ変数
+        } else if(var_class == "factor" && nlevels(data[[var]]) == 2) {
+          levels_var <- levels(data[[var]])
+          positive_level <- levels_var[2]
+          
+          prop_c <- mean(control_data == positive_level, na.rm = TRUE)
+          prop_t <- mean(treated_data == positive_level, na.rm = TRUE)
+          
+          pooled_var <- prop_c * (1 - prop_c) + prop_t * (1 - prop_t)
+          if(pooled_var > 0) {
+            smd <- abs((prop_t - prop_c) / sqrt(pooled_var / 2))
+          } else {
+            smd <- abs(prop_t - prop_c)
+          }
+          
+          results <- rbind(results, data.frame(
+            variable = var, smd = smd,
+            mean_control = prop_c, mean_treated = prop_t,
+            var_type = "binary", stringsAsFactors = FALSE
+          ))
+          
+        # カテゴリ変数
+        } else if(var_class == "factor" && nlevels(data[[var]]) > 2) {
+          levels_var <- levels(data[[var]])
+          smd_max <- 0
+          
+          for(level in levels_var) {
+            prop_c <- mean(control_data == level, na.rm = TRUE)
+            prop_t <- mean(treated_data == level, na.rm = TRUE)
+            
+            pooled_var <- prop_c * (1 - prop_c) + prop_t * (1 - prop_t)
+            if(pooled_var > 0) {
+              smd_level <- abs((prop_t - prop_c) / sqrt(pooled_var / 2))
+            } else {
+              smd_level <- abs(prop_t - prop_c)
+            }
+            
+            smd_max <- max(smd_max, smd_level)
+          }
+          
+          mean_c <- mean(as.numeric(as.factor(control_data)), na.rm = TRUE)
+          mean_t <- mean(as.numeric(as.factor(treated_data)), na.rm = TRUE)
+          
+          results <- rbind(results, data.frame(
+            variable = var, smd = smd_max,
+            mean_control = mean_c, mean_treated = mean_t,
+            var_type = "categorical", stringsAsFactors = FALSE
+          ))
+        }
+        
+      }, error = function(e) {})
+    }
+    
+    return(results)
+  }
+  
+  # ================================================================================
+  # 11. バランスチェック実行
+  # ================================================================================
+  
+  df_pre_balance_check <- df_pre[!is.na(df_pre$iptw_weight), ]
+  
+  cat("\n=== バランスチェック開始 ===\n")
+  cat("対象サンプル数:", nrow(df_pre_balance_check), "\n")
+  cat("共変量数:", length(covariate_names), "\n")
+  
+  balance_before <- calculate_smd_robust(
+    df_pre_balance_check, 
+    "treatment_group", 
+    covariate_names
+  )
+  
+  cat("\n=== バランスチェック（Before PSM） ===\n")
+  
+  if(nrow(balance_before) > 0) {
+    cat("計算成功した変数数:", nrow(balance_before), "/", length(covariate_names), "\n")
+    cat("Mean SMD:", round(mean(balance_before$smd, na.rm=TRUE), 4), "\n")
+    cat("Median SMD:", round(median(balance_before$smd, na.rm=TRUE), 4), "\n")
+    cat("Max SMD:", round(max(balance_before$smd, na.rm=TRUE), 4), "\n")
+    cat("SMD < 0.1:", sum(balance_before$smd < 0.1, na.rm=TRUE), "/", nrow(balance_before), "\n")
+    cat("SMD < 0.05:", sum(balance_before$smd < 0.05, na.rm=TRUE), "/", nrow(balance_before), "\n")
+    
+    cat("\n変数型別の内訳:\n")
+    print(table(balance_before$var_type))
+    
+    cat("\nTop 10 worst balanced variables:\n")
+    balance_sorted <- balance_before[order(-balance_before$smd), ]
+    print(head(balance_sorted[, c("variable", "smd", "var_type")], 10))
+  } else {
+    cat("エラー: SMD計算が成功した変数が0個です\n")
+  }
+  
+  # ================================================================================
+  # 12. 結果の保存
+  # ================================================================================
+  
+  saveRDS(psm_model, file.path(gdrive_dir, "output", "psm_model.rds"))
+  saveRDS(df_pre, file.path(gdrive_dir, "output", "df_pre_weighted.rds"))
+  
+  if(nrow(balance_before) > 0) {
+    saveRDS(balance_before, file.path(gdrive_dir, "output", "balance_before.rds"))
+  }
+  
+  cat("\n=== PSM処理完了 ===\n")
+  cat("- PSMモデル保存: psm_model.rds\n")
+  cat("- 重み付きデータ保存: df_pre_weighted.rds\n")
+  if(nrow(balance_before) > 0) {
+    cat("- バランス結果保存: balance_before.rds\n")
+  }
+  
+  # ================================================================================
+  # 13. 可視化（オプション）
+  # ================================================================================
+  
+  if(nrow(balance_before) > 0) {
+    library(ggplot2)
+    
+    # SMDヒストグラム
+    p_smd <- ggplot(balance_before, aes(x = smd)) +
+      geom_histogram(bins = 20, alpha = 0.7, fill = "skyblue", color = "black") +
+      geom_vline(xintercept = 0.1, color = "red", linetype = "dashed") +
+      geom_vline(xintercept = 0.05, color = "green", linetype = "dotted") +
+      labs(
+        title = "Distribution of SMD (Before PSM)",
+        x = "SMD", y = "Count",
+        caption = "Red: 0.1 (acceptable) | Green: 0.05 (excellent)"
+      ) +
+      theme_minimal()
+    
+    print(p_smd)
+    
+    cat("\n=== 可視化完了 ===\n")
+  }
+  
+  # ================================================================================
+  # 14. サマリー出力
+  # ================================================================================
+  
+  cat("\n")
+  cat(paste(rep("=", 70), collapse = ""), "\n")
+  cat("PSM分析サマリー\n")
+  cat(paste(rep("=", 70), collapse = ""), "\n")
+  cat("サンプルサイズ:\n")
+  cat("  - 介入前データ:", nrow(df_pre), "行\n")
+  cat("  - PSM実行:", nrow(psm_data), "行\n")
+  cat("  - Control:", sum(df_pre$treatment_group == 0, na.rm=TRUE), 
+      "/ Treated1:", sum(df_pre$treatment_group == 1, na.rm=TRUE),
+      "/ Treated2:", sum(df_pre$treatment_group == 2, na.rm=TRUE), "\n")
+  cat("\nPSM共変量:\n")
+  cat("  - 使用変数数:", length(covariate_names), "個\n")
+  cat("  - メディエーター除外:", length(mediator_vars), "個\n")
+  cat("\nIPTW重み:\n")
+  cat("  - 中央値:", round(median(df_pre$iptw_weight, na.rm=TRUE), 3), "\n")
+  cat("  - 最大値:", round(max(df_pre$iptw_weight, na.rm=TRUE), 3), "\n")
+  cat("\n")
+  if(nrow(balance_before) > 0) {
+    cat("バランスチェック:\n")
+    cat("  - 平均SMD:", round(mean(balance_before$smd, na.rm=TRUE), 4), "\n")
+    cat("  - SMD<0.1:", sum(balance_before$smd < 0.1, na.rm=TRUE), "/", 
+        nrow(balance_before), "\n")
+  }
+  cat(paste(rep("=", 70), collapse = ""), "\n")
+
+} else {
+  stop("エラー: 選択された共変量がありません。")
+}
+
+# ★★★ ここでif文が閉じる ★★★
+
+```

@@ -193,6 +193,7 @@ library(tidyverse)
 library(srvyr)
 library(gtsummary)
 library(survey)
+library(gt)
 
 # *******************************************************************************
 # '@title グループ別記述統計量の取得関数（修正版v2）
@@ -244,7 +245,8 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
         val_0 <- unique_vals[1] # ソート順で先頭 (例: "No", 0, "Female")
         val_1 <- unique_vals[2] # ソート順で後尾 (例: "Yes", 1, "Male")
         
-        message(sprintf("変換情報: 変数 '%s' (値: %s, %s) を factor(0, 1) に正規化しました。[0 assigned: %s, 1 assigned: %s]", 
+        message(sprintf("変換情報: 変数 '%s' (値: %s, %s) を factor(0, 1) に
+                        正規化しました。[0 assigned: %s, 1 assigned: %s]", 
                         v, val_0, val_1, val_0, val_1))
         
         # design_obj内の変数を更新
@@ -258,7 +260,8 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
         # ※この場合、その唯一の値を "0" とするのか "1" とするのかは文脈依存ですが、
         #   ここではソート順の1番目なので "0" に割り当て、警告を出します。
         val_exist <- unique_vals[1]
-        message(sprintf("警告: 変数 '%s' は値が1種類(%s)しか存在しません。これを '0' としてfactor化します。", v, val_exist))
+        message(sprintf("警告: 変数 '%s' は値が1種類(%s)しか存在しません。
+                        これを '0' としてfactor化します。", v, val_exist))
         
         design_obj$variables[[v]] <- factor(as.character(current_val),
                                             levels = val_exist,
@@ -338,54 +341,83 @@ covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_accep
                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
                 "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
 
-food_vars <- c("nt_mdd", "nt_mmf","nt_grains", "nt_root", "nt_nuts", 
+covariates <- c(
+                "ch_below_2p5", 
+                "nt_wm_ht",
+                "nt_wm_any_anem",
+                "nt_wm_ovobese",
+                "rh_anc_pvskill",
+                "rh_anc_4vs",
+                "rh_anc_4mo",
+                "rh_anc_urine",
+                "rh_prob_minone",
+                "nt_wm_micro_dwm",
+                "nt_bf_start_1hr",
+                "dm_sani_open_yes",
+                "ch_stool_safe_no",
+                "ph_sani_improve_dummy",
+                "ph_wtr_improve_dummy",
+                "ph_wtr_trt_none",
+                "ph_wtr_far",
+                "dm_hh_head_30plus",
+                "rc_edu_acceptable",
+                "dm_child_more_than3",
+                "ms_afm_15",
+                "dm_weath_index",
+                "ph_electric",
+                "ph_mobile",
+                "ph_radio",
+                "ph_moto",
+                "rc_agri_yes",
+                "dm_cattle_own",
+                "dm_sheep_own",
+                "dm_ag_land_ha",
+                "dm_cooking_fuel_traditional"
+                )
+
+food_vars_nt <- c("nt_mdd", "nt_mmf","nt_grains", "nt_root", "nt_nuts", 
                "nt_meatfish", "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", 
-               "nt_frtveg", "nt_root", 
-                names(df_org)[grep("_log1p$", 
-                                              names(df_org))],
-                names(df_org)[grep("_score_ok$", 
-                                              names(df_org))]
-               )
+               "nt_frtveg")
+
+food_vars_logp <- names(df_org)[grepl("enaho_", names(df_org))]
+
 
 outcome_var <- c("nt_ch_stunt", "nt_ch_wast", "nt_ch_any_anem", "nt_ch_haz")
 
-descriptive_stat_vars <- c(covariates, food_vars, outcome_var)
+descriptive_stat_vars <- c(covariates, food_vars_nt, outcome_var)
 
 # ダミー変数リスト(テーブル表示の際に、0/1のうち片方のみを表示させるため)
 dummy_vars <- c(
-  "nt_wm_ht", 
-  "ch_below_2p5", 
-  "dm_child_more_than3", 
-  "rc_edu_acceptable",
-   "dm_sheeep_own", 
-  "rh_anc_pvskill", 
-  "dm_refrigerator",            
-  "nt_wm_ovobese", 
-  "ph_wtr_far", 
-  "dm_hh_head_30plus",           
-  "dm_city", 
-  "dm_sani_open_yes", 
-  "dm_cooking_fuel_traditional",           
-  "rh_prob_permit", 
-  "ms_afm_15",      
-  "ph_wtr_trt_cloth", 
-  "ch_stool_safe_no", 
-  "dm_dvjustify_onereas",
-  "nt_mdd", 
-  "nt_mmf",
-  "nt_grains", 
-  "nt_root", 
-  "nt_nuts",
-  "nt_meatfish", 
-  "nt_milk", 
-  "nt_dairy", 
-  "nt_eggs", 
-  "nt_vita",
-  "nt_frtveg", 
-  "nt_ch_stunt", 
-  "nt_ch_wast", 
-  "nt_ch_any_anem"
-)
+                "ch_below_2p5", 
+                "nt_wm_ht",
+                "nt_wm_any_anem",
+                "nt_wm_ovobese",
+                "rh_anc_pvskill",
+                "rh_anc_4vs",
+                "rh_anc_4mo",
+                "rh_anc_urine",
+                "rh_prob_minone",
+                "nt_wm_micro_dwm",
+                "nt_bf_start_1hr",
+                "dm_sani_open_yes",
+                "ch_stool_safe_no",
+                "ph_sani_improve_dummy",
+                "ph_wtr_improve_dummy",
+                "ph_wtr_trt_none",
+                "ph_wtr_far",
+                "dm_hh_head_30plus",
+                "rc_edu_acceptable",
+                "dm_child_more_than3",
+                "ms_afm_15",
+                "ph_electric",
+                "ph_mobile",
+                "ph_radio",
+                "ph_moto",
+                "rc_agri_yes",
+                "dm_cattle_own",
+                "dm_sheep_own",
+                "dm_cooking_fuel_traditional"
+                )
 
 # stuntedでの集計用に、stunted変数を除いたダミー変数リストを作成
 dummy_vars_no_stunted <- setdiff(dummy_vars, c("nt_ch_stunt"))
