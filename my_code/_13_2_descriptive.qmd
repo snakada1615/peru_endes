@@ -379,12 +379,18 @@ food_vars_nt <- c("nt_mdd", "nt_mmf","nt_grains", "nt_root", "nt_nuts",
                "nt_meatfish", "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", 
                "nt_frtveg")
 
-food_vars_logp <- names(df_org)[grepl("enaho_", names(df_org))]
+food_vars_log1p1 <- names(df_org)[
+  grepl("^enaho_fg_.*_log1p$", names(df_org))
+]
+food_vars_log1p2 <- names(df_org)[
+  grepl("^enaho_fbdg_.*_score_ok$", names(df_org))
+]
+food_vars_log1p <- c(food_vars_log1p1, food_vars_log1p2)
 
 
 outcome_var <- c("nt_ch_stunt", "nt_ch_wast", "nt_ch_any_anem", "nt_ch_haz")
 
-descriptive_stat_vars <- c(covariates, food_vars_nt, outcome_var)
+descriptive_stat_vars <- c(covariates, food_vars_nt, food_vars_log1p, outcome_var)
 
 # ダミー変数リスト(テーブル表示の際に、0/1のうち片方のみを表示させるため)
 dummy_vars <- c(

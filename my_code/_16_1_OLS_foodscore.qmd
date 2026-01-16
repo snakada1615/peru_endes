@@ -1,0 +1,128 @@
+---
+title: "_16_1_OLS_foodscore"
+format: html
+---
+
+```{r}
+# ================================================================================
+# 0. 初期設定・パッケージ読み込み
+# ================================================================================
+library(here)
+library(haven)
+library(labelled)
+library(glmnet)
+library(tidyverse)
+# library(fastDummies)
+library(nnet)      # 多項ロジスティック回帰
+library(survey)    # 重み付き統計解析
+library(did)       # Staggered DID用（必要に応じて）
+library(sjlabelled)　# ラベル付きデータ処理用
+library(tableone)
+library(fixest)   # 回帰分析の推定結果から係数表（推定値、標準誤差、t値、p値など）を抽出
+library(broom)
+library(dplyr)
+library(purrr)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# デバッグモードフラグ
+debug_mode = TRUE  # デバッグモード
+# debug_mode = FALSE # 通常モード
+
+# 自作関数読み込み
+source("../myTools.R")
+
+# ================================================================================
+# 1. データ読み込み
+# ================================================================================
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+gdrive__dir_enaho <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_enaho"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+mySvy <- readRDS(
+    file.path(gdrive_dir, "output","svy_design_org.rds")
+  )
+
+df_org <- mySvy$variables
+
+covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_acceptable",
+                "dm_sheeep_own", "rh_anc_pvskill", "dm_refrigerator", 
+                "nt_wm_ovobese", "ph_wtr_far", "dm_hh_head_30plus", 
+                "dm_city", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
+                "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
+                "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
+
+food_vars_nt <- c("nt_grains", "nt_root", "nt_nuts", 
+               "nt_meatfish", "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", 
+               "nt_frtveg")
+
+food_vars_mdd <- c("nt_mdd")
+
+food_vars_log1p1 <- names(df_org)[
+  grepl("^enaho_fg_.*_log1p$", names(df_org))
+]
+
+food_vars_log1p2 <- names(df_org)[
+  grepl("^enaho_fbdg_.*_score_ok$", names(df_org))
+]
+
+
+outcome_var <- c("nt_ch_haz")
+
+
+
+```
+
+
+```{r}
+library(gtools)  # stars.pval() を使う場合[web:114][web:117]
+y_var <- "nt_ch_haz"
+
+make_formula_set <- function(vars, y_var, covariates) {
+  rhs <- paste(c(vars, covariates), collapse = " + ")
+  as.formula(paste(y_var, "~", rhs))
+}
+
+sets <- list(
+  food_vars_nt = c("nt_grains", "nt_root", "nt_nuts", 
+               "nt_meatfish", "nt_milk", "nt_dairy", "nt_eggs", "nt_vita", 
+               "nt_frtveg"),
+  food_vars_mdd    = c("nt_mdd"),
+  food_vars_log1p1 = food_vars_log1p1,   # ここはすでに一致している
+  food_vars_log1p2 = food_vars_log1p2
+)
+
+
+formulas <- lapply(sets, make_formula_set, y_var = y_var, covariates = covariates)
+models   <- lapply(formulas, svyglm, design = mySvy)  # svyglm を 4 本（各セット1本）
+
+results <-
+  imap_dfr(models, function(mod, nm) {
+    tt <- tidy(mod)
+    # 元の変数名パターンで term をフィルタ（factor は "nt_mddYes" のように展開される）
+    pattern <- paste0("^(", paste(sets[[nm]], collapse = "|"), ")")
+    tt %>%
+      filter(str_detect(term, pattern)) %>%
+      select(term, estimate, p.value) %>%
+      mutate(model_set = nm)
+  })
+
+results_formatted <-
+  results |>
+  mutate(
+    # 係数を小数点3桁に整形
+    estimate_fmt = sprintf("%.3f", estimate),
+    # p値から星を生成（***, **, *, . , ""）
+    sig = stars.pval(p.value),
+  ) |>
+  select(model_set, term, estimate_fmt, sig)
+
+results_formatted
+
+
+```
