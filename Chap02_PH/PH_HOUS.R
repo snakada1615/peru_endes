@@ -45,7 +45,11 @@ HRdata <- HRdata %>%
 # 
 # //Have electricity
 HRdata <- HRdata %>%
-  mutate(ph_electric = hv206) %>%
+  mutate(ph_electric = case_when(
+             hv206==0 ~ 0,
+             hv206==1 ~ 1, 
+             is.na(hv206) ~ NA_real_)
+  ) %>%
   set_value_labels(ph_electric = c("Yes" = 1, "No"=0)) %>%
   set_variable_labels(ph_electric = "Have electricity")
 

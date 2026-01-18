@@ -285,6 +285,6 @@ all_data_merged <- all_data_merged %>%
 saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
         "all_data_merged.rds"))
 
-ptint("データ結合処理完了")
+print("データ結合処理完了")
 
 ```
