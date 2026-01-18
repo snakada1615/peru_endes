@@ -26,7 +26,7 @@ library(naniar)         # For replace_with_na()
 source("../myTools.R")  # プロジェクトルートから読み込む
 
 # 対象とする年のリスト
-yearlist <- c("2005", "2006")
+# yearlist <- c("2005", "2006")
 my_year <- "2005"
 
 # DHSデータのルートフォルダを指定

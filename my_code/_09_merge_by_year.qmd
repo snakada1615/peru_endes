@@ -41,9 +41,9 @@ library(survey)       # for survey design
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 
 # 対象とする年のリスト
-yearlist <- c("2007", "2008", "2009", "2010", "2011",
+yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2005", "2006")
+# yearlist <- c("2005", "2006")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -266,13 +266,40 @@ goAnalysis <- function(year){
   }
 
   print("(12) Merging with PRdata")
+  # 2005/2006のデータが特殊なため、キーを正規化してマージする
+  # 正規化済みキーを新しい列として作成
+  data_merged <- data_merged %>%
+    mutate(
+      caseid_trim = str_trim(caseid),
+      hhid_trim = str_trim(hhid),
+      year_trim = str_trim(year)
+    )
+  
+  data_all[["PRdata"]] <- data_all[["PRdata"]] %>%
+    mutate(
+      caseid_trim = str_trim(caseid),
+      hhid_trim = str_trim(hhid),
+      year_trim = str_trim(year)
+    )
+
+  # 正規化済みキーを使用してマージ
+  print("(12) Merging with PRdata using normalized keys")
   data_merged <- left_join_safe(data_merged, 
-    data_all[["PRdata"]], by = c("caseid", "hhid", "year")) %>%
-    filter(age >= 6 & age <= 24)
+    data_all[["PRdata"]], 
+    by = c("caseid_trim", "hhid_trim", "year_trim")) %>%
+    filter(age >= 6 & age <= 24) %>%
+    select(-ends_with(".y")) %>%
+    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+
   print("子供の月齢6ヶ月から24ヶ月で絞り込みました")
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
+
+  # 元のキー列（caseid, hhid, year）のみを残す
+  # 正規化キー列（caseid_trim, hhid_trim, year_trim）は削除
+  data_merged <- data_merged %>%
+    select(-caseid_trim, -hhid_trim, -year_trim)    
   
   print("データセットの抽出と結合が完了しました")
 

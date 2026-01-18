@@ -78,6 +78,10 @@ library(data.table)
 data_list <- list()
 
 for (yr in yearlist) {
+  cat("============================================================================\n")
+  cat("ENDES データ結合処理開始:", yr, "\n")
+  cat("============================================================================\n\n")
+
   root_folder <- file.path(gdrive_dir, "output", yr) %>%
     normalizePath() %>%
     trimws()
@@ -112,12 +116,33 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
   dplyr::select(-c(v026, v024, v005, v021, v022, v025, v001, v002, v003))
 
+# 2005/2006のデータが特殊なため、キーを正規化してマージする
+# 正規化済みキーを新しい列として作成
+all_data_merged <- all_data_merged %>%
+  mutate(
+    hhid_trim = str_trim(hhid),
+    year_trim = str_trim(year)
+  )
+
+endes_keys <- endes_keys %>%
+  mutate(
+    hhid_trim = str_trim(hhid),
+    year_trim = str_trim(year)
+  )
+
 # 共通キーでマージ
 all_data_merged <- all_data_merged %>%
-  left_join_safe(endes_keys, c("year", "hhid"))
+  left_join_safe(endes_keys, c("year_trim", "hhid_trim"))
 
 # 重複チェック
-duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
+duplicate_check(all_data_merged, c("year_trim", "hhid_trim"), "all_data_merged")
+
+# 元のキー列（hhid, year）のみを残す
+# 正規化キー列（hhid_trim, year_trim）は削除
+all_data_merged <- all_data_merged %>%
+  select(-c(hhid_trim, year_trim)) %>%
+  select(-ends_with(".y")) %>%
+  rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
 
 
 # ******************************************************************************
@@ -259,5 +284,7 @@ all_data_merged <- all_data_merged %>%
 # ファイルをRDSで保存
 saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
         "all_data_merged.rds"))
+
+ptint("データ結合処理完了")
 
 ```
