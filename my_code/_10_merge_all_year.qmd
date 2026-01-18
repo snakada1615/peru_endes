@@ -78,6 +78,10 @@ library(data.table)
 data_list <- list()
 
 for (yr in yearlist) {
+  cat("============================================================================\n")
+  cat("ENDES データ結合処理開始:", yr, "\n")
+  cat("============================================================================\n\n")
+
   root_folder <- file.path(gdrive_dir, "output", yr) %>%
     normalizePath() %>%
     trimws()
