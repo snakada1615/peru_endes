@@ -48,19 +48,19 @@ head(plot_data)
 
 # ステップ4: ggplotで可視化
 ggplot(plot_data, aes(x = year, y = mean_stunted, 
-                      color = treatment_group, 
-                      group = treatment_group)) +
+                      color = treated_status, 
+                      group = treated_status)) +
   geom_line(size = 1) +
   geom_point(size = 2.5) +
   geom_ribbon(aes(ymin = mean_stunted_low, ymax = mean_stunted_upp, 
-                  fill = treatment_group),
+                  fill = treated_status),
               alpha = 0.2, color = NA) +  # 信頼区間を半透明で表示
   labs(
     title = "stunting rate by treatment status over years",
     x = "year",
     y = "stunting rate (%)",
-    color = "treatment_group",
-    fill = "treatment_group"
+    color = "treated status",
+    fill = "treated status"
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
