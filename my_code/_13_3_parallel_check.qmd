@@ -9,6 +9,7 @@ library(survey)
 library(srvyr)
 library(ggplot2)
 library(dplyr)
+library(haven)
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
@@ -36,7 +37,8 @@ plot_data <- svy_obj %>%
       nt_ch_stunt == "Yes" ~ 1,
       nt_ch_stunt == "No" ~ 0,
       TRUE ~ NA_real_
-    )
+    ),
+    treatment_group = zap_labels(treatment_group) %>% as.factor()
   ) %>%
   # filter(year <= 2008) %>%
   group_by(treatment_group, year) %>%

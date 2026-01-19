@@ -435,10 +435,10 @@ design_all <- svy_design
 var_labels_list <- var_label(design_all$variables)
 
 # サブセット作成
-design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2010)", "treat_pre"))
 design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
 
-design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2010)", "treat_post"))
 design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
 
 # サブセット後にラベルを復元
@@ -508,10 +508,10 @@ design_all$variables <- design_all$variables %>%
   )
 
 # サブセット作成
-design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2009)", "treat_pre"))
+design_pre <- subset(design_all, analysis_grp %in% c("control_pre(<2010)", "treat_pre"))
 design_pre$variables$analysis_grp <- droplevels(design_pre$variables$analysis_grp)
 
-design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2009)", "treat_post"))
+design_post <- subset(design_all, analysis_grp %in% c("control_post(>=2010)", "treat_post"))
 design_post$variables$analysis_grp <- droplevels(design_post$variables$analysis_grp)
 
 

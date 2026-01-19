@@ -228,8 +228,8 @@ all_data_merged <- all_data_merged %>%
   # 介入群グループ化
   mutate(
     treatment_group = case_when(
-      treatment_start == "2009" ~ 1,  # 早期介入
-      treatment_start == "2011" ~ 2,  # 後期介入
+      treatment_start == "2010" ~ 1,  # 早期介入
+      treatment_start == "2012" ~ 2,  # 後期介入
       TRUE ~ 0                        # コントロール
     )
   ) %>%
@@ -239,24 +239,24 @@ all_data_merged <- all_data_merged %>%
   set_value_labels(
     treatment_group = c(
       "control" = 0,
-      "treat_early(2009)" = 1,
-      "treat_late(2011)" = 2
+      "treat_early(2010)" = 1,
+      "treat_late(2012)" = 2
     )
   ) %>%
   mutate(
     analysis_grp = case_when(
-      treatment_group == 0 & year < 2009  ~ "control_pre(<2009)",
-      treatment_group == 0 & year >= 2009  ~ "control_post(>=2009)",
-      treatment_group == 1 & year < 2009  ~ "treat_pre",
-      treatment_group == 1 & year >= 2009  ~ "treat_post",
-      treatment_group == 2 & year < 2011  ~ "treat_pre",
-      treatment_group == 2 & year >= 2011  ~ "treat_post"
+      treatment_group == 0 & year < 2010  ~ "control_pre(<2010)",
+      treatment_group == 0 & year >= 2010  ~ "control_post(>=2010)",
+      treatment_group == 1 & year < 2010  ~ "treat_pre",
+      treatment_group == 1 & year >= 2010  ~ "treat_post",
+      treatment_group == 2 & year < 2012  ~ "treat_pre",
+      treatment_group == 2 & year >= 2012  ~ "treat_post"
     )
   ) %>%
   mutate(
     analysis_grp = factor(analysis_grp, 
-                          levels =c("control_pre(<2009)", "treat_pre",
-                                    "control_post(>=2009)", "treat_post"))  
+                          levels =c("control_pre(<2010)", "treat_pre",
+                                    "control_post(>=2010)", "treat_post"))  
   ) %>%
   
   # 一部のカテゴリ変数をダミー化

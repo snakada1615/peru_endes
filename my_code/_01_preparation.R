@@ -92,15 +92,15 @@ endes_keys <- endes_keys %>%
   left_join(crecer_timing, by = c("v024" = "state_id")) %>%
   mutate(
     treated_status = case_when(
-      year_treated == 2009 & as.numeric(year) >= 2009 ~ "early_treated",  # 早期開始州かつ2009年以降
-      year_treated == 2011 & as.numeric(year) >= 2011 ~ "late_treated",   # 後期開始州かつ2011年以降
+      year_treated == 2010 & as.numeric(year) >= 2010 ~ "early_treated",  # 早期開始州かつ2010年以降
+      year_treated == 2012 & as.numeric(year) >= 2012 ~ "late_treated",   # 後期開始州かつ2012年以降
       !is.na(year_treated) ~ "not_yet_treated",                           # 将来的にtreatedになるが年が到達していない
       is.na(year_treated) ~ "never_treated",                              # どれにも該当しない
       TRUE ~ "other"                                                       # その他（念のため）
     ),
     group_treated = case_when(
-      year_treated == 2009 ~ "treat1_grp",
-      year_treated == 2011 ~ "treat2_grp",
+      year_treated == 2010 ~ "treat1_grp",
+      year_treated == 2012 ~ "treat2_grp",
       TRUE ~ "control_grp"
     )
   )
