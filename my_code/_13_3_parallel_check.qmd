@@ -1,0 +1,68 @@
+---
+title: "_13_3_parallel_check"
+format: html
+---
+
+```{r}
+
+library(survey)
+library(srvyr)
+library(ggplot2)
+library(dplyr)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# ステップ1: svydesignオブジェクトの読み込み
+my_design <- readRDS(file.path(save_path, "svy_design_org.rds"))
+
+# ステップ2: srvyrオブジェクトに変換
+svy_obj <- my_design %>%
+  as_survey_design()
+
+# ステップ3: グループ別・年次別の加重平均を計算
+plot_data <- svy_obj %>%
+  mutate(
+    nt_ch_stunt_num = case_when(
+      nt_ch_stunt == "Yes" ~ 1,
+      nt_ch_stunt == "No" ~ 0,
+      TRUE ~ NA_real_
+    )
+  ) %>%
+  filter(year <= 2008) %>%
+  group_by(treated_status, year) %>%
+  summarize(
+    mean_stunted = survey_mean(nt_ch_stunt_num, na.rm = TRUE, vartype = "ci"),
+    .groups = "drop"
+  )
+
+# 結果は通常のデータフレーム（tibble）として返される
+# 列：treated_status, year, mean_stunted, mean_stunted_low, mean_stunted_upp
+head(plot_data)
+
+# ステップ4: ggplotで可視化
+ggplot(plot_data, aes(x = year, y = mean_stunted, 
+                      color = treated_status, 
+                      group = treated_status)) +
+  geom_line(size = 1) +
+  geom_point(size = 2.5) +
+  geom_ribbon(aes(ymin = mean_stunted_low, ymax = mean_stunted_upp, 
+                  fill = treated_status),
+              alpha = 0.2, color = NA) +  # 信頼区間を半透明で表示
+  labs(
+    title = "stunting rate by treatment status over years",
+    x = "year",
+    y = "stunting rate (%)",
+    color = "treated status",
+    fill = "treated status"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+```

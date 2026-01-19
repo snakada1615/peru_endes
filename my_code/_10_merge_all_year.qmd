@@ -231,8 +231,17 @@ all_data_merged <- all_data_merged %>%
       treatment_start == "2009" ~ 1,  # 早期介入
       treatment_start == "2011" ~ 2,  # 後期介入
       TRUE ~ 0                        # コントロール
-    ),
-    treatment_group = as.factor(treatment_group)
+    )
+  ) %>%
+  set_variable_labels(
+    treatment_group = "treatment group (0=control, 1=early, 2=late)"
+  ) %>%
+  set_value_labels(
+    treatment_group = c(
+      "control" = 0,
+      "treat_early(2009)" = 1,
+      "treat_late(2011)" = 2
+    )
   ) %>%
   mutate(
     analysis_grp = case_when(
