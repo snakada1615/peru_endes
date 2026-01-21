@@ -82,7 +82,8 @@ drop_cols_init <- c(
 "v008","v012","v013","v021","v022","v024","v025","v026","v106","v190","v208",
 "v467b","v467c","v467d","v467f",
 "wt","state","age","treated_status","treatment_start","year_treated", 
-"dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest"
+"dm_poorest","dm_poorer","dm_middle","dm_richer","dm_richest",
+"rc_tobc_other", "nt_bbyfood", "nt_ch_micro_vaf", "ms_sex_never"
 )
 
 # enaho_で始まる変数を除去リストに追加

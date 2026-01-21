@@ -65,48 +65,7 @@ hide_column <- c("var0", "var_label", "val_label", "all_label", "item", "Coeffic
 
 ```{r}
 # ================================================================================
-# 2. sampling weightの年次補正
-# ================================================================================
-# 年ごとの元 v005 合計を算出
-year_totals <- df_org %>%
-  group_by(year) %>%
-  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
-
-# Survey designオブジェクトの作成前に変数を変換
-df_org <- df_org %>%
-  mutate(
-    v021 = as.numeric(v021),                # Primary Sampling Unit
-    v022 = as.character(haven::as_factor(v022)) #haven_labelledをfactorに変換してからcharacter
-  )
-
-# 正規化済みサンプリングウェイトの作成
-df_org <- df_org %>%
-  dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
-  left_join(year_totals, by = "year") %>%
-  mutate(
-    # 元のDHSウェイト
-    dhs_weight = v005 / 1e6,
-    # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
-    year_norm = total_v005 / sum(year_totals$total_v005),
-    # 正規化済みウェイト
-    sampling_weight_norm = dhs_weight / year_norm,
-    # 極端値トリミング
-    sampling_weight_trimmed = pmax(
-      pmin(sampling_weight_norm,
-           quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
-      quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
-    )
-  )
-
-# 元データのラベル適正化
-library(labelled)
-
-# 1. 元のhaven_labelledデータから変換
-df_org <- df_org %>%
-  mutate(across(where(is.labelled), labelled::to_factor))
-
-# ================================================================================
-# 3. surveydesignオブジェクトの作成
+# surveydesignオブジェクトの作成
 # ================================================================================
 library(survey)
 library(glmnet)
