@@ -131,20 +131,32 @@ summary(att_res)
 ## 6. 共変量を追加して再推定
 
 ```{r}
-# cond_pretest <- conditional_did_pretest(
-#   yname = "nt_ch_stunted",
-#   tname = "year",
-#   idname = "id",
-#   gname = "g",
-#   xformla = ~ x1 + x2,
-#   data = df_analysis,
-#   panel = FALSE,
-#   weightsname = "sampling_weight_trimmed",
-#   clustervars = "v021",
-#   control_group = "notyettreated"
-# )
-# 
-# summary(cond_pretest)
+
+covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_acceptable",
+                "dm_sheeep_own", "rh_anc_pvskill", "dm_refrigerator", 
+                "nt_wm_ovobese", "ph_wtr_far", "dm_hh_head_30plus", 
+                "dm_city", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
+                "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
+                "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
+
+# 基本形：共変量のみの式
+xformla <- reformulate(covariates)
+# 結果: ~ nt_wm_ht + ch_below_2p5 + dm_child_more_than3 + ...
+
+cond_pretest <- att_gt(
+  yname = "nt_ch_stunt",
+  tname = "year",
+  idname = "id",
+  gname = "g",
+  xformla = xformla,
+  data = df_analysis,
+  panel = FALSE,
+  weightsname = "sampling_weight_trimmed",
+  clustervars = "v021",
+  control_group = "notyettreated"
+)
+
+summary(cond_pretest)
 
 
 ```

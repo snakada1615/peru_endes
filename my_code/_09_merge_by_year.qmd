@@ -44,6 +44,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
 # yearlist <- c("2005", "2006")
+yearlist <- c("2005")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -89,6 +90,25 @@ open_processed_file <- function(year, filename, select_col = NULL) {
   }
 }
 
+# open_processed_file関数内で、またはデータ読み込み直後に実施
+open_processed_file_normalized <- function(year, filename) {
+  data <- open_processed_file(year, filename)
+  
+  # データフレームとして確実に変換
+  if (!is.data.frame(data)) {
+    data <- as.data.frame(data)
+  }
+  
+  # 列名の正規化
+  names(data) <- names(data) %>%
+    str_squish() %>%
+    str_replace_all("[[:space:]]+", "_") %>%
+    tolower()  # 小文字に統一（オプション）
+  
+  return(data)
+}
+
+
 ```
 
 ## 2. データ処理
@@ -127,7 +147,7 @@ goAnalysis <- function(year){
   
   for (f in files){
     print(paste("Loading file:", f))
-    data_all[[f]] <- open_processed_file(year, f)
+    data_all[[f]] <- open_processed_file_normalized(year, f)
   }
   
   data_merged <- data_all[["BRdata-rh"]]
@@ -198,17 +218,42 @@ goAnalysis <- function(year){
   
   print("(10) Merging with HRdata-dm")
   data_all[["HRdata-dm"]] <- data_all[["HRdata-dm"]] %>% 
-    dplyr::select(-c(v005, v022, v001, v002))
+    dplyr::select(-c(v005, v022)) %>%
+    mutate(
+      v001 = unclass(v001),
+      v002 = unclass(v002)
+    )
   data_merged <- left_join_safe(data_merged, 
-    data_all[["HRdata-dm"]], by = c("caseid", "year"))
+    data_all[["HRdata-dm"]], by = c("v001", "v002", "year")) %>%
+    dplyr::select(-ends_with(".y")) %>%
+    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
   if (nrow(data_merged) == 0) {
     stop("Merging resulted in zero rows. Please check the join keys and data.")
   }
     
   print("(11) Merging with WASHdata-ws")
  if (year == "2005") {
+  cat("=== 2005年のWASHデータマージ処理開始 ===\n")
+   
   # HRdata-dmからhhidキーを抽出
-  hr_hhid_clean <- data_all[["HRdata-dm"]] %>%
+  # 1. まずデータ構造を確認
+  hr_data <- data_all[["HRdata-dm"]]
+
+  # 2. 列名の正規化（前後スペース除去＋特殊文字対応）
+  # names(hr_data) <- names(hr_data) %>%
+  #   str_squish() %>%
+  #   str_replace_all("[[:space:]]+", "_")  # スペースをアンダースコアに統一
+  
+  # 3. 正規化後の列名を確認
+  # cat("正規化後の列名:\n")
+  # cat(names(hr_data), "\n")
+  
+  # 4. caseid列の存在確認
+  if (!"caseid" %in% names(hr_data)) {
+    stop("caseid列が見つかりません。正規化後の列名を確認してください。")
+  }
+   
+    hr_hhid_clean <- hr_data %>%
     select(caseid, hhid) %>%
     mutate(
       caseid_key = paste(map_chr(str_split(str_squish(caseid), " "), 1),
