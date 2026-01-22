@@ -50,10 +50,21 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 source("_tool_SaveLabel.R")
 
 # 対象とする年のリスト
-yearlist <- c("2005")
+yearlist <- c("2005", "2012")
+# yearlist <- c("2012")  # テスト用に単一の年を指定
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# HR/IRのファイルパス指定
+hr_file <- list()
+ir_file <- list()
+hr_file[["2005"]] <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/HR/PEHR51FL.SAV"
+hr_file[["2012"]] <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2012_DHS/PEHR6ISV/PEHR6IFL.SAV"
+
+ir_file[["2005"]] <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/IR/PEIR51FL.SAV"
+ir_file[["2012"]] <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2012_DHS/PEIR6ISV/PEIR6IFL.SAV"
+
 
 # データベース一覧
 
@@ -156,12 +167,14 @@ setup_output_directory <- function(year) {
 library(dplyr)
 library(tidyr)
 library(vctrs)   # 明示的に呼んでおくと安心
-
 calculate_child_count_fixed2 <- function(HRdata) {
   cat("計算中: 家族の子供の総数（DHS ワイド形式）\n")
   
-  age_cols       <- grep("^hv105\\$", names(HRdata), value = TRUE)
-  residence_cols <- grep("^hv102\\$", names(HRdata), value = TRUE)
+  # 2005: hv105$1, hv105$2, ...
+  # 2012: hv105.1, hv105.2, ...
+  # → どちらも拾えるように、「hv105 のあとに $ か .」というパターンで抽出
+  age_cols       <- grep("^hv105[.$]", names(HRdata), value = TRUE)
+  residence_cols <- grep("^hv102[.$]", names(HRdata), value = TRUE)
   
   cat("年齢変数:", length(age_cols), "個,  居住変数:", length(residence_cols), "個\n")
   
@@ -171,23 +184,28 @@ calculate_child_count_fixed2 <- function(HRdata) {
       mutate(
         hv009 = as.numeric(vec_data(hv009)),     # 世帯人数も numeric に
         across(all_of(c(age_cols, residence_cols)),
-               ~ as.numeric(vec_data(.)))        # ★ labelled → numeric（属性削除）
+               ~ as.numeric(vec_data(.)))        # labelled → numeric（属性削除）
       )
   })
   
-  # 変換の確認（任意）
-  cat("hv102$01 変換後の分布:\n")
-  print(table(HR_clean$`hv102$01`, useNA = "always"))
-  cat("hv105$01 変換後の分布（先頭20）:\n")
-  print(table(HR_clean$`hv105$01`, useNA = "always")[1:20])
+  # 変換の確認（例として最初の列だけ表示）
+  if (length(residence_cols) > 0) {
+    cat("居住変数（例:", residence_cols[1], "）変換後の分布:\n")
+    print(table(HR_clean[[residence_cols[1]]], useNA = "always"))
+  }
+  if (length(age_cols) > 0) {
+    cat("年齢変数（例:", age_cols[1], "）変換後の分布（先頭20）:\n")
+    print(table(HR_clean[[age_cols[1]]], useNA = "always")[1:20])
+  }
   
   # 2. ロングにしてから、行番号でフィルタ → 再ワイド
+  #   names_sep = "[.$]" として、"$" と "." のどちらでも区切れるようにする
   df_long <- HR_clean %>%
     select(hhid, caseid, hv009, all_of(c(age_cols, residence_cols))) %>%
     pivot_longer(
       cols      = -c(hhid, caseid, hv009),
       names_to  = c("variable", "line_number"),
-      names_sep = "\\$",
+      names_sep = "[.$]",              # ← ここを修正（$ か . のどちらでもOK）
       values_to = "value"
     ) %>%
     mutate(line_number = as.numeric(line_number)) %>%
@@ -470,7 +488,18 @@ set_all_variable_labels <- function(data) {
 
 # 値ラベルを設定
 set_all_value_labels <- function(data) {
+  # ラベルを設定する列名のリスト
+  label_cols <- c("dm_cooking_fuel", "dm_cooking_fuel_traditional", 
+                  "dm_rural", "dm_town", "dm_city", "dm_capital",
+                  "dm_poorest", "dm_poorer", "dm_middle", "dm_richer", 
+                  "dm_richest", "dm_shared_toilet", "dm_cooking_house",
+                  "dm_cooking_outdoor", "dm_cooking_separate", 
+                  "dm_cattle_own", "dm_goat_own", "dm_sheep_own",
+                  "dm_poultry_own", "dm_refrigerator", 
+                  "dm_female_headed", "dm_age_of_HH_head")
+  
   data %>%
+    mutate(across(all_of(label_cols), unclass)) %>%
     set_value_labels(
       dm_cooking_fuel = c(
         "electricity" = 1, "lpg" = 2, "natural gas" = 3, "biogas" = 4, 
@@ -532,9 +561,9 @@ goAnalysis <- function(year) {
   # ============================================================================
   cat("## 1. データファイル読み込み\n")
   
-  HRdata <- read_spss("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/HR/PEHR51FL.SAV") %>%
+  HRdata <- read_spss(hr_file[[year]]) %>%
     rename_with(~ tolower(.x))
-  IRdata <- read_spss("/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss/2005_DHS/IR/PEIR51FL.SAV") %>%
+  IRdata <- read_spss(ir_file[[year]]) %>%
     rename_with(~ tolower(.x))
 
   cat("HRdata レコード数:", nrow(HRdata), "\n")
@@ -577,7 +606,7 @@ goAnalysis <- function(year) {
   IRdata <- restore_labels(IR_HR_data, labels_IR, columns = c("caseid"))
   IRdata <- restore_labels(IRdata, labels_HR, columns = c("hhid_HR"))
   
-    # ============================================================================
+  # ============================================================================
   # データ処理
   # ============================================================================
   cat("## 2. データ処理\n")
