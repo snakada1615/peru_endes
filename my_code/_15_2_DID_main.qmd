@@ -1,0 +1,150 @@
+---
+title: "_15_2_DID_main"
+format: html
+---
+
+## 1. 分析用データセットの作成
+
+```{r}
+library(survey)
+library(dplyr)
+library(did)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# ステップ1.1: all_data_merged.rdsの読み込み
+df_analysis <- readRDS(file.path(save_path, "all_data_merged.rds"))
+
+# haven_labelled → numeric へ変換
+df_analysis <- df_analysis %>%
+  mutate(
+    treatment_group = as.numeric(unclass(treatment_group))
+    # 必要なら他のラベル付き変数もここで変換
+    # across(c(treatment_group, ・・・), ~ as.numeric(unclass(.x)))
+  )
+
+# ステップ1.2:  初回導入年Gの作成
+#' Repeated cross section では個体が入れ替わるため、真の panel ID は存在しません。
+#' ただし att_gt() は panel = FALSE の場合でも idname を形式的に要求します。
+#' そこで仮想 ID を作成します。
+
+df_analysis <- df_analysis %>%
+  mutate(
+   # 初回導入年 g の作成
+    g = case_when(
+      treatment_group == 1 ~ 2010L,  # treat_early(2010)
+      treatment_group == 2 ~ 2012L,  # treat_late(2012)
+      treatment_group == 0 ~ 0L,     # control (never treated)
+      TRUE ~ NA_integer_
+    ),
+    # 仮想 ID（repeated cross section）
+    id = as.integer(row_number()),
+    # 型の明示的な変換
+    year = as.integer(year),
+    g = as.integer(g),
+    nt_ch_stunt = as.numeric(nt_ch_stunt),
+    sampling_weight_trimmed = as.numeric(sampling_weight_trimmed),
+    v021 = as.character(v021)  # クラスター変数は文字列でOK
+  )
+
+
+```
+
+
+## 2. did::att_gt() での Group-Time ATT 推定
+
+```{r}
+
+# Group × time ATT の推定
+att_res <- att_gt(
+  yname   = "nt_ch_stunt",
+  tname   = "year",
+  idname  = "id",
+  gname   = "g",
+  xformla = ~ 1,
+  data    = df_analysis,
+  panel   = FALSE,
+  weightsname = "sampling_weight_trimmed",  # ← 修正：weightsname
+  clustervars = "v021",
+  control_group = "notyettreated",
+  est_method = "dr",
+  print_details = TRUE                     # ← 残してOK
+  # faster_mode は指定しない（現行版にない引数）
+)
+summary(att_res)
+
+
+```
+
+## 3. Event-study（動学効果）
+
+```{r}
+# Event-study aggregation
+agg_dynamic <- aggte(att_res, type = "dynamic")
+
+summary(agg_dynamic)
+
+# Event-study plot（介入前後の効果を可視化）
+library(ggplot2)
+ggdid(agg_dynamic)
+
+
+```
+
+## 4. 全 treated に対する平均効果
+
+```{r}
+
+# Simple aggregation（全 group × time を単純平均）
+agg_simple <- aggte(att_res, type = "simple")
+summary(agg_simple)
+
+# Group-specific aggregation（group ごとの平均効果）
+agg_group <- aggte(att_res, type = "group")
+summary(agg_group)
+
+```
+
+## 5. 前提条件のチェック
+
+```{r}
+
+# Event-study の可視化
+# 5.1 parallel trends assumption の検定
+ggdid(agg_dynamic)
+
+# 5.2 pre-test of parallel trends assumption
+summary(att_res)
+# 出力例：
+# P-value for pre-test of parallel trends assumption: 0.60857
+
+
+```
+
+## 6. 共変量を追加して再推定
+
+```{r}
+# cond_pretest <- conditional_did_pretest(
+#   yname = "nt_ch_stunted",
+#   tname = "year",
+#   idname = "id",
+#   gname = "g",
+#   xformla = ~ x1 + x2,
+#   data = df_analysis,
+#   panel = FALSE,
+#   weightsname = "sampling_weight_trimmed",
+#   clustervars = "v021",
+#   control_group = "notyettreated"
+# )
+# 
+# summary(cond_pretest)
+
+
+```

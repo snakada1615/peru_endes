@@ -1,0 +1,130 @@
+---
+title: "_15_3_mediator"
+format: html
+---
+
+
+## 1. 分析用データセットの作成
+
+```{r}
+library(survey)
+library(dplyr)
+library(did)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# ステップ1.1: all_data_merged.rdsの読み込み
+df_analysis <- readRDS(file.path(save_path, "all_data_merged.rds"))
+
+# haven_labelled → numeric へ変換
+df_analysis <- df_analysis %>%
+  mutate(
+    treatment_group = as.numeric(unclass(treatment_group))
+    # 必要なら他のラベル付き変数もここで変換
+    # across(c(treatment_group, ・・・), ~ as.numeric(unclass(.x)))
+  )
+
+# ステップ1.2:  初回導入年Gの作成、medhiatorの変換(factor -> numeric)
+#' Repeated cross section では個体が入れ替わるため、真の panel ID は存在しません。
+#' ただし att_gt() は panel = FALSE の場合でも idname を形式的に要求します。
+#' そこで仮想 ID を作成します。
+#' 
+
+var_mediator <- c("rh_anc_4vs", "rh_anc_4mo", "nt_bf_start_1hr", 
+                  "dm_sani_open_yes", "ph_wtr_trt_none", "nt_mdd") 
+
+df_analysis <- df_analysis %>%
+  mutate(
+   # 初回導入年 g の作成
+    g = case_when(
+      treatment_group == 1 ~ 2010L,  # treat_early(2010)
+      treatment_group == 2 ~ 2012L,  # treat_late(2012)
+      treatment_group == 0 ~ 0L,     # control (never treated)
+      TRUE ~ NA_integer_
+    ),
+    # 仮想 ID（repeated cross section）
+    id = as.integer(row_number()),
+    # 型の明示的な変換
+    year = as.integer(year),
+    g = as.integer(g),
+    rh_anc_4vs = as.numeric(rh_anc_4vs),
+    sampling_weight_trimmed = as.numeric(sampling_weight_trimmed),
+    v021 = as.character(v021)  # クラスター変数は文字列でOK
+  ) %>%
+  # mediator変数の数値化(factor -> numberic)
+  mutate(across(all_of(var_mediator), ~ as.numeric(.x)))
+
+```
+
+## 2. メディエータ分析の実施
+
+```{r}
+library(survey)
+library(dplyr)
+library(did)
+
+# メディエータMに対するDID推定
+#****************************************************************************
+#' @title メディエータMに対するDID推定関数
+#' @param mediator_variable メディエータ変数の名前（文字列）
+#' @return メディエータに関するDID推定結果のリスト
+#' @details
+#' この関数は、指定されたメディエータ変数に対してD
+#' ID推定を行い、集約効果や動的効果、グループ別効果、並行トレンド検定のp値を
+#' 含むリストを返します。 
+#' ****************************************************************************
+att_mediator <- function(mediator_variable){
+  att_mediator <- att_gt(
+    yname   = mediator_variable,  # 例: re_anc_4vs
+    tname   = "year",
+    idname  = "id",
+    gname   = "g",
+    xformla = ~ 1,
+    data    = df_analysis,
+    panel   = FALSE,
+    weightsname = "sampling_weight_trimmed",  # ← 修正：weightsname
+    clustervars = "v021",
+    control_group = "notyettreated",
+    est_method = "dr",
+    print_details = TRUE                     # ← 残してOK
+  )
+  
+  # 集約効果の計算
+  agg_simple_med <- aggte(att_mediator, type = "simple")
+  agg_dynamic_med <- aggte(att_mediator, type = "dynamic")
+  agg_group_med <- aggte(att_mediator, type = "group")
+
+  # 結果の保存
+  results_mediator <- list(
+    mediator_name = mediator_variable,
+    overall_att = agg_simple_med,
+    dynamic_effects = agg_dynamic_med,
+    group_effects = agg_group_med,
+    parallel_trends_pvalue = summary(att_mediator)$DIDparams$pretest_pval
+  )
+
+return(results_mediator)
+}
+
+
+# 各メディエータ変数に対してDID推定を実行し、結果を保存
+list_results <- list()
+for (mediator_variable in var_mediator) {
+  cat("*******************************************************", "\n")
+  cat( "** Analyzing mediator:", mediator_variable, " **", "\n")
+  cat("*******************************************************", "\n")
+  list_results[[mediator_variable]] <- att_mediator(mediator_variable)
+}
+saveRDS(list_results, file.path(save_path, paste0("mediator_results", ".rds")))
+
+print("メディエータ分析が完了し、結果が保存されました。")
+
+
+```
