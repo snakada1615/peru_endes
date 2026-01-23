@@ -132,12 +132,12 @@ summary(att_res)
 
 ```{r}
 
-covariates <- c("nt_wm_ht", "ch_below_2p5", "dm_child_more_than3", "rc_edu_acceptable",
+covariates <- c("nt_wm_ht", "ch_below_2p5_yes", "dm_child_more_than3", "rc_edu_acceptable",
                 "dm_sheeep_own", "rh_anc_pvskill", "dm_refrigerator", 
-                "nt_wm_ovobese", "ph_wtr_far", "dm_hh_head_30plus", 
-                "dm_city", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
+                "nt_wm_ovobese_yes", "ph_wtr_far", "dm_hh_head_30plus", 
+                "dm_rural", "dm_sani_open_yes", "dm_cooking_fuel_traditional", 
                 "dm_weath_index", "rh_prob_permit", "ms_afm_15", 
-                "ph_wtr_trt_cloth", "ch_stool_safe_no", "dm_dvjustify_onereas")
+                "ph_wtr_trt_none", "ch_stool_safe_no", "dm_dvjustify_onereas")
 
 # 基本形：共変量のみの式
 xformla <- reformulate(covariates)
