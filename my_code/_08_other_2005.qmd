@@ -385,10 +385,27 @@ create_demographic_variables <- function(data) {
     # ) %>%
     mutate(
       # 地域タイプ（logical → numeric変換）
-      dm_rural = as.numeric(ifelse(hv026 == 3, 1, 0)),
-      dm_town = as.numeric(ifelse(hv026 == 2, 1, 0)),
-      dm_city = as.numeric(ifelse(hv026 == 1, 1, 0)),
-      dm_capital = as.numeric(ifelse(hv026 == 0, 1, 0)),
+      # 地域タイプ（logical → numeric変換）
+      dm_rural = as.numeric(
+        case_when(
+          hv026 == 3 ~ 1,
+          TRUE ~ 0
+        )),
+      dm_town = as.numeric(
+        case_when(
+          hv026 == 2 ~ 1,
+          TRUE ~ 0
+        )),
+      dm_city = as.numeric(
+        case_when(
+          hv026 == 1 ~ 1,
+          TRUE ~ 0
+        )),
+      dm_capital = as.numeric(
+        case_when(
+          hv026 == 0 ~ 1,
+          TRUE ~ 0
+        )),
       
       # 資産五分位（logical → numeric変換）
       dm_poorest = as.numeric(ifelse(hv270 == 1, 1, 0)),
