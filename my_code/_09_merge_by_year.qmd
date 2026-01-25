@@ -43,8 +43,7 @@ source("../myTools.R")  # プロジェクトルートから読み込む（quarto
 # 対象とする年のリスト
 yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-# yearlist <- c("2005", "2006")
-yearlist <- c("2008")
+yearlist <- c("2005")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -64,6 +63,8 @@ files <- c("BRdata-rh","IRdata-rh","IRdata-rc","IRdata-nt","KRvac","KRdata",
 # filename: ファイル名（拡張子なし）
 # select_col: 抽出する列名のベクトル（NULLの場合は全列を抽出）
 open_processed_file <- function(year, filename, select_col = NULL) {
+  p <- file.path(gdrive_dir, "output", year, paste0(filename, ".RDS"))
+  print(paste0("Loading file: ", filename, " for year: ", year, " path: ", p))
   file_path <- file.path(gdrive_dir, "output", year, paste0(filename, ".RDS")) %>%
     normalizePath() %>%
     trimws() # 正規化してトリムする
@@ -73,8 +74,8 @@ open_processed_file <- function(year, filename, select_col = NULL) {
     if (!is.null(select_col)) {
       df <- df %>% dplyr::select(all_of(select_col))
     }
-    # merge_key設定：HRdata-dmのみ結合キーが"hhid"
-    if (filename == "WASHdata-ws") {
+    # merge_key設定：HRdata-dm/HRdata-dmのみ結合キーが"hhid"
+    if (filename == "WASHdata-ws" | filename == "HRdata-dm") {
       merge_key <- c("hhid")
     } else {
       merge_key <- c("caseid")
@@ -191,36 +192,36 @@ diagnose_join <- function(df1, df2, by_vars, join_name = "") {
   cat(sprintf("  左側データ行数: %d\n", nrow(df1)))
   cat(sprintf("  右側データ行数: %d\n", nrow(df2)))
   
-  # キーのユニーク数
-  for (key in common_keys) {
-    n_unique_df1 <- df1 %>% dplyr::select(!!key) %>% 
-      dplyr::filter(!is.na(!!sym(key))) %>% 
-      dplyr::distinct() %>% 
-      nrow()
-    n_unique_df2 <- df2 %>% dplyr::select(!!key) %>% 
-      dplyr::filter(!is.na(!!sym(key))) %>% 
-      dplyr::distinct() %>% 
-      nrow()
+  # グループ化が残っていても影響しないように ungroup() を明示
+  df1_keys <- df1 %>%
+    dplyr::ungroup() %>%
+    dplyr::select(dplyr::all_of(by_vars)) %>%
+    dplyr::filter(stats::complete.cases(.))
+  
+  df2_keys <- df2 %>%
+    dplyr::ungroup() %>%
+    dplyr::select(dplyr::all_of(by_vars)) %>%
+    dplyr::filter(stats::complete.cases(.))
+  
+  for (key in by_vars) {
+    n_unique_df1 <- df1_keys %>% dplyr::distinct(.data[[key]]) %>% nrow()
+    n_unique_df2 <- df2_keys %>% dplyr::distinct(.data[[key]]) %>% nrow()
     cat(sprintf("  %s のユニーク数: 左=%d, 右=%d\n", key, n_unique_df1, n_unique_df2))
   }
   
-  # anti_joinによる不一致検出
+  # マッチング診断用の anti_join / semi_join は、先に ungroup() を入れておく
   cat("\n【マッチング診断】\n")
   unmatched_left <- df1 %>%
-    dplyr::anti_join(df2, by = common_keys)
+    dplyr::ungroup() %>%
+    dplyr::anti_join(df2 %>% dplyr::ungroup(), by = by_vars)
+  
   unmatched_right <- df2 %>%
-    dplyr::anti_join(df1, by = common_keys)
+    dplyr::ungroup() %>%
+    dplyr::anti_join(df1 %>% dplyr::ungroup(), by = by_vars)
   
-  cat(sprintf("  左側でマッチしない行数: %d (%.1f%%)\n", 
-              nrow(unmatched_left), 
-              100 * nrow(unmatched_left) / nrow(df1)))
-  cat(sprintf("  右側でマッチしない行数: %d (%.1f%%)\n", 
-              nrow(unmatched_right), 
-              100 * nrow(unmatched_right) / nrow(df2)))
-  
-  # マッチング率の計算
   matched_rows <- df1 %>%
-    dplyr::semi_join(df2, by = common_keys) %>%
+    dplyr::ungroup() %>%
+    dplyr::semi_join(df2 %>% dplyr::ungroup(), by = by_vars) %>%
     nrow()
   
   match_rate <- 100 * matched_rows / nrow(df1)
@@ -241,52 +242,92 @@ diagnose_join <- function(df1, df2, by_vars, join_name = "") {
   ))
 }
 
-#' 安全な左結合を行う関数（診断機能付き）
+#' ************************************************************
+#' ****************** 
+#' 改良版：安全な左結合を行う関数（診断機能付き）
+#' @title left_join_safe
 #' @param df1 左側のデータフレーム
 #' @param df2 右側のデータフレーム
 #' @param by 結合キー（名前付きベクトルまたは文字ベクトル）
 #' @param join_name 結合の名称
 #' @param diagnose 診断を実行するか（デフォルト: FALSE）
 #' @return 結合されたデータフレーム
-left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
-  
-  # by引数を名前付きベクトルから文字ベクトルに変換
-  if (is.null(names(by))) {
-    by_vars <- by
-    by_df1 <- by
-    by_df2 <- by
-  } else {
-    by_df1 <- names(by)
-    by_df2 <- unname(by)
-    by_vars <- unique(c(by_df1, by_df2))
-  }
-  
-  # キー変数の正規化
-  df1_normalized <- normalize_keys(df1, by_df1)
-  df2_normalized <- normalize_keys(df2, by_df2)
-  
-  # 診断の実行
-  if (diagnose) {
-    diag_result <- diagnose_join(df1_normalized, df2_normalized, 
-                                   by_vars, join_name)
-  }
-  
-  # 結合の実行
-  result <- dplyr::left_join(df1_normalized, df2_normalized, by = by,
-                              relationship = "many-to-one")
-  
-  # 結果の確認
-  if (nrow(result) == 0) {
-    stop(sprintf("結合結果が0行です: %s", join_name))
-  }
-  
-  if (nrow(result) > nrow(df1) * 1.5) {
-    warning(sprintf("結合後の行数が元のデータの1.5倍以上になっています: %s (元: %d, 結果: %d)", 
-                    join_name, nrow(df1), nrow(result)))
-  }
-  
-  return(result)
-}
+#' @description
+#' この関数は、dplyrのleft_joinを拡張し、
+#' 結合前にキー変数の正規化と診断を行います。
+#' 診断には、キー変数の存在確認、データ型の一致確認、
+#' ユニークキー数の確認、マッチング率の計算が含まれます。
+#' また、右側データフレームに重複がある場合は、
+#' 最初の行のみを保持して結合を行います。
+#' 使用例:
+#' ```R
+#' result <- left_join_safe(df1, df2, by = c("id" = "identifier"),
+#'                          join_name = "Example Join", diagnose = TRUE)
+#'                          ```
+#' ************************************************************
+# left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
+#   
+#   # by引数の処理
+#   if (is.null(names(by))) {
+#     by_vars <- by
+#     by_df1 <- by
+#     by_df2 <- by
+#   } else {
+#     by_df1 <- names(by)
+#     by_df2 <- unname(by)
+#     by_vars <- unique(c(by_df1, by_df2))
+#   }
+#   
+#   # キー変数の正規化
+#   df1_normalized <- normalize_keys(df1, by_df1)
+#   df2_normalized <- normalize_keys(df2, by_df2)
+#   
+#   # 診断の実行
+#   if (diagnose) {
+#     diag_result <- diagnose_join(df1_normalized, df2_normalized, 
+#                                    by_vars, join_name)
+#     cat("\n")
+#     dup_df1 <- diagnose_duplicates(df1_normalized, by_df1, "左側データ")
+#     dup_df2 <- diagnose_duplicates(df2_normalized, by_df2, "右側データ")
+#   }
+#   
+#   # 右側（df2）に重複がある場合の処理
+#   df2_unique <- df2_normalized %>%
+#     dplyr::ungroup() %>%
+#     ここ要注意⚠️
+#     group_by(across(all_of(by_df2))) %>%
+#     slice(1) %>%
+#     ungroup()
+#   
+#   if (diagnose && nrow(df2_unique) < nrow(df2_normalized)) {
+#     cat(sprintf("\n【重複除去】右側データを %d 行 → %d 行に削減しました\n", 
+#                 nrow(df2_normalized), nrow(df2_unique)))
+#   }
+#   
+#   # 結合の実行
+#   result <- dplyr::left_join(df1_normalized, df2_unique, by = by,
+#                               relationship = "many-to-one")
+#   
+#   # ▼▼ 結合直後にサフィックスをクリーンアップ ▼▼
+#   result <- result %>%
+#     dplyr::select(-ends_with(".y")) %>%
+#     rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+#   
+#   # 結果の確認
+#   if (nrow(result) == 0) {
+#     stop(sprintf("結合結果が0行です: %s", join_name))
+#   }
+#   
+#   if (nrow(result) != nrow(df1)) {
+#     warning(sprintf("結合後の行数が変化しました: %s (元: %d, 結果: %d)", 
+#                     join_name, nrow(df1), nrow(result)))
+#   }
+#   
+#   return(result)
+# }
+
+# -----------関数ここまで----------------------------------------------
+
 
 # ******************************************************************************
 # 重複診断関数の追加
@@ -300,13 +341,14 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
 diagnose_duplicates <- function(df, by_vars, df_name = "") {
   cat("\n【重複診断:", df_name, "】\n")
   
-  # キーの組み合わせで重複をチェック
+  # ▼ ここで必ず ungroup() してから処理 ▼
   key_combo <- df %>%
-    dplyr::select(all_of(by_vars)) %>%
-    dplyr::filter(complete.cases(.))
+    dplyr::ungroup() %>%
+    dplyr::select(dplyr::all_of(by_vars)) %>%
+    dplyr::filter(stats::complete.cases(.))
   
-  n_total <- nrow(key_combo)
-  n_unique <- key_combo %>% distinct() %>% nrow()
+  n_total  <- nrow(key_combo)
+  n_unique <- key_combo %>% dplyr::distinct() %>% nrow()
   n_duplicates <- n_total - n_unique
   
   cat(sprintf("  総行数: %d\n", n_total))
@@ -314,12 +356,11 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
   cat(sprintf("  重複行数: %d\n", n_duplicates))
   
   if (n_duplicates > 0) {
-    # 重複しているキーを抽出
     duplicate_keys <- key_combo %>%
-      group_by(across(all_of(by_vars))) %>%
-      dplyr::filter(n() > 1) %>%
-      ungroup() %>%
-      distinct()
+      dplyr::group_by(dplyr::across(dplyr::all_of(by_vars))) %>%
+      dplyr::filter(dplyr::n() > 1) %>%
+      dplyr::ungroup() %>%
+      dplyr::distinct()
     
     cat(sprintf("  重複しているキーパターン数: %d\n", nrow(duplicate_keys)))
     cat("  重複例（最初の5件）:\n")
@@ -327,7 +368,7 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
     
     return(list(
       has_duplicates = TRUE,
-      n_duplicates = n_duplicates,
+      n_duplicates   = n_duplicates,
       duplicate_keys = duplicate_keys
     ))
   } else {
@@ -339,8 +380,36 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
 # ******************************************************************************
 # 改善版：安全な左結合を行う関数
 # ******************************************************************************
-
-left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
+#' 改良版：安全な左結合を行う関数（診断機能付き、優先キー対応版）
+#' @title left_join_safe
+#' @param df1 左側のデータフレーム
+#' @param df2 右側のデータフレーム
+#' @param by 結合キー（名前付きベクトルまたは文字ベ
+#' クトル）
+#' @param join_name 結合の名称
+#' @param diagnose 診断を実行するか（デフォルト: FALSE
+#' ）
+#' @param priority_key 右側データフレームで重複が
+#' ある場合に優先的に保持するキー変数のベクトル
+#' @return 結合されたデータフレーム
+#' @description
+#' この関数は、dplyrのleft_joinを拡張し、
+#' 結合前にキー変数の正規化と診断を行
+#' います。診断には、キー変数の存在確認、データ型の一致確認、
+#' ユニークキー数の確認、マッチング率の計算が
+#' 含まれます。また、右側データフレームに重複がある場合は、
+#' priority_keyで指定された変数を基に優先順位を決定し
+#' て最初の行のみを保持して結合を行います。
+#' 使用例:
+#' ```R
+#' result <- left_join_safe(df1, df2, by = c("id"
+#' = "identifier"), join_name = "Example Join",
+#'                         diagnose = TRUE,
+#'                         priority_key = c("date_updated", "version"))
+#' ```
+#'************************************************************************
+left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
+                           priority_key = NULL) {
   
   # by引数を名前付きベクトルから文字ベクトルに変換
   if (is.null(names(by))) {
@@ -370,12 +439,22 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
   
   # 右側（df2）に重複がある場合の処理
   # HRdata-dmのような世帯データの場合、世帯レベルの変数のみを保持
-  df2_unique <- df2_normalized %>%
-    group_by(across(all_of(by_df2))) %>%
-    # 最初の行を取得（または他の集約ロジック）
-    slice(1) %>%
-    ungroup()
-  
+  if (!is.null(priority_key) && !all(is.na(priority_key))) {
+    # priority_keyが指定されている場合
+    df2_unique <- df2_normalized %>%
+      arrange(across(all_of(by_df2)),
+              desc(across(all_of(priority_key)))) %>%  # 降順で新しい/優先度の高い順
+      group_by(across(all_of(by_df2))) %>%
+      slice(1) %>%
+      ungroup()
+  } else {
+    # 従来の処理（指定されていない場合）
+    df2_unique <- df2_normalized %>%
+      group_by(across(all_of(by_df2))) %>%
+      slice(1) %>%
+      ungroup()
+  }
+
   # 重複除去後の行数を確認
   if (diagnose && nrow(df2_unique) < nrow(df2_normalized)) {
     cat(sprintf("\n【重複除去】右側データを %d 行 → %d 行に削減しました\n", 
@@ -386,6 +465,11 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
   result <- dplyr::left_join(df1_normalized, df2_unique, by = by,
                               relationship = "many-to-one")
   
+  # ▼▼ 結合直後にサフィックスをクリーンアップ ▼▼
+  result <- result %>%
+    dplyr::select(-ends_with(".y")) %>%
+    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+
   # 結果の確認
   if (nrow(result) == 0) {
     stop(sprintf("結合結果が0行です: %s", join_name))
@@ -399,6 +483,8 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
   return(result)
 }
 
+# -----------関数ここまで----------------------------------------------
+
 # ******************************************************************************
 # より安全な HRdata-dm 専用の結合関数
 # ******************************************************************************
@@ -408,98 +494,99 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE) {
 #' @param hr_data HRdata-dmのデータフレーム
 #' @param diagnose 診断を実行するか
 #' @return 結合されたデータフレーム
-merge_hrdata_dm_safe <- function(data_merged, hr_data, diagnose = FALSE) {
-  
-  cat("\n【HRdata-dm の特殊処理】\n")
-  
-  # v001, v002を数値型に統一
-  hr_data <- hr_data %>% 
-    dplyr::select(-any_of(c("v005", "v022"))) %>%
-    mutate(
-      v001 = as.numeric(as.character(v001)),
-      v002 = as.numeric(as.character(v002))
-    )
-  
-  data_merged <- data_merged %>%
-    mutate(
-      v001 = as.numeric(as.character(v001)),
-      v002 = as.numeric(as.character(v002))
-    )
-  
-  # キーの正規化
-  key_vars <- c("v001", "v002", "year")
-  hr_data <- normalize_keys(hr_data, key_vars)
-  data_merged <- normalize_keys(data_merged, key_vars)
-  
-  # HRdata-dmの重複確認
-  if (diagnose) {
-    dup_check <- diagnose_duplicates(hr_data, key_vars, "HRdata-dm")
-  }
-  
-  # 世帯レベル（household level）の変数のみを特定
-  # 個人レベルの変数（hv103, hvidxなど）は除外
-  individual_vars <- c("hv101", "hv102", "hv103", "hv104", "hv105", "hv106", 
-                       "hv107", "hv108", "hv109", "hv110", "hv111", "hv112",
-                       "hvidx", "ha0", "ha1", "ha2", "ha3", "hc0", "hc1",
-                       "hc70", "hc71", "hc72", "hml1")
-  
-  # 世帯レベルの変数のみを選択
-  household_vars <- names(hr_data)[!names(hr_data) %in% individual_vars]
-  
-  cat(sprintf("  HRdata-dm の総変数数: %d\n", ncol(hr_data)))
-  cat(sprintf("  世帯レベル変数数: %d\n", length(household_vars)))
-  cat(sprintf("  除外した個人レベル変数数: %d\n", 
-              ncol(hr_data) - length(household_vars)))
-  
-  # 世帯レベル変数のみを選択し、キーで集約
-  hr_household <- hr_data %>%
-    dplyr::select(all_of(household_vars)) %>%
-    group_by(v001, v002, year) %>%
-    # 最初の行を取得（世帯レベル変数は世帯内で同一のはず）
-    slice(1) %>%
-    ungroup()
-  
-  cat(sprintf("  集約前の行数: %d\n", nrow(hr_data)))
-  cat(sprintf("  集約後の行数: %d\n", nrow(hr_household)))
-  
-  # 集約後の重複確認
-  if (diagnose) {
-    dup_check_after <- diagnose_duplicates(hr_household, key_vars, 
-                                            "HRdata-dm（集約後）")
-  }
-  
-  # data_mergedに存在する変数を除外（重複回避）
-  vars_to_join <- setdiff(names(hr_household), 
-                          c(names(data_merged)))
-  # ただしキー変数は含める
-  vars_to_join <- c(key_vars, vars_to_join)
-  vars_to_join <- unique(vars_to_join)
-  
-  hr_household_clean <- hr_household %>%
-    dplyr::select(all_of(vars_to_join))
-  
-  cat(sprintf("  結合する変数数: %d\n", length(vars_to_join)))
-  
-  # 診断の実行
-  if (diagnose) {
-    diag_result <- diagnose_join(data_merged, hr_household_clean, 
-                                   key_vars, "HRdata-dm（最終）")
-  }
-  
-  # 結合の実行
-  result <- dplyr::left_join(data_merged, hr_household_clean, 
-                              by = c("v001", "v002", "year"),
-                              relationship = "many-to-one")
-  
-  # .x, .yサフィックスの処理
-  result <- result %>%
-    dplyr::select(-ends_with(".y")) %>%
-    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
-  
-  cat("  ✓ HRdata-dm の結合完了\n")
-  
-  return(result)
-}
+# merge_hrdata_dm_safe <- function(data_merged, hr_data, diagnose = FALSE) {
+#   
+#   cat("\n【HRdata-dm の特殊処理】\n")
+#   
+#   # v001, v002を数値型に統一
+#   hr_data <- hr_data %>% 
+#     dplyr::select(-any_of(c("v005", "v022"))) %>%
+#     mutate(
+#       v001 = as.numeric(as.character(v001)),
+#       v002 = as.numeric(as.character(v002))
+#     )
+#   
+#   data_merged <- data_merged %>%
+#     mutate(
+#       v001 = as.numeric(as.character(v001)),
+#       v002 = as.numeric(as.character(v002))
+#     )
+#   
+#   # キーの正規化
+#   key_vars <- c("v001", "v002", "year")
+#   hr_data <- normalize_keys(hr_data, key_vars)
+#   data_merged <- normalize_keys(data_merged, key_vars)
+#   
+#   # HRdata-dmの重複確認
+#   if (diagnose) {
+#     dup_check <- diagnose_duplicates(hr_data, key_vars, "HRdata-dm")
+#   }
+#   
+#   # 世帯レベル（household level）の変数のみを特定
+#   # 個人レベルの変数（hv103, hvidxなど）は除外
+#   individual_vars <- c("hv101", "hv102", "hv103", "hv104", "hv105", "hv106", 
+#                        "hv107", "hv108", "hv109", "hv110", "hv111", "hv112",
+#                        "hvidx", "ha0", "ha1", "ha2", "ha3", "hc0", "hc1",
+#                        "hc70", "hc71", "hc72", "hml1")
+#   
+#   # 世帯レベルの変数のみを選択
+#   household_vars <- names(hr_data)[!names(hr_data) %in% individual_vars]
+#   
+#   cat(sprintf("  HRdata-dm の総変数数: %d\n", ncol(hr_data)))
+#   cat(sprintf("  世帯レベル変数数: %d\n", length(household_vars)))
+#   cat(sprintf("  除外した個人レベル変数数: %d\n", 
+#               ncol(hr_data) - length(household_vars)))
+#   
+#   # 世帯レベル変数のみを選択し、キーで集約
+#   hr_household <- hr_data %>%
+#     dplyr::select(all_of(household_vars)) %>%
+#     group_by(v001, v002, year) %>%
+#     ここ要注意⚠️
+#     # 最初の行を取得（世帯レベル変数は世帯内で同一のはず）
+#     slice(1) %>%
+#     ungroup()
+#   
+#   cat(sprintf("  集約前の行数: %d\n", nrow(hr_data)))
+#   cat(sprintf("  集約後の行数: %d\n", nrow(hr_household)))
+#   
+#   # 集約後の重複確認
+#   if (diagnose) {
+#     dup_check_after <- diagnose_duplicates(hr_household, key_vars, 
+#                                             "HRdata-dm（集約後）")
+#   }
+#   
+#   # data_mergedに存在する変数を除外（重複回避）
+#   vars_to_join <- setdiff(names(hr_household), 
+#                           c(names(data_merged)))
+#   # ただしキー変数は含める
+#   vars_to_join <- c(key_vars, vars_to_join)
+#   vars_to_join <- unique(vars_to_join)
+#   
+#   hr_household_clean <- hr_household %>%
+#     dplyr::select(all_of(vars_to_join))
+#   
+#   cat(sprintf("  結合する変数数: %d\n", length(vars_to_join)))
+#   
+#   # 診断の実行
+#   if (diagnose) {
+#     diag_result <- diagnose_join(data_merged, hr_household_clean, 
+#                                    key_vars, "HRdata-dm（最終）")
+#   }
+#   
+#   # 結合の実行
+#   result <- dplyr::left_join(data_merged, hr_household_clean, 
+#                               by = c("v001", "v002", "year"),
+#                               relationship = "many-to-one")
+#   
+#   # .x, .yサフィックスの処理
+#   result <- result %>%
+#     dplyr::select(-ends_with(".y")) %>%
+#     rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+#   
+#   cat("  ✓ HRdata-dm の結合完了\n")
+#   
+#   return(result)
+# }
 
 # ============================================================================
 # WASHdata-ws用の重複解決関数
@@ -508,36 +595,37 @@ merge_hrdata_dm_safe <- function(data_merged, hr_data, diagnose = FALSE) {
 #' WASHデータのhhid重複を解決する関数
 #' @param wash_data WASHdata-wsのデータフレーム
 #' @return 重複を解決したデータフレーム
-resolve_wash_duplicates <- function(wash_data) {
-  cat("\n【WASHdata-ws の重複解決処理】\n")
-  
-  # hhidでグループ化し、重複を確認
-  wash_grouped <- wash_data %>%
-    group_by(hhid) %>%
-    mutate(n_records = n()) %>%
-    ungroup()
-  
-  n_duplicates <- sum(wash_grouped$n_records > 1)
-  cat(sprintf("  重複レコード数: %d\n", n_duplicates))
-  
-  if (n_duplicates > 0) {
-    # 重複がある場合、最も完全なレコードを選択
-    wash_dedup <- wash_data %>%
-      group_by(hhid) %>%
-      # NA数が最小の行を選択
-      mutate(na_count = rowSums(is.na(across(everything())))) %>%
-      slice_min(na_count, n = 1, with_ties = FALSE) %>%
-      select(-na_count) %>%
-      ungroup()
-    
-    cat(sprintf("  重複解消前: %d 行\n", nrow(wash_data)))
-    cat(sprintf("  重複解消後: %d 行\n", nrow(wash_dedup)))
-    
-    return(wash_dedup)
-  }
-  
-  return(wash_data)
-}
+# resolve_wash_duplicates <- function(wash_data) {
+#   cat("\n【WASHdata-ws の重複解決処理】\n")
+#   
+#   # hhidでグループ化し、重複を確認
+#   wash_grouped <- wash_data %>%
+#     group_by(hhid) %>%
+#     mutate(n_records = n()) %>%
+#     ungroup()
+#   
+#   n_duplicates <- sum(wash_grouped$n_records > 1)
+#   cat(sprintf("  重複レコード数: %d\n", n_duplicates))
+#   
+#   if (n_duplicates > 0) {
+#     # 重複がある場合、最も完全なレコードを選択
+#     ここ要注意⚠️
+#     wash_dedup <- wash_data %>%
+#       group_by(hhid) %>%
+#       # NA数が最小の行を選択
+#       mutate(na_count = rowSums(is.na(across(everything())))) %>%
+#       slice_min(na_count, n = 1, with_ties = FALSE) %>%
+#       select(-na_count) %>%
+#       ungroup()
+#     
+#     cat(sprintf("  重複解消前: %d 行\n", nrow(wash_data)))
+#     cat(sprintf("  重複解消後: %d 行\n", nrow(wash_dedup)))
+#     
+#     return(wash_dedup)
+#   }
+#   
+#   return(wash_data)
+# }
 
 # ============================================================================
 # 年度別変数存在チェック関数
@@ -674,10 +762,7 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
   # データの読み込みと正規化
   # ============================================================================
   print("必要なデータセットを抽出します")
-  
-  keep_RECH1 <- c("HV001", "HV002", "HV103", "HHID", "HVIDX")
-  keep_RECH6 <- c("HC1", "hc27", "HC56", "HC70", "HC71", "HC72", "HHID", "HC0")
-  
+
   data_all <- list()
   data_merged <- NULL
   
@@ -696,10 +781,27 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
   # データの結合（診断機能付き）
   # ============================================================================
   
-  print("(1) Starting with BRdata-rh")
-  data_merged <- data_all[["BRdata-rh"]]
   
-  print("(2) Merging with IRdata-rh")
+  print("(1) Merging with PRdata")
+  data_merged <- data_all[["PRdata"]] %>%
+    mutate(year = year)
+  cat("data_mergedのage分布:\n")
+  print("original")
+  print(names(data_all[["PRdata"]]))
+  print("data_merged")
+  print(names(data_merged))
+  
+  print("(2) Merging with BRdata-rh")
+  data_merged <- left_join_safe(
+    data_merged, 
+    data_all[["BRdata-rh"]], 
+    by = c("caseid"),
+    join_name = "BRdata-rh",
+    diagnose = enable_diagnostics
+  )
+  print(names(data_merged))
+  
+  print("(3) Merging with IRdata-rh")
   data_all[["IRdata-rh"]] <- data_all[["IRdata-rh"]] %>% 
     dplyr::select(-any_of(c("age", "wt")))
   
@@ -710,17 +812,19 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "IRdata-rh",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(3) Merging with IRdata-rc")
+  print("(4) Merging with IRdata-rc")
   data_merged <- left_join_safe(
     data_merged, 
     data_all[["IRdata-rc"]], 
-    by = c("caseid", "year"),
+    by = c("caseid"),
     join_name = "IRdata-rc",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(4) Merging with IRdata-nt")
+  print("(5) Merging with IRdata-nt")
   data_merged <- left_join_safe(
     data_merged, 
     data_all[["IRdata-nt"]], 
@@ -728,17 +832,19 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "IRdata-nt",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(5) Merging with KRvac")
+  print("(6) Merging with KRvac")
   data_merged <- left_join_safe(
     data_merged, 
     data_all[["KRvac"]], 
-    by = c("caseid", "age", "wt", "year"),
+    by = c("caseid", "year"),
     join_name = "KRvac",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(6) Merging with KRdata")
+  print("(7) Merging with KRdata")
   data_all[["KRdata"]] <- data_all[["KRdata"]] %>% 
     dplyr::select(-any_of(c("age", "wt")))
   
@@ -749,8 +855,9 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "KRdata",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(7) Merging with KRiycf-nt")
+  print("(8) Merging with KRiycf-nt")
   data_all[["KRiycf-nt"]] <- data_all[["KRiycf-nt"]] %>% 
     dplyr::select(-any_of(c("b4", "v005", "v022", "v025", "v106", "v190", "age")))
   
@@ -761,8 +868,9 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "KRiycf-nt",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(8) Merging with IRdata-ms")
+  print("(9) Merging with IRdata-ms")
   data_merged <- left_join_safe(
     data_merged, 
     data_all[["IRdata-ms"]], 
@@ -770,8 +878,9 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "IRdata-ms",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(9) Merging with KRstool")
+  print("(10) Merging with KRstool")
   data_all[["KRstool"]] <- data_all[["KRstool"]] %>% 
     dplyr::select(-any_of(c("age", "wt")))
   
@@ -782,93 +891,40 @@ goAnalysis <- function(year, enable_diagnostics = FALSE){
     join_name = "KRstool",
     diagnose = enable_diagnostics
   )
+  print(names(data_merged))
   
-  print("(10) Merging with HRdata-dm")
-  # ★★★ 修正箇所：専用関数を使用 ★★★
-  data_merged <- merge_hrdata_dm_safe(
+  print("(11) Merging with HRdata-dm")
+  print(names(data_merged))
+  data_merged <- left_join_safe(
     data_merged, 
     data_all[["HRdata-dm"]], 
+    by = c("hhid", "year"),
+    join_name = "HRdata-dm",
     diagnose = enable_diagnostics
   )
+  # ===========================================================================
+  #' hhid/caseidの重複チェックと解決(caseidが一番小さいレコードだけ残す)
+  #' 一つの世帯に母親が二人いる場合への対応
+  # ===========================================================================
+  data_merged <- data_merged %>%
+    group_by(hhid) %>%
+    slice_min(order_by = caseid, n = 1, with_ties = FALSE) %>%
+    ungroup()
   
+  cat("data_mergedの重複チェック（hhid）", "\n")
+  print(duplicate_check(data_merged, "hhid", "data_merged") ==0)
+  print(names(data_merged))
 
-  print("(11) Merging with WASHdata-ws")
-  
-  # WASHデータの重複を事前に解決
-  data_all[["WASHdata-ws"]] <- resolve_wash_duplicates(data_all[["WASHdata-ws"]])
-  
-  if (year == "2005") {
-    cat("=== 2005年のWASHデータマージ処理開始 ===\n")
-    
-    # HRdata-dmからhhidキーを抽出
-    hr_data <- data_all[["HRdata-dm"]]
-    
-    if (!"caseid" %in% names(hr_data)) {
-      stop("caseid列がHRdata-dmに見つかりません")
-    }
-    
-    # caseidの最初2要素からキーを作成してhhidとマッピング
-    hr_hhid_clean <- hr_data %>%
-      dplyr::select(any_of(c("caseid", "hhid"))) %>%
-      dplyr::filter(!is.na(hhid)) %>%
-      mutate(
-        caseid_key = paste(
-          map_chr(str_split(str_squish(caseid), " "), ~.x[1]),
-          map_chr(str_split(str_squish(caseid), " "), ~.x[2]),
-          sep = " "
-        )
-      ) %>%
-      dplyr::select(caseid_key, hhid) %>%
-      distinct()
-    
-    # data_mergedにhhidを追加
-    data_merged <- data_merged %>%
-      dplyr::select(-any_of("hhid")) %>%
-      mutate(
-        caseid_key = paste(
-          map_chr(str_split(str_squish(caseid), " "), ~.x[1]),
-          map_chr(str_split(str_squish(caseid), " "), ~.x[2]),
-          sep = " "
-        )
-      ) %>%
-      left_join(hr_hhid_clean, by = "caseid_key", 
-                relationship = "many-to-one") %>%
-      dplyr::select(-caseid_key)
-    
-    # WASHデータとの結合
-    data_merged <- left_join_safe(
-      data_merged, 
-      data_all[["WASHdata-ws"]] %>% dplyr::select(-any_of("hhid_clean")),
-      by = c("hhid"),
-      join_name = "WASHdata-ws (2005)",
-      diagnose = enable_diagnostics
-    )
-    
-    cat("=== WASH merge completed for year 2005 ===\n")
-    
-  } else {
-    data_merged <- left_join_safe(
+      
+  print("(12) Merging with WASHdata-ws")
+      data_merged <- left_join_safe(
       data_merged, 
       data_all[["WASHdata-ws"]], 
       by = c("hhid"),
       join_name = "WASHdata-ws",
       diagnose = enable_diagnostics
     )
-  }
 
-  print("(12) Merging with PRdata")
-  data_merged <- left_join_safe(
-    data_merged, 
-    data_all[["PRdata"]], 
-    by = c("caseid", "hhid", "year"),
-    join_name = "PRdata",
-    diagnose = enable_diagnostics
-  ) %>%
-    dplyr::filter(age >= 6 & age <= 24) %>%
-    dplyr::select(-ends_with(".y")) %>%
-    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
-
-  print("子供の月齢6ヶ月から24ヶ月で絞り込みました")
   
   print("データセットの抽出と結合が完了しました")
 
