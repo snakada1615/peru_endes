@@ -43,6 +43,11 @@ library(fs)         # for file path manipulation
 library(openxlsx) 　# for exporting to excel
 library(survey)       # for survey design
 library(tidyverse)  # most variable creation here uses tidyverse 
+# library(dplyr)
+# library(tidyr)
+library(vctrs)
+
+
 
 
 # 各種の関数セット読み込み
@@ -76,33 +81,6 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 ```
 
-## 2. 変数定義
-
-```{r}
-# ============================================================================
-# 1. 変数定義セクション
-# ============================================================================
-
-# 各テーブルから抽出する変数を定義
-get_variable_lists <- function() {
-  list(
-    RECH1 = c("hhid", "hv102", "hv105"),
-    RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
-    REC0111 = c("caseid", "hhid", "v161"),
-    RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
-                 "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
-                 "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
-                 "v822", "v850a", "v850b"),
-    RECH23 = c("hhid", "hv209", "hv270", "hv271","hv238", "hv244", "hv241", 
-                     "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
-                     "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
-                     "hv219", "hv220"),
-    child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
-    child_count = c("hhid", "dm_children_under12")
-  )
-}
-
-```
 
 ## 3. ヘルパー関数
 
@@ -137,24 +115,6 @@ setup_output_directory <- function(year) {
   return(output_dir)
 }
 
-# # REC0111のHHIDを年度に応じて生成する関数
-# *******この関数はmyTools.rに移管しました
-# process_endes_with_hhid <- function(year, filename) {
-#   df <- open_endes_file(year, filename) %>%
-#     rename_with(~ tolower(.x))
-#   
-#   # 年度に応じたHHID生成
-#   if (year <= 2011) {
-#     df <- df %>% 
-#       mutate(hhid = substr(caseid, 1, nchar(caseid) - 3))
-#   } else {
-#     df <- df %>% 
-#       mutate(hhid = paste0("      ", substr(caseid, 7, 15)))
-#   }
-#   
-#   return(df)
-# }
-
 
 ```
 ## 4. データ処理関数
@@ -167,6 +127,23 @@ setup_output_directory <- function(year) {
 library(dplyr)
 library(tidyr)
 library(vctrs)   # 明示的に呼んでおくと安心
+
+#' ***********************************************************************
+#' @title calculate_child_count_fixed2
+#' @description 家族の子供の総数を計算する関数（DHS ワイド形式対応版）
+#' @param HRdata HRデータフレーム
+#' @return 子供の総数を含むデータフレーム
+#' @details
+#' DHSのワイド形式データに対応し、12歳以下の子供の数を計算します。
+#' 年齢変数と居住変数の列名が異なる形式に対応しています。
+#' @examples
+#' #' # HRdata <- read_dta("path_to_HR_data.dta")
+#' #' # child_count <- calculate_child_count_fixed2(HRdata)
+#' #' #' # head(child_count)
+#' #' @import dplyr
+#' @import tidyr
+#' @import vctrs
+#' ***********************************************************************
 calculate_child_count_fixed2 <- function(HRdata) {
   cat("計算中: 家族の子供の総数（DHS ワイド形式）\n")
   
@@ -245,10 +222,22 @@ calculate_child_count_fixed2 <- function(HRdata) {
   
   return(child_count)
 }
+# ---関数ここまで---------------------------------------------------------
 
 
-
-# 家庭での燃料使用状況を処理
+#' ***********************************************************************
+#' @title process_cooking_fuel
+#' @description 家庭での燃料使用状況を処理する関数
+#' @param IRdata IRデータフレーム
+#' @return 燃料使用状況を含むデータフレーム
+#' @details
+#' 家庭での燃料使用状況に関する変数を処理し、伝統的燃料使用の有無を示す変数を作成。
+#' @examples
+#' #' # IRdata <- read_dta("path_to_IR_data.dta")
+#' #' #' # cooking_fuel <- process_cooking_fuel(IRdata)
+#' #' #' # head(cooking_fuel)
+#' ' @import dplyr
+#' ***********************************************************************
 process_cooking_fuel <- function(IRdata) {
   cat("処理中: 家庭での燃料使用状況\n")
   
@@ -266,6 +255,7 @@ process_cooking_fuel <- function(IRdata) {
   
   return(cooking_fuel)
 }
+# ---関数ここまで^^---------------------------------------------------------
 
 ```
 
@@ -277,6 +267,22 @@ process_cooking_fuel <- function(IRdata) {
 # ============================================================================
 
 # データセットを安全に結合
+#' ***********************************************************************
+#' @title safe_join_datasets
+#' @description データセットを安全に結合する関数
+#' @param base_data 基本データフレーム
+#' @param join_data 結合するデータフレーム
+#' @param by_vars 結合に使用する変数のベクトル
+#' @param join_name 結合するデータセットの名前（ログ用）
+#' @return 結合されたデータフレーム
+#' @details
+#' 結合前後に重複チェックを行い、安全にデータセットを結合します。
+#' @examples
+#' #' #' # base_data <- read_dta("path_to_base_data.dta")
+#' #' #' # join_data <- read_dta("path_to_join_data.dta")
+#' #' #' # result <- safe_join_datasets(base_data, join_data, by = c("caseid"), join_name = "JoinData")
+#' ' @import dplyr
+#' ***********************************************************************
 safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
   cat("結合中:", join_name, "\n")
   
@@ -288,12 +294,17 @@ safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
   result <- base_data %>%
     left_join_safe(join_data, by = by_vars)
   
+  # ▼▼ 結合直後にサフィックスをクリーンアップ ▼▼
+  result <- result %>%
+    dplyr::select(-ends_with(".y")) %>%
+    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+ 
   cat(sprintf("%sを結合しました\n", join_name))
   duplicate_check(result, by_vars, "結合後データ")
   
   return(result)
 }
-
+# ---関数ここまで^^---------------------------------------------------------
 
 # ***************************************************************
 # HRデータとIRデータをhhid_joinでマージする関数
@@ -366,6 +377,158 @@ merge_HR_IR <- function(HRdata, IRdata) {
 }
 # -----------関数ここまで------------------------------------------------
 
+# -------------------------------------------------------------------
+# 家庭ごとに「同居かつ最年少の子供」を基準に caseid を1件だけ残す関数
+#  - 入力 : 最終データフレーム HRdata
+#  - 出力 : 各 hhid について 1行のみ（= 1つの caseid のみ）を残した HRdata
+#           ・該当する子供がいない世帯は削除
+#           ・hv105/hv102 の扱いは calculate_child_count_fixed2() と同じ
+# -------------------------------------------------------------------
+#' ***********************************************************************
+#' @title keep_youngest_child_caseid
+#' @description 家庭ごとに「同居かつ最年少の子
+#' 供」を基準に caseid を1件だけ残す関数
+#' @param HRdata HRデータフレーム
+#' @return 各 hhid について 1行のみ（= 1つ
+#' の caseid のみ）を残した HRデータフレーム
+#' @details
+#' 各家庭において、同居かつ最年少の子供
+#' の caseid を1件だけ残し、他の行を削除します。
+#' 同居かつ12歳以下の子供がいない家庭は削除
+#' されます。
+#' @examples
+#' #' # HRdata <- read_dta("path_to_HR_data.dta")
+#' #' # filtered_HRdata <- keep_youngest_child_caseid(HRdata)
+#' #' # head(filtered_HRdata)
+#' ' @import dplyr
+#' @import tidyr
+#' @import vctrs
+#' ***********************************************************************
+keep_youngest_child_caseid <- function(HRdata) {
+  cat("処理開始: 同居かつ最年少の子供の caseid を1件だけ残す\n")
+
+  # 1. 年齢・居住変数の列名を抽出（calculate_child_count_fixed2 と同じパターン）
+  # 2005: hv105$1, hv105$2, ...
+  # 2012: hv105.1, hv105.2, ...
+  age_cols       <- grep("^hv105[.$]", names(HRdata), value = TRUE)
+  residence_cols <- grep("^hv102[.$]", names(HRdata), value = TRUE)
+
+  cat("年齢変数:", length(age_cols), "個,  居住変数:", length(residence_cols), "個\n")
+
+  if (length(age_cols) == 0 || length(residence_cols) == 0) {
+    stop("hv105[.$] / hv102[.$] 形式の列が見つかりません。HRdata にこれらの変数を含めてください。")
+  }
+
+  # 2. labelled → numeric への変換（calculate_child_count_fixed2 と同じ思想）
+  suppressWarnings({
+    HR_clean <- HRdata %>%
+      mutate(
+        hv009 = as.numeric(vec_data(hv009)),     # 世帯人数
+        across(
+          all_of(c(age_cols, residence_cols)),
+          ~ as.numeric(vec_data(.))
+        )
+      )
+  })
+
+  # デバッグ用: 変換後の分布を少し確認
+  if (length(residence_cols) > 0) {
+    cat("居住変数（例:", residence_cols[1], "）変換後の分布:\n")
+    print(table(HR_clean[[residence_cols[1]]], useNA = "always"))
+  }
+  if (length(age_cols) > 0) {
+    cat("年齢変数（例:", age_cols[1], "）変換後の分布（先頭20）:\n")
+    print(table(HR_clean[[age_cols[1]]], useNA = "always")[1:20])
+  }
+
+  # 3. ワイド → ロング → 再ワイド（calculate_child_count_fixed2 と同じ構造）
+  #    - names_sep = "[.$]" として、"$" と "." のどちらでも区切れるようにする
+  df_long <- HR_clean %>%
+    select(hhid, caseid, hv009, all_of(c(age_cols, residence_cols))) %>%
+    pivot_longer(
+      cols      = -c(hhid, caseid, hv009),
+      names_to  = c("variable", "line_number"),
+      names_sep = "[.$]",          # "$" or "." どちらでも OK
+      values_to = "value"
+    ) %>%
+    mutate(line_number = as.numeric(line_number)) %>%
+    # 世帯人数（hv009）を超える行は無効
+    filter(line_number <= hv009) %>%
+    pivot_wider(
+      names_from  = "variable",
+      values_from = "value"
+    )
+
+  cat("ロング変換後: 行数 =", nrow(df_long), "\n")
+  cat("hv105 非NA:", sum(!is.na(df_long$hv105)),
+      " うち 12歳以下:", sum(df_long$hv105 <= 12, na.rm = TRUE), "\n")
+  cat("hv102==1（de jure 同居）人数:", sum(df_long$hv102 == 1, na.rm = TRUE), "\n")
+
+  # 4. 「同居かつ12歳以下の子供」を抽出
+  child_long <- df_long %>%
+    filter(
+      !is.na(hv105),
+      !is.na(hv102),
+      hv105 <= 12,
+      hv102 == 1                    # 0=No, 1=Yes
+    )
+
+  cat("同居かつ12歳以下の子供が存在するレコード数:", nrow(child_long), "\n")
+
+  if (nrow(child_long) == 0) {
+    warning("同居かつ12歳以下の子供がいる世帯が見つかりませんでした。空のデータフレームを返します。")
+    return(HRdata[0, , drop = FALSE])
+  }
+
+  # 5. hhid × caseid ごとに「その世帯にいる子供の最年少年齢」を計算
+  #    （同一世帯内の複数 caseid で同じ値になる可能性は高いが、
+  #      ここでは機械的に定義する）
+  youngest_by_caseid <- child_long %>%
+    group_by(hhid, caseid) %>%
+    summarise(
+      min_child_age = min(hv105, na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  # 6. 各 hhid の中で「最も若い子供の年齢」を持つ caseid を1件だけ選択
+  #    - まず hhid 単位で min_child_age の最小値を持つ行を抽出
+  #    - 同年齢が複数ある場合は caseid の昇順で先頭を採用
+  youngest_caseid_per_hh <- youngest_by_caseid %>%
+    group_by(hhid) %>%
+    arrange(min_child_age, caseid) %>%
+    slice(1L) %>%
+    ungroup()
+
+  cat("同居かつ最年少の子供に対応する caseid を持つ世帯数:",
+      nrow(youngest_caseid_per_hh), "\n")
+
+  # 7. 元の HRdata から「選ばれた caseid」だけを残す
+  HR_out <- HRdata %>%
+    semi_join(youngest_caseid_per_hh, by = c("hhid", "caseid"))
+
+  # 念のため、hhid が一意か確認し、重複があれば強制的に1件に絞る
+  dup_hh <- HR_out %>%
+    count(hhid) %>%
+    filter(n > 1)
+
+  if (nrow(dup_hh) > 0) {
+    warning("一部の hhid でまだ複数行が残っています。distinct() で1行に絞り込みます。")
+    HR_out <- HR_out %>%
+      arrange(hhid, caseid) %>%
+      distinct(hhid, .keep_all = TRUE)
+  }
+
+  cat("処理前: 世帯数(=hhidのユニーク数) =", n_distinct(HRdata$hhid), "\n")
+  cat("処理後: 世帯数(=hhidのユニーク数) =", n_distinct(HR_out$hhid), "\n")
+  cat("処理完了: 各 hhid について同居かつ最年少の子供に対応する caseid のみを保持しました。\n")
+  
+   # ★★★ 重要: age_cols と residence_cols を属性として保存 ★★★
+  attr(HR_out, "age_cols") <- age_cols
+  attr(HR_out, "residence_cols") <- residence_cols
+  
+  return(HR_out)
+}
+# ---関数ここまで^^---------------------------------------------------------
 ```
 
 ## 6. 変数作成関数
@@ -376,6 +539,20 @@ merge_HR_IR <- function(HRdata, IRdata) {
 # ============================================================================
 
 # 人口統計学的変数を作成（修正版）
+#' ***********************************************************************
+#' @title create_demographic_variables
+#' @description 人口統計学的変数を作成する関数
+#' @param data データフレーム
+#' @return 人口統計学的変数を含むデータフレーム
+#' @details
+#' 地域タイプや資産五分位などの人口統計学的変
+#' 数を作成します。
+#' @examples
+#' #' # data <- read_dta("path_to_data.dta")
+#' #' #' # demographic_vars <- create_demographic_variables(data)
+#' #' #' # head(demographic_vars)
+#' ' @import dplyr
+#' ***********************************************************************
 create_demographic_variables <- function(data) {
   data %>%
     # rename(
@@ -416,8 +593,25 @@ create_demographic_variables <- function(data) {
       dm_weath_index = hv271/100000
     )
 }
+# ---関数ここまで^^---------------------------------------------------------
+
 
 # 住居・設備関連変数を作成（修正版）
+#' ***********************************************************************
+#' @title create_housing_variables
+#' @description 住居・設備関連変数を作成する関数
+#' @param data データフレーム
+#' @return 住居・設備関連変数を含むデータフレ
+#' ーム
+#' @details
+#' トイレの共有状況、調理場所、農地・家
+#' 畜の所有状況などの住居・設備関連変数を作成します。
+#' @examples
+#' #' # data <- read_dta("path_to_data.dta")
+#' #' #' # housing_vars <- create_housing_variables(data)
+#' #' #' # head(housing_vars)
+#' ' @import dplyr
+#' ***********************************************************************
 create_housing_variables <- function(data) {
   data %>%
     mutate(
@@ -435,8 +629,25 @@ create_housing_variables <- function(data) {
       dm_poultry_own = as.numeric(ifelse(hv246g > 0 & hv246g < 98, 1, 0))
     )
 }
+# ---関数ここまで^^---------------------------------------------------------
 
 # 世帯主関連変数を作成（修正版）
+#' ***********************************************************************
+#' @title create_household_head_variables
+#' @description 世帯主関連変数を作成する関数
+#' @param data データフレーム
+#' @param var_refrigerator 冷蔵庫所有変数の列名
+#' @return 世帯主関連変数を含むデータフレーム
+#' @details
+#' 冷蔵庫所有、女性世帯主、世帯主の年
+#' 齢層などの世帯主関連変数を作成します。
+#' @examples
+#' #' # data <- read_dta("path_to_data.dta")
+#' #' #' # household_head_vars <- create_household_head_variables(data, var_refriger
+#' ator = "hv209")
+#' #' #' # head(household_head_vars)
+#' ' @import dplyr
+#' ***********************************************************************
 create_household_head_variables <- function(data, var_refrigerator = "hv209") {
   data %>%
     mutate(
@@ -455,7 +666,7 @@ create_household_head_variables <- function(data, var_refrigerator = "hv209") {
       ))
     )
 }
-
+# ---関数ここまで^^---------------------------------------------------------
 
 ```
 
@@ -467,6 +678,21 @@ create_household_head_variables <- function(data, var_refrigerator = "hv209") {
 # ============================================================================
 
 # 変数ラベルを設定
+#'*************************************************************
+#'**********
+#' @title set_all_variable_labels
+#' @description すべての変数にラベルを設定する関数
+#' @param data データフレーム
+#' @return ラベルが設定されたデータフレーム
+#' @details
+#' 指定された変数に対して、わかりやすいラベル
+#' を設定します。
+#' @examples
+#' #' # data <- read_dta("path_to_data.dta")
+#' #' #' # labeled_data <- set_all_variable_labels(data)
+#' #' #' # head(labeled_data)
+#' ' @import dplyr
+#' *************************************************************
 set_all_variable_labels <- function(data) {
   data %>%
     set_variable_labels(
@@ -502,8 +728,24 @@ set_all_variable_labels <- function(data) {
       v022 = "Stratum"
     )
 }
+# ---関数ここまで^^---------------------------------------------------------
 
 # 値ラベルを設定
+#'*************************************************************
+#' @title set_all_value_labels
+#' @description すべての変数に値ラベルを設定する関
+#' 数
+#' @param data データフレーム
+#' @return 値ラベルが設定されたデータフレーム
+#' @details
+#' 指定された変数に対して、わかりやすい値ラ
+#' ベルを設定します。
+#' @examples
+#' #' # data <- read_dta("path_to_data.dta")
+#' #' #' # labeled_data <- set_all_value_labels(data)
+#' #' #' # head(labeled_data)
+#' ' @import dplyr
+#' *************************************************************
 set_all_value_labels <- function(data) {
   # ラベルを設定する列名のリスト
   label_cols <- c("dm_cooking_fuel", "dm_cooking_fuel_traditional", 
@@ -549,7 +791,7 @@ set_all_value_labels <- function(data) {
                             "50s" = 5, "60s" = 6, "70s" = 7, "80+" = 8)
     )
 }
-
+# ---関数ここまで^^---------------------------------------------------------
 
 ```
 
@@ -568,7 +810,7 @@ goAnalysis <- function(year) {
   cat("============================================================================\n\n")
   
   # 変数リストを取得
-  var_lists <- get_variable_lists()
+  # var_lists <- get_variable_lists()
   
   # 出力ディレクトリを準備
   output_dir <- setup_output_directory(year)
@@ -682,6 +924,9 @@ goAnalysis <- function(year) {
     create_household_head_variables() %>%
     mutate(year = year)
 
+  # 各世帯で同居かつ最年少の子供の caseid のみを残す
+  HRdata <- keep_youngest_child_caseid(HRdata)
+  
   # 必要な変数のみ選択
   vars_to_keep <- HRdata %>%
     dplyr::select(starts_with("dm")) %>%
@@ -689,7 +934,7 @@ goAnalysis <- function(year) {
     append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
 
   HRdata <- HRdata %>% dplyr::select(all_of(vars_to_keep))
-  # 
+  
   # # 最終重複チェック
   duplicate_check(HRdata, c("caseid"), "HRdata")
   
