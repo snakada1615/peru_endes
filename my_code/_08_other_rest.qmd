@@ -80,7 +80,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 get_variable_lists <- list(
     RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv105", "hvidx"),
     RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
-    REC0111 = c("caseid", "hhid", "v161"),
+    REC0111 = c("caseid","v001", "v002", "v003", "hhid", "v161"),
     RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                  "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                  "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
@@ -300,23 +300,43 @@ process_cooking_fuel <- function(IRdata) {
 #' ***********************************************************************
 safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
   cat("結合中:", join_name, "\n")
-  
+
   # 重複チェック
   duplicate_check(base_data, by_vars, "base_data")
   duplicate_check(join_data, by_vars, join_name)
-  
+
+  # byがNULLの場合は共通列名をセット
+  if (is.null(by_vars)) {
+    common_cols <- intersect(names(x), names(y))
+    by_vars <- common_cols
+    by_x <- by_y <- common_cols
+  } else if (is.character(by_vars)) {
+    # 混合形式対応：named と unnamed の両方を処理
+    by_names <- names(by_vars)
+    if (is.null(by_names)) {
+      # 完全にunnamedの場合
+      by_x <- by_y <- by_vars
+    } else {
+      # 一部または全部がnamedの場合
+      by_x <- ifelse(by_names == "", by_vars, by_names)
+      by_y <- unname(by_vars)
+    }
+  } else {
+    stop("by引数の形式が不正です。")
+  }
+
   # 結合実行
   result <- base_data %>%
-    left_join_safe(join_data, by = by_vars)
-  
+    left_join(join_data, by = by_vars)
+
   # ▼▼ 結合直後にサフィックスをクリーンアップ ▼▼
   result <- result %>%
     dplyr::select(-ends_with(".y")) %>%
     rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
- 
+
   cat(sprintf("%sを結合しました\n", join_name))
   duplicate_check(result, by_vars, "結合後データ")
-  
+
   return(result)
 }
 # ---関数ここまで^^---------------------------------------------------------
@@ -834,7 +854,7 @@ goAnalysis <- function(year) {
   # データ読み込み
   # ============================================================================
   df_RECH1 <- load_endes_data(year, "RECH1.sav", get_variable_lists$RECH1) %>%
-    rename_with(
+    rename(
       v001 = hv001,  # クラスターID
       v002 = hv002   # 世帯ID
     )
@@ -879,8 +899,9 @@ goAnalysis <- function(year) {
   # HRdata/IRdataをそれぞれ作成
   ここ作業中
   temprec <- df_RECH1_safe %>% 
-    safe_join_datasets(
-      df_REC0111_safe, by=c("hhid"), "RECH1-RECH0")
+    left_join_safe(
+      df_REC0111_safe, 
+      by=c("v001", "v002", "hvidx" = "v003"))
   
   IRdata <- df_REC0111_safe %>%
     safe_join_datasets(
