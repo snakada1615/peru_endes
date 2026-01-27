@@ -81,7 +81,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 get_variable_lists <- list(
     RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv105", "hv112", "hvidx"),
     RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
-    REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "hhid", "v161"),
+    REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "v022", "hhid", "v161"),
     RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                  "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                  "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
@@ -1117,9 +1117,6 @@ goAnalysis <- function(year) {
     create_household_head_variables() %>%
     mutate(year = year)
 
-  # 各世帯で同居かつ最年少の子供の caseid のみを残す
-  HRdata <- keep_youngest_child_caseid(HRdata)
-  
   # 必要な変数のみ選択
   vars_to_keep <- HRdata %>%
     dplyr::select(starts_with("dm")) %>%
