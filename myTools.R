@@ -490,12 +490,12 @@ duplicate_check <- function(df, key_vars, df_name) {
     filter(n > 1)
   
   if (nrow(temp) > 0) {
-    print(paste("重複レコードがあります in", df_name))
+    print(paste(df_name, "には重複レコードがあります"))
     print(temp)
     print(paste("レコード数：", nrow(df)))
     res <- 0
   } else {
-    print(paste("重複レコードはありません in", df_name))
+    print(paste(df_name, "には重複レコードはありません"))
     print(paste("レコード数：", nrow(df)))
     res <- 1
   }
