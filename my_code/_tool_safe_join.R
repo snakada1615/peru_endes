@@ -1,4 +1,22 @@
+#' ************************************************************************
 # 部分的名前付きベクトルを完全名前付きベクトルに変換する補助関数
+#' @title normalize_by_vector
+#' @description 部分的名前付きベクトルを完全名前付きベクトル
+#' に変換します。名前なしの要素には自身の値を名前として割り当てます。
+#' @param by character vector or NULL 結合キーを指定するベクトル
+#' @param x_names character vector 左側データフレームの列名
+#' @param y_names character vector 右側データフレームの列名
+#' @return named character vector 完全名前付きベクトル
+#' @examples
+#' #' # 部分的名前付きベクトルの例
+#' by_partial <- c("id1", col2 = "idB", "id3")
+#' #' # 左右のデータフレームの列名
+#' x_cols <- c("id1", "col2", "value_x")
+#' y_cols <- c("idA", "idB", "value_y")
+#' #' # 変換実行
+#' normalized_by <- normalize_by_vector(by_partial, x_cols, y_cols)
+#' print(normalized_by)
+#' ************************************************************************
 normalize_by_vector <- function(by, x_names, y_names) {
   # by引数がNULLまたは非namedの場合はそのまま返す
   if (is.null(by)) {
@@ -46,8 +64,45 @@ normalize_by_vector <- function(by, x_names, y_names) {
   
   return(result)
 }
+# -------関数ここまで---------------------------------------------------
 
 
+#' ************************************************************************
+#' 安全な結合関数群
+#' @title safe_join functions
+#' @description dplyrのjoin関数に対して、結合キーの
+#' 一致チェックと共通列名の警告表示を追加した関数群です。
+#' left_join_safe, right_join_safe, inner_join_safe, full_join_safe
+#' の4つの関数を提供します。
+#' @param x data.frame 左側のデータフレーム
+#' @param y data.frame 右側のデータフレーム
+#' @param by character vector or NULL 結合キーを指定するベクトル
+#' @param suffix character vector 共通列名に付与するサフィックス
+#' @param ... その他の引数（dplyrのjoin関数に渡
+#' されます）
+#' @return data.frame 結合後のデータフレーム
+#' @examples
+#' # サンプルデータフレームの作成
+#' df1 <- data.frame(id = c(1, 2, 3),
+#'                  value1 = c("A", "B", "C"),
+#'                  common = c(10, 20, 30))
+#' df2 <- data.frame(id = c(2, 3, 4),
+#'        value2 = c("X", "Y", "Z"),
+#'        common = c(20, 99, 40))
+#'        
+#'# left_join_safeの使用例
+#'  result_left <- left_join_safe(df1, df2, by = "id")
+#'  print(result_left)
+#'# right_join_safeの使用例
+#'  result_right <- right_join_safe(df1, df2, by = "id")
+#'  print(result_right)
+#'# inner_join_safeの使用例
+#'  result_inner <- inner_join_safe(df1, df2, by = "id")
+#'  print(result_inner)
+#'# full_join_safeの使用例
+#'  result_full <- full_join_safe(df1, df2, by = "id")
+#'  print(result_full)
+#'**************************************************************
 left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
   # byがNULLの場合は共通列名をセット
   if (is.null(by)) {
@@ -140,6 +195,7 @@ left_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
   
   return(result)
 }
+#' -------関数ここまで===---------------------------------------------ß------
 
 right_join_safe <- function(x, y, by = NULL, suffix = c(".x", ".y"), ...) {
   # byがNULLの場合は共通列名をセット
