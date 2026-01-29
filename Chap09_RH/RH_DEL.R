@@ -47,11 +47,11 @@ BRdata <- BRdata %>%
 BRdata <- BRdata %>%
   mutate(rh_del_place =
            case_when(
-             "m15" >=20 & "m15"<40   ~ 1 ,
-             "m15" >=10 & "m15"<20   ~ 2,
-             "m15" >=40 & "m15"<99   ~ 3 ,
-             "m15" == 99 ~ 9 ,
-             "age">=period ~ 99)) %>%
+             m15 >=20 & m15<40   ~ 1 ,
+             m15 >=10 & m15<20   ~ 2,
+             m15 >=40 & m15<99   ~ 3 ,
+             m15 == 99 ~ 9 ,
+             age>=period ~ 99)) %>%
   replace_with_na(replace = list(rh_del_place = c(99))) %>%
   set_value_labels(rh_del_place = c("Health facility" = 1, "Home"=2, "Other"=3, "Missing"=9  )) %>%
   set_variable_labels(rh_del_place = "Live births by place of delivery")
@@ -60,12 +60,12 @@ BRdata <- BRdata %>%
 BRdata <- BRdata %>%
   mutate(rh_del_pltype =
            case_when(
-             "m15" >=20 & "m15"<30   ~ 1 ,
-             "m15" >=30 & "m15"<40   ~ 2 ,
-             "m15" >=10 & "m15"<20   ~ 3,
-             "m15" >=40 & "m15"<99   ~ 4 ,
-             "m15" == 99 ~ 9 ,
-             "age">=period ~ 99)) %>%
+             m15 >=20 & m15<30   ~ 1 ,
+             m15 >=30 & m15<40   ~ 2 ,
+             m15 >=10 & m15<20   ~ 3,
+             m15 >=40 & m15<99   ~ 4 ,
+             m15 == 99 ~ 9 ,
+             age>=period ~ 99)) %>%
   replace_with_na(replace = list(rh_del_pltype = c(99))) %>%
   set_value_labels(rh_del_pltype = c("Health facility - public" = 1, "Health facility - private" = 2, "Home"=3, "Other"=4, "Missing"=9  )) %>%
   set_variable_labels(rh_del_pltype = "Live births by type of health facility")
@@ -76,14 +76,14 @@ BRdata <- BRdata %>%
 BRdata <- BRdata %>%
   mutate(rh_del_pv =
            case_when(
-             "m3a" == 1   ~ 1 ,
-             "m3b" == 1 ~ 2,
-             "m3c" == 1 | "m3d" == 1 | "m3e" == 1 | "m3f" == 1~ 3 ,
-             "m3g" == 1 ~ 4 ,
-             "m3h" == 1 | "m3i" == 1 | "m3j" == 1 | "m3k" == 1 | "m3l" == 1 | "m3m" == 1 ~ 5 ,
-             "m3n" ==1 ~ 6,
-             "m3a" ==8 | "m3a"==9 ~ 9 ,
-             "age">=period ~ 99)) %>%
+             m3a == 1   ~ 1 ,
+             m3b == 1 ~ 2,
+             m3c == 1 | m3d == 1 | m3e == 1 | m3f == 1~ 3 ,
+             m3g == 1 ~ 4 ,
+             m3h == 1 | m3i == 1 | m3j == 1 | m3k == 1 | m3l == 1 | m3m == 1 ~ 5 ,
+             m3n ==1 ~ 6,
+             m3a ==8 | m3a==9 ~ 9 ,
+             age>=period ~ 99)) %>%
   replace_with_na(replace = list(rh_del_pv = c(99))) %>%
   set_value_labels(rh_del_pv = c("Doctor" = 1, "Nurse/midwife"=2, "Country specific health professional"=3, "Traditional birth attendant"=4, "Relative/other"=5, "No one"=6, "Don't know/missing"=9  )) %>%
   set_variable_labels(rh_del_pv = "Person providing assistance during delivery")
@@ -106,8 +106,8 @@ BRdata <- BRdata %>%
 BRdata <- BRdata %>%
   mutate(rh_del_ces =
            case_when(
-             "m17"==1   ~ 1 ,
-             "age">=period ~ 99,
+             m17==1   ~ 1 ,
+             age>=period ~ 99,
              TRUE ~ 0 )) %>%
   replace_with_na(replace = list(rh_del_ces = c(99))) %>%
   set_value_labels(rh_del_ces = c("Yes" = 1, "No"=0  )) %>%
@@ -121,9 +121,9 @@ if ("m17a" %in% names(BRdata)) {
   BRdata <- BRdata %>%
     mutate(
       rh_del_cestime = case_when(
-        "m17a" == 1 ~ 1,
-        "m17a" == 2 ~ 2,
-        "age" >= period ~ 99,   # NAではなく一時コード 99
+        m17a == 1 ~ 1,
+        m17a== 2 ~ 2,
+        age >= period ~ 99,   # NAではなく一時コード 99
         TRUE ~ 0
       )
     )
@@ -146,13 +146,13 @@ BRdata <- BRdata %>%
 BRdata <- BRdata %>%
   mutate(rh_del_stay =
            case_when(
-             "m61"<106   ~ 1 ,
-             "m61">=106 & "m61"<112 ~ 2,
-             "m61">=112 & "m61"<124 | "m61"==200 ~ 3 ,
-             ("m61">=124 & "m61"<172) | "m61"==201 | "m61"==202 ~ 4 ,
-             ("m61">=172 & "m61"<198) | ("m61">=203 & "m61"<298) | ("m61">=301 & "m61"<398) ~ 5 ,
-             "m61"==198 | "m61"==199 | "m61"==298 | "m61"==299 | "m61"==398 | "m61"==399 |"m61"==998 | "m61"==999 ~ 9 ,
-             rh_del_place!=1 | "bidx"!=1 | "age">=period ~ 99,
+             m61<106   ~ 1 ,
+             m61>=106 & m61<112 ~ 2,
+             m61>=112 & m61<124 | m61==200 ~ 3 ,
+             (m61>=124 & m61<172) | m61==201 | m61==202 ~ 4 ,
+             (m61>=172 & m61<198) | (m61>=203 & m61<298) | (m61>=301 & m61<398) ~ 5 ,
+             m61==198 | m61==199 | m61==298 | m61==299 | m61==398 | m61==399 |m61==998 | m61==999 ~ 9 ,
+             rh_del_place!=1 | bidx!=1 | age>=period ~ 99,
              TRUE ~ 99   # ← これを追加することで、未判定（NA）も 9 にする
              )) %>%
   replace_with_na(replace = list(rh_del_stay = c(99))) %>%

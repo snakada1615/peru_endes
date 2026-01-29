@@ -41,9 +41,9 @@ library(survey)       # for survey design
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 
 # 対象とする年のリスト
-yearlist <- c("2007", "2008", "2009", "2010", "2011",
+yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-yearlist <- c("2005", "2006")
+# yearlist <- c("2008")
 # my_year <- yearlist[8]
 
 # DHSデータのルートフォルダを指定
@@ -77,7 +77,7 @@ goAnalysis <- function(year){
                   "m2e", "m2f", "m2g", "m2h", "m2i", "m2j", "m2k", "m2l", 
                   "m2m", "m3a", "m3b", "m3c", "m3d", "m3e", "m3f", "m3g", 
                   "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n",
-                  "m13", "m14", "m15", "m42c", "m42d", "m42e", "m43", 
+                  "m13", "m14", "m15", "m17", "m42c", "m42d", "m42e", "m43", 
                   "m45", "m60", "m61")
   keep_RE223132 <-c("caseid", "v208")
   keep_REC42 <- c("caseid", "v467b","v467c","v467d", "v467f")
@@ -178,6 +178,15 @@ goAnalysis <- function(year){
   source(here(paste0(chap,"/RH_DEL.R")), local = environment())
   # Purpose: 	Code indicators for problems accessing health care 
 
+  # 出力データにどれくらいNA値が含まれるか
+  print("***************************************************************")
+  cat("Missing values in BRdata RH variables: ",year, "\n")
+  print(sapply(c("rh_del_place","rh_del_pltype","rh_del_pv","rh_del_pvskill","rh_del_ces", "rh_del_cestime"), function(x) {
+    sum(is.na(BRdata[[x]]))
+  }))
+  print("***************************************************************")
+  
+  
   # BRdata folderにrds形式で保存
   print(sprintf("save BRdata into output folder for %s", year))
   saveRDS(BRdata, paste0(output_dir, "/BRdata-rh.rds"))
