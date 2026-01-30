@@ -10,6 +10,7 @@ library(srvyr)
 library(ggplot2)
 library(dplyr)
 library(haven)
+library(tidyr)   
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
@@ -20,30 +21,73 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 # 結果保存先
 save_path <- file.path(gdrive_dir, "output")
 
-# ステップ1: svydesignオブジェクトの読み込み
-my_design <- readRDS(file.path(save_path, "svy_design_org.rds"))
+# 必要な関数読み込み
+source("_tool_SaveLabel.R")
+
+# ステップ1: 元データの読み込み
+df_org <- readRDS(
+    file.path(gdrive_dir, "output","all_data_merged.rds")
+  )
+
+# 変数ラベルをメモリに保存したうえでラベル消去
+labels_memory <- save_labels_to_memory(df_org)
+df_org <- remove_labels(df_org)
+
+# キーテーブルの作成（グラフ作成次のグループ分けに利用）
+key_table <- distinct(
+  df_org,
+  year,
+  state,
+  treatment_group,
+  treated_status,
+  year_treated,
+  treatment_start,
+  treatment_group,
+  analysis_grp,
+  group_treated
+)
+
+# 分析に利用する変数名の抽出
+variable_for_analysis <- names(df_org)
+variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
+
+# データ形式をロングに変換
+df_long <- df_org %>%
+  mutate(
+    across(all_of(variable_for_analysis),
+           ~ as.numeric(as.character(.)))
+  ) %>%
+  pivot_longer(
+    cols = all_of(variable_for_analysis),
+    names_to = "variable",
+    values_to = "value"
+  ) 
 
 # 孤立PSU問題に対処
 options(survey.lonely.psu = "adjust")
 
-# ステップ2: srvyrオブジェクトに変換
-svy_obj <- my_design %>%
-  as_survey_design()
+# Survey designオブジェクトの作成
+svy_obj <- svydesign(
+  ids = ~v021,          # Primary Sampling Unit (クラスター)
+  strata = ~v022,       # 層化変数
+  weights = ~sampling_weight_trimmed,
+  data = df_org,
+  nest = TRUE           # 入れ子構造
+)
 
 # ステップ3: グループ別・年次別の加重平均を計算
-plot_data <- svy_obj %>%
-  mutate(
-    nt_ch_stunt_num = case_when(
-      nt_ch_stunt == "Yes" ~ 1,
-      nt_ch_stunt == "No" ~ 0,
-      TRUE ~ NA_real_
-    ),
-    treatment_group = zap_labels(treatment_group) %>% as.factor()
-  ) %>%
-  # filter(year <= 2008) %>%
-  group_by(treatment_group, year) %>%
+summary_by_treatment <- svy_obj %>%
+  group_by(state, year, variable) %>%
   summarize(
-    mean_stunted = survey_mean(nt_ch_stunt_num, na.rm = TRUE, vartype = "ci"),
+    mean_value = survey_mean(value, na.rm = TRUE,),
+    .groups = "drop"
+  )
+
+# 全国平均
+summary_national <- svy_obj %>%
+  group_by(year, variable) %>%
+  summarize(
+    mean_value = survey_mean(value, na.rm = TRUE,),
     .groups = "drop"
   )
 
