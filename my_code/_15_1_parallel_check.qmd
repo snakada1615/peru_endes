@@ -70,4 +70,44 @@ ggplot(plot_data, aes(x = year, y = mean_stunted,
   theme_minimal() +
   theme(legend.position = "bottom")
 
+
+# ステップ3: グループ別・年次別の加重平均を計算
+plot_data <- svy_obj %>%
+  mutate(
+    nt_ch_stunt_num = case_when(
+      nt_ch_stunt == "Yes" ~ 1,
+      nt_ch_stunt == "No" ~ 0,
+      TRUE ~ NA_real_
+    ),
+    treatment_group = zap_labels(treatment_group) %>% as.factor()
+  ) %>%
+  # filter(year <= 2008) %>%
+  group_by(state, year) %>%
+  summarize(
+    mean_stunted = survey_mean(nt_ch_stunt_num, na.rm = TRUE, vartype = "ci"),
+    .groups = "drop"
+  )
+
+# 結果は通常のデータフレーム（tibble）として返される
+# 列：treatment_group, year, mean_stunted, mean_stunted_low, mean_stunted_upp
+head(plot_data)
+
+
+# ステップ4: ggplotで可視化
+ggplot(plot_data, aes(x = year, y = mean_stunted, 
+                      color = state, 
+                      group = state)) +
+  geom_line(size = 1) +
+  geom_point(size = 2.5) +
+  labs(
+    title = "stunting rate by treatment status over years",
+    x = "year",
+    y = "stunting rate (%)",
+    color = "state",
+    fill = "state"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
 ```
