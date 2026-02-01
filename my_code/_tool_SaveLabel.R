@@ -278,8 +278,35 @@ save_labels_to_memory <- function(data) {
     val_labels = val_labels
   )
 }
-#' ----------関数ここまで------------------------------------------------
 
+#' ----------関数ここまで------------------------------------------------
+# ============================================
+# ステップ1-2: 複数のラベル情報を一つにまとめる
+# ============================================
+# 複数のlabels_memoryを結合
+merge_labels_memory <- function(...) {
+  labs_list <- list(...)
+  
+  # 空チェック
+  labs_list <- labs_list[!vapply(labs_list, is.null, logical(1))]
+  if (length(labs_list) == 0) {
+    return(list(var_labels = NULL, val_labels = NULL))
+  }
+  
+  # var_labelsのマージ（後勝ち）
+  merged_var <- do.call(c, lapply(labs_list, function(x) x$var_labels))
+  merged_var <- merged_var[!duplicated(names(merged_var), fromLast = TRUE)]
+  
+  # val_labelsのマージ（後勝ち）
+  merged_val <- do.call(c, lapply(labs_list, function(x) x$val_labels))
+  merged_val <- merged_val[!duplicated(names(merged_val), fromLast = TRUE)]
+  
+  list(
+    var_labels = merged_var,
+    val_labels = merged_val
+  )
+}
+#' ----------関数ここまで------------------------------------------------
 # ============================================
 # ステップ2: データフレームからラベル属性を除去
 # ============================================
