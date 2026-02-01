@@ -39,12 +39,13 @@ library(survey)       # for survey design
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("_tool_safe_join.R")  # 安全な結合関数
+source("_tool_SaveLabel.R")  # 変数ラベル保存関数
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
-# yearlist <- c("2008")
-# my_year <- yearlist[8]
+# yearlist <- c("2006")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -82,7 +83,7 @@ goAnalysis <- function(year){
   keep_RE223132 <-c("caseid", "v208")
   keep_REC42 <- c("caseid", "v467b","v467c","v467d", "v467f")
   
-  # 2005/2006年はファイル名が違うため設定
+  # 2005年はファイル名が違うため設定
   myname_RE223132 <- ifelse(year == "2005", "REC22312.SAV", "RE223132.SAV")
   
   # 設定した年に基づいてファイルを読み込む
@@ -103,23 +104,83 @@ goAnalysis <- function(year){
     rename_with(~ tolower(.x)) %>% # 変数名を小文字に変換
     add_missing_columns(keep_REC42) %>% select(all_of(keep_REC42))
 
+  labels_df_REC21 <- endes_var_labels[[year]][["REC21.sav"]]
+  # *************************************************************************  
+  #2005/2006年の場合はv022の値がおかしいので別途用意
+  if (year %in% c("2005")) {
+    key_v022_2005 <- read_sav(file.path(gdrive_dir, "/2005_DHS/KR/PEKR51FL.SAV"))  %>%
+      rename_with(~ tolower(.x)) %>%
+      distinct(caseid, v022)
+  }
+  if (year %in% c("2006")) {
+    key_v022_2006 <- read_sav(file.path(gdrive_dir, "2006/183-Modulo64/RECH0.SAV")) %>%
+      rename_with(~ tolower(.x)) %>%
+      rename(
+        v021 = hv021,
+        v022 = hv022
+        ) %>%
+      distinct(hhid, v022)
+  }
+  # *************************************************************************  
+  
   # 重複チェック
   duplicate_check(df_rec0111, "caseid", "df_rec0111")
   duplicate_check(df_REC21, c("caseid", "bidx"), "REC21")
-  duplicate_check(df_rec41, c("caseid", "midx"), "df_rec41")
-  duplicate_check(df_RE223132, "caseid", "df_RE223132")
-  duplicate_check(df_REC42, "caseid", "df_REC42")
+  # duplicate_check(df_rec41, c("caseid", "midx"), "df_rec41")
+  # duplicate_check(df_RE223132, "caseid", "df_RE223132")
+  # duplicate_check(df_REC42, "caseid", "df_REC42")
 
   print("データセットを結合します")
   IRdata <- df_REC21 %>% group_by(caseid) %>% 
     filter(bidx == 1) %>% ungroup() %>%   # 一番若い児童のBIDXを抽出
     inner_join(df_rec0111, by = "caseid") %>%
-    left_join(df_rec41, by = c("caseid" = "caseid", "bidx" = "midx")) %>%
-    left_join(df_RE223132, by = "caseid") %>%
-    left_join(df_REC42, by = "caseid")
+    left_join_safe(
+      df_rec41, by = c("caseid" = "caseid", "bidx" = "midx"), 
+      diagnose = TRUE) %>%
+    left_join_safe(
+      df_RE223132, by = "caseid", diagnose = TRUE) %>%
+    left_join_safe(
+      df_REC42, by = "caseid", diagnose = TRUE)
 
   print("データセットの結合が完了しました")
   print(paste("レコード数:", nrow(IRdata)))
+
+  # *************************************************************************  
+  # 2005年データのv021, v022を確認
+  if (year %in% c("2005")){
+    print("2005年データのv021, v022を更新します")
+    IRdata <- IRdata %>%
+      left_join_safe(key_v022_2005, by = "caseid", 
+                     priotiry_col_left = FALSE, diagnose = TRUE)
+  }
+  if (year %in% c("2006")) {
+    # caseidとhhidをマッチさせるため少し複雑
+    print("2006年データのv021, v022を確認します")
+    # キーの正規化と結合キーの作成
+    IRdata <- IRdata %>%
+      mutate(
+        join_key = paste(
+          word(str_trim(str_squish(caseid)), 1),
+          word(str_trim(str_squish(caseid)), 2)
+        )
+      )
+
+    key_v022_2006 <- key_v022_2006 %>%
+      mutate(
+        join_key = paste(
+          word(str_trim(str_squish(hhid)), 1),
+          word(str_trim(str_squish(hhid)), 2)
+        )
+      )
+    IRdata <- IRdata %>%
+      left_join_safe(
+        key_v022_2006,
+        by = "join_key",
+        diagnose = TRUE
+      ) %>%
+    select(-join_key)
+  }  
+  # *************************************************************************  
 
   # 子供の年齢確認 v008 - b3
   IRdata <- IRdata %>%
@@ -136,7 +197,11 @@ goAnalysis <- function(year){
   print("月齢24ヶ月未満の子供に制限しました")
   duplicate_check(IRdata, "caseid", "IRdata")
   print(paste("レコード数:", nrow(IRdata)))
-      
+  
+  #ラベル情報の保存と削除
+  # labels_IR <- save_labels_to_memory(IRdata)
+  # IRdata <- remove_labels(IRdata)
+  
   # あとで使うためにBRdataを用意
   BRdata <- IRdata
 
@@ -159,6 +224,9 @@ goAnalysis <- function(year){
   # 順序を保って選択
   
   IRdata <- IRdata[, vars_to_keep]
+
+  # 変数ラベルを復元
+  # IRdata <- restore_labels_from_memory(IRdata, labels_IR)
   
   # 出力用のルートフォルダを指定
   output_dir <- file.path(gdrive_dir, "output", year) %>%
@@ -176,8 +244,11 @@ goAnalysis <- function(year){
   
   # 出産時のケアに関する指標
   source(here(paste0(chap,"/RH_DEL.R")), local = environment())
-  # Purpose: 	Code indicators for problems accessing health care 
-
+  # Purpose: 	Code indicators for problems accessing health care
+  
+  # 変数ラベルを復元
+  # BRdata <- restore_labels_from_memory(BRdata, labels_IR)
+  
   # 出力データにどれくらいNA値が含まれるか
   print("***************************************************************")
   cat("Missing values in BRdata RH variables: ",year, "\n")
@@ -205,4 +276,3 @@ for (yr in yearlist) {
 }
 ```
 
-## Compare this snippet from Chap02_PH/DHS8/PH_GINI.R:
