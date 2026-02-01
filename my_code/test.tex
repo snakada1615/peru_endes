@@ -1,0 +1,144 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\documentclass[
+]{article}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{graphicx}
+\makeatletter
+\newsavebox\pandoc@box
+\newcommand*\pandocbounded[1]{% scales image to fit in text height/width
+  \sbox\pandoc@box{#1}%
+  \Gscale@div\@tempa{\textheight}{\dimexpr\ht\pandoc@box+\dp\pandoc@box\relax}%
+  \Gscale@div\@tempb{\linewidth}{\wd\pandoc@box}%
+  \ifdim\@tempb\p@<\@tempa\p@\let\@tempa\@tempb\fi% select the smaller of both
+  \ifdim\@tempa\p@<\p@\scalebox{\@tempa}{\usebox\pandoc@box}%
+  \else\usebox{\pandoc@box}%
+  \fi%
+}
+% Set default figure placement to htbp
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={test},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{test}
+\author{}
+\date{\vspace{-2.5em}}
+
+\begin{document}
+\maketitle
+
+「クチャクチャ」という音（いわゆるクチャラー）は、自分では気づきにくいものですが、一度気になると改善したい大切なマナーですよね。その心掛け、素晴らしいと思います！
+
+音が出てしまう原因の多くは、\textbf{「口の中に隙間があること」}と\textbf{「呼吸のタイミング」}にあります。今日から意識できる具体的なコツをまとめました。
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{1.
+物理的に音を遮断する「鉄則」}\label{ux7269ux7406ux7684ux306bux97f3ux3092ux906eux65adux3059ux308bux9244ux5247}
+
+まずは、音を物理的に鳴らさないための基本的な動作を見直しましょう。
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{唇をしっかり閉じる}
+  噛んでいる間、上下の唇をぴたっと密着させることを最優先にしてください。少しでも隙間があると、そこから空気が漏れて音が発生します。
+\item
+  \textbf{一口の量を減らす}
+  口いっぱいに食べ物を入れると、唇を閉じるのが難しくなり、咀嚼（そしゃく）の際に音が漏れやすくなります。「今の半分」を意識して口に運んでみてください。
+\item
+  \textbf{「奥歯」で噛む}
+  前歯の方で噛むと唇が開きやすくなります。食べ物を口の奥へ送り、奥歯で静かに噛むようにしましょう。
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{2.
+呼吸と姿勢を整える}\label{ux547cux5438ux3068ux59ffux52e2ux3092ux6574ux3048ux308b}
+
+意外な盲点が「鼻」と「姿勢」です。
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{鼻呼吸を徹底する}
+  口を閉じて噛むためには、鼻で息ができなければなりません。もし鼻が詰まっている場合は、どうしても口で息をしながら噛むことになり、音が鳴ってしまいます。
+\item
+  \textbf{姿勢を正す}
+  猫背になると喉が圧迫され、呼吸が苦しくなって口が開きやすくなります。背筋を伸ばし、食べ物を迎えに行くのではなく、食器を口元に運ぶようにしましょう。
+\end{itemize}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{3.
+意識を変えるトレーニング}\label{ux610fux8b58ux3092ux5909ux3048ux308bux30c8ux30ecux30fcux30cbux30f3ux30b0}
+
+無意識の習慣を上書きするためのステップです。
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{自分の音を「録音」してみる}
+  一度、スマホで自分の食事風景を録音・録画してみてください。客観的に自分の音を聞くことで、「どのタイミングで音が鳴るか」が明確になり、意識が劇的に変わります。
+\item
+  \textbf{飲み込んでから喋る}
+  口の中に食べ物がある状態で話そうとすると、必ず唇が開いて音が漏れます。「完全に飲み込むまで口を開けない」を徹底しましょう。
+\end{itemize}
+
+\begin{quote}
+\textbf{💡 ワンポイント・アドバイス}
+慣れるまでは、静かな場所よりも少しガヤガヤした場所や、テレビがついている環境で練習すると、プレッシャーを感じすぎずに取り組めますよ。
+\end{quote}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsubsection{次に私ができること}\label{ux6b21ux306bux79c1ux304cux3067ux304dux308bux3053ux3068}
+
+まずは次の食事で「唇を閉じる」ことだけを意識してみてください。もし「どうしても鼻が詰まっていて息がしづらい」や「特定の食べ物（麺類など）だけ難しい」といった具体的なお悩みがあれば、さらに踏み込んだ対策を提案できます。
+
+\textbf{次は、麺類を静かに食べるコツや、外食時のマナーについて詳しくお伝えしましょうか？}
+
+\end{document}

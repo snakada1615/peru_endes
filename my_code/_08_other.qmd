@@ -81,7 +81,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 get_variable_lists <- list(
     RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv105", "hv112", "hvidx"),
     RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
-    REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "v022", "hhid", "v161"),
+    REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "v022", "v161"),
     RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                  "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                  "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
@@ -108,6 +108,11 @@ get_variable_lists <- list(
 
 # データファイルを読み込む共通関数
 load_endes_data <- function(year, filename, keep_vars) {
+  # ★デバッグ用
+  if (is.null(keep_vars) || length(keep_vars) == 0) {
+    stop(paste("Error: keep_vars is empty for", filename))
+  }
+  
   cat("Loading:", filename, "\n")
   cat("Variables to keep:", paste(keep_vars, collapse = ", "), "\n")
   
@@ -145,27 +150,71 @@ library(dplyr)
 
 #' ***********************************************************************
 #' @title calculate_child_count
-#' @description 家族の子供の総数を計算する関数
+#' @description 母親ごとの12歳未満の子供の総数を計算する関数
 #' @param df_RECH1 RECH1データフレーム
-#' @return 子供の総数を含むデータフレーム
+#' @return 母親ごとの子供の総数を含むデータフレーム
 #' @details
-#' 12歳以下の子供の数を計算します。
+#' RECH1データフレームを使用して、各母親ごとに12歳未満の子供の総数を計算します。
 #' @examples
 #' #' #' # df_RECH1 <- read_dta("path_to_RECH1_data.dta")
 #' #' #' # child_count <- calculate_child_count(df_RECH1)
-#' # #' #' # head(child_count)
+#' #' #' #' # head(child_count)
 #' ' @import dplyr
 #' ***********************************************************************
-# 家族の子供の総数を計算
 calculate_child_count <- function(df_RECH1) {
-  cat("計算中: 家族の子供の総数\n")
+  cat("計算中: 母親ごとの子供の総数\n")
   
-  child_count <- df_RECH1 %>%
-    filter(hv105 <= 12, hv102 == 1) %>%     # 年齢<=12かつde jureメンバー
-    group_by(hhid, caseid) %>%              # 世帯IDでグループ化
+  # 特殊クラスを除去して通常のnumericに変換
+  df_clean <- df_RECH1 %>%
+    mutate(
+      hhid = as.character(hhid),
+      hvidx = as.numeric(unclass(hvidx)),  # unclass()で属性を除去
+      hv112 = as.numeric(unclass(hv112)),  # unclass()で属性を除去
+      hv105 = as.numeric(unclass(hv105)),
+      hv102 = as.numeric(unclass(hv102)),
+      caseid = as.character(caseid)
+    )
+  
+  # 全メンバーの (hhid, hvidx, caseid) マッピング
+  member_lookup <- df_clean %>%
+    select(hhid, hvidx, caseid)
+  
+  cat("メンバー一覧作成完了:", nrow(member_lookup), "件\n")
+  
+  # 条件を満たす子ども
+  children <- df_clean %>%
+    filter(
+      hv105 <= 12,
+      hv102 == 1,
+      !is.na(hv112),
+      hv112 > 0
+    )
+  
+  cat("条件に合う子供の数:", nrow(children), "\n")
+  
+  if (nrow(children) == 0) {
+    cat("警告: 条件に合う子供が0件です\n")
+    return(data.frame(caseid = character(0), dm_children_under12 = numeric(0)))
+  }
+  
+  # 子どもに母親のcaseidを付与
+  children_with_mother <- children %>%
+    left_join(
+      member_lookup,
+      by = c("hhid" = "hhid", "hv112" = "hvidx")
+    ) %>%
+    rename(mother_caseid = caseid.y, child_caseid = caseid.x)
+  
+  cat("母親とマッチした子供の数:", sum(!is.na(children_with_mother$mother_caseid)), "\n")
+  
+  # 母親ごとにカウント
+  child_count <- children_with_mother %>%
+    filter(!is.na(mother_caseid)) %>%
+    group_by(mother_caseid) %>%
     summarise(dm_children_under12 = n(), .groups = "drop") %>%
-    ungroup()
+    rename(caseid = mother_caseid)
   
+  cat("子供がいる母親の数:", nrow(child_count), "\n")
   cat("子供の数の分布:\n")
   print(table(child_count$dm_children_under12))
   
@@ -213,66 +262,6 @@ process_cooking_fuel <- function(IRdata) {
 # ============================================================================
 # 4. データ統合関数セクション
 # ============================================================================
-
-# データセットを安全に結合
-#' ***********************************************************************
-#' @title safe_join_datasets
-#' @description データセットを安全に結合する関数
-#' @param base_data 基本データフレーム
-#' @param join_data 結合するデータフレーム
-#' @param by_vars 結合に使用する変数のベクトル
-#' @param join_name 結合するデータセットの名前（ログ用）
-#' @return 結合されたデータフレーム
-#' @details
-#' 結合前後に重複チェックを行い、安全にデータセットを結合します。
-#' @examples
-#' # base_data <- read_dta("path_to_base_data.dta")
-#' # join_data <- read_dta("path_to_join_data.dta")
-#' # result <- safe_join_datasets(base_data, join_data, by = c("caseid"), join_name = "JoinData")
-#' ' @import dplyr
-#' ***********************************************************************
-safe_join_datasets <- function(base_data, join_data, by_vars, join_name) {
-  cat("結合中:", join_name, "\n")
-
-  # 重複チェック
-  duplicate_check(base_data, by_vars, "base_data")
-  duplicate_check(join_data, by_vars, join_name)
-
-  # byがNULLの場合は共通列名をセット
-  if (is.null(by_vars)) {
-    common_cols <- intersect(names(x), names(y))
-    by_vars <- common_cols
-    by_x <- by_y <- common_cols
-  } else if (is.character(by_vars)) {
-    # 混合形式対応：named と unnamed の両方を処理
-    by_names <- names(by_vars)
-    if (is.null(by_names)) {
-      # 完全にunnamedの場合
-      by_x <- by_y <- by_vars
-    } else {
-      # 一部または全部がnamedの場合
-      by_x <- ifelse(by_names == "", by_vars, by_names)
-      by_y <- unname(by_vars)
-    }
-  } else {
-    stop("by引数の形式が不正です。")
-  }
-
-  # 結合実行
-  result <- base_data %>%
-    left_join(join_data, by = by_vars)
-
-  # ▼▼ 結合直後にサフィックスをクリーンアップ ▼▼
-  result <- result %>%
-    dplyr::select(-ends_with(".y")) %>%
-    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
-
-  cat(sprintf("%sを結合しました\n", join_name))
-  duplicate_check(result, by_vars, "結合後データ")
-
-  return(result)
-}
-# ---関数ここまで^^---------------------------------------------------------
 
 #' ***********************************************************************
 #' @title filter_youngest_child_per_mother
@@ -635,7 +624,7 @@ goAnalysis <- function(year) {
   cat("============================================================================\n\n")
   
   # 変数リストを取得
-  # var_lists <- get_variable_lists()
+  var_lists <- get_variable_lists
   
   # 出力ディレクトリを準備
   output_dir <- setup_output_directory(year)
@@ -643,16 +632,16 @@ goAnalysis <- function(year) {
   # ============================================================================
   # データ読み込み
   # ============================================================================
-  df_RECH1 <- load_endes_data(year, "RECH1.sav", get_variable_lists$RECH1) %>%
+  df_RECH1 <- load_endes_data(year, "RECH1.sav", var_lists$RECH1) %>%
     rename(
       v001 = hv001,  # クラスターID
       v002 = hv002   # 世帯ID
     )
-  df_RECH0 <- load_endes_data(year, "RECH0.sav", get_variable_lists$RECH0)
-  df_RECH23 <- load_endes_data(year, "RECH23.sav", get_variable_lists$RECH23)
-  df_RE516171 <- load_endes_data(year, "RE516171.sav", get_variable_lists$RE516171)
-  df_REC0111 <- load_endes_data(year, "REC0111.sav", get_variable_lists$REC0111)
-  df_REC21 <- load_endes_data(year, "REC21.sav", get_variable_lists$REC21)
+  df_RECH0 <- load_endes_data(year, "RECH0.sav", var_lists$RECH0)
+  df_RECH23 <- load_endes_data(year, "RECH23.sav", var_lists$RECH23)
+  df_RE516171 <- load_endes_data(year, "RE516171.sav", var_lists$RE516171)
+  df_REC0111 <- load_endes_data(year, "REC0111.sav", var_lists$REC0111)
+  df_REC21 <- load_endes_data(year, "REC21.sav", var_lists$REC21)
   
   print("caseid" %in% names(df_RECH0))
   print("caseid" %in% names(df_RECH1))
@@ -683,36 +672,44 @@ goAnalysis <- function(year) {
   df_REC21_safe <- remove_labels(df_REC21)
   
   
-  
   # 1. RECH1にCASEID作成
+  cat("RECH1にCASEIDを作成中...\n")
   df_RECH1_safe <- df_RECH1_safe %>%
     mutate(caseid = paste0(
       hhid,
       str_pad(as.character(hvidx), width = 3, side = "left", pad = " ")
     ))
-  
+
   # 2. 世帯レベルのファイルを結合
+  cat("世帯レベルデータの結合中:RECH0-RECH23...\n")
   household_data <- df_RECH0_safe %>%
-    safe_join_datasets(df_RECH23_safe, by_vars = "hhid", join_name = "RECH0-RECH23")
+    left_join_safe(df_RECH23_safe, by = "hhid", join_name = "RECH0-RECH23", 
+                   diagnose = TRUE)
   
   # 3. 世帯データと世帯メンバーデータを結合
+  cat("世帯メンバーデータの結合中:RECH1-Household...\n")
   household_member_data <- df_RECH1_safe %>%
-    safe_join_datasets(household_data, by_vars = "hhid", join_name = "RECH1-Household")
+    left_join_safe(household_data, by = "hhid", 
+                   join_name = "RECH1-Household", diagnose = TRUE)
 
   # 4. 個人レベルのファイルを結合（女性の情報）
+  cat("個人レベルデータの結合中:REC0111-RE516171...\n")
   individual_data <- df_REC0111_safe %>%
-    safe_join_datasets(
-      df_RE516171_safe, by_vars = "caseid", join_name = "REC0111-RE516171"
+    left_join_safe(
+      df_RE516171_safe, by = "caseid", join_name = "REC0111-RE516171", 
+      diagnose = TRUE
     )
 
   # 5. 世帯メンバーと個人データを結合
+  cat("世帯メンバーと個人データの結合中:Household-Individual...\n")
   combined_data <- household_member_data %>%
-    safe_join_datasets(individual_data, by_vars = "caseid", join_name = "Household-Individual")
+    left_join_safe(individual_data, by = "caseid", 
+                join_name = "Household-Individual", diagnose = TRUE)
 
   # 6. REC21（出生履歴）を結合
   # 注意: REC21は1人の母親に複数行あるので、慎重に結合
   final_data <- combined_data %>%
-    left_join(df_REC21_safe, by = "caseid", suffix = c("", "_birth"))
+    left_join_safe(df_REC21_safe, by = "caseid", diagnose = TRUE)
   
   cat("最終データ行数:", nrow(final_data), "\n")
   cat("元のRECH1行数:", nrow(df_RECH1), "\n")
@@ -723,18 +720,6 @@ goAnalysis <- function(year) {
   cat("ユニークな世帯の数:", n_distinct(final_data$hhid), "\n")
       
   IRdata <- final_data
-  
-  # 母親・一番若い児童<24、同居の条件でフィルター
-  IRdata <- filter_youngest_child_per_mother(IRdata)
-  
-  # ラベル復元
-  IRdata <- restore_labels(IRdata, labels_RECH0) %>%
-    restore_labels(labels_RECH1) %>%
-    restore_labels(labels_RECH23) %>%
-    restore_labels(labels_RE516171) %>%
-    restore_labels(label_REC0111) %>%
-    restore_labels(label_REC21)
-
   
   
   # ============================================================================
@@ -754,10 +739,12 @@ goAnalysis <- function(year) {
   print(names(cooking_fuel))
   
   # データ結合
-  IRdata <- safe_join_datasets(
-    IRdata, cooking_fuel, by=c("hhid", "caseid"), "IRdata-cooking_fuel")
-  IRdata <- safe_join_datasets(
-    IRdata, child_count, by=c("hhid", "caseid"), "IRdata-child_count")
+  IRdata <- left_join_safe(
+    IRdata, cooking_fuel, by=c("hhid", "caseid"), 
+    join_name = "IRdata-cooking_fuel", diagnose = TRUE)
+  IRdata <- left_join_safe(
+    IRdata, child_count, by=c("caseid"), 
+    join_name = "IRdata-child_count", diagnose = TRUE)
 
   # 調理燃料マッチング確認
   cat("調理燃料マッチング確認:\n")
@@ -804,14 +791,31 @@ goAnalysis <- function(year) {
     names() %>%
     append(c("year", "v001", "v002", "v005", "v022", "caseid", "hhid"))
 
+  # 月齢の計算用変数（V008とB3から）
+  age_variable <- c("v008", "b3", "b5", "b9", "hv102", "b16", "hv105", "bidx")
+  vars_to_keep <- append(vars_to_keep, age_variable)
+
   HRdata <- HRdata %>% dplyr::select(all_of(vars_to_keep))
   
   # # 最終重複チェック
   duplicate_check(HRdata, c("caseid"), "HRdata")
   
+  # 母親・一番若い児童<24、同居の条件でフィルター
+  HRdata <- filter_youngest_child_per_mother(HRdata)
+  HRdata <- HRdata %>% select(-age_variable)
+
   # ============================================================================
   # ラベル設定
   # ============================================================================
+  # ラベル復元
+  HRdata <- restore_labels(HRdata, labels_RECH0) %>%
+    restore_labels(labels_RECH1) %>%
+    restore_labels(labels_RECH23) %>%
+    restore_labels(labels_RE516171) %>%
+    restore_labels(label_REC0111) %>%
+    restore_labels(label_REC21)
+
+  
   cat("## 6. ラベル設定\n")
   # ラベル設定でエラーが発生した時以下の行を実行
   # diagnose_value_label_issues(HRdata)
