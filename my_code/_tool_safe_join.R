@@ -52,123 +52,173 @@ normalize_keys <- function(df, key_vars) {
 # ===============================================================================
 # 2. 結合前の診断を行う関数
 # ===============================================================================
-
-#' 結合前の診断を行う関数
-#'
+#' 結合前の診断を行う関数（名前付きベクトル対応版）
+#' @title 結合前の診断を行う関数（名前付きベクトル対応版）
 #' @param df1 左側のデータフレーム
 #' @param df2 右側のデータフレーム
-#' @param by_vars 結合キーのベクトル
-#' @param join_name 結合の名称（ログ用）
+#' @param by_df1 左側データフレームの結合キーの
+#' ベクトル
+#' @param by_df2 右側データフレームの結合キー
+#' のベクトル
+#' @param join_name 結合の名称（診断ログに表示）
 #' @return 診断結果のリスト
-#'   - common_keys: 共通のキー変数
-#'   - match_rate: マッチング率(%)
-#'   - unmatched_left: 左側でマッチしなかった行
-#'   - unmatched_right: 右側でマッチしなかった行
-#'
-#' @description
-#' この関数は、2つのデータフレームを結合する前に、
-#' 以下の診断を行います：
-#' - キー変数の存在確認
-#' - データ型の一致確認
-#' - ユニークキー数の確認
-#' - マッチング率の計算
-#'
-#' @examples
-#' diagnose_result <- diagnose_join(df1, df2, 
-#'                                  by_vars = c("id", "year"),
-#'                                  join_name = "Example Join")
-#'
-#' @export
-diagnose_join <- function(df1, df2, by_vars, join_name = "") {
+#'  - match_rate: マッチング率（左側データに対する
+#'  割合）
+#'  - unmatched_left: 左側データでマッチしなかった行
+#'  - unmatched_right: 右側データでマッチしなかった行
+#'  @description
+#'  この関数は、dplyrのleft_joinを行う前に、
+#'  指定された2つのデータフレームに対して
+#'  結合キーの存在確認、データ型の確認、
+#'  ユニークキー数の確認、マッチング率の診断
+#'  を行います。
+#'  @examples
+#'  diag_result <- diagnose_join(df1, df2,
+#'                                    by_df1 = c("id", "year"),
+#'                                    by_df2 = c("id", "year"),
+#'                                    join_name = "Example Join")
+#' ****************************************************************************
+diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
   cat("\n", strrep("=", 80), "\n", sep = "")
   cat("結合診断:", join_name, "\n")
   cat(strrep("=", 80), "\n")
-
+  
   # キー変数の存在確認
-  missing_keys_df1 <- setdiff(by_vars, names(df1))
-  missing_keys_df2 <- setdiff(by_vars, names(df2))
-
+  missing_keys_df1 <- setdiff(by_df1, names(df1))
+  missing_keys_df2 <- setdiff(by_df2, names(df2))
+  
   if (length(missing_keys_df1) > 0) {
     warning("左側データフレームに以下のキーが存在しません: ",
             paste(missing_keys_df1, collapse = ", "))
   }
-
+  
   if (length(missing_keys_df2) > 0) {
     warning("右側データフレームに以下のキーが存在しません: ",
             paste(missing_keys_df2, collapse = ", "))
   }
-
-  # 共通キーのみで診断
-  common_keys <- intersect(by_vars, intersect(names(df1), names(df2)))
-
-  if (length(common_keys) == 0) {
-    stop("共通のキー変数が存在しません")
+  
+  # 共通キーの確認（名前付きベクトルの場合は対応する変数ペアを確認）
+  common_pairs <- intersect(by_df1, by_df2)  # 同じ名前のキー
+  
+  if (length(common_pairs) == 0 && length(by_df1) != length(by_df2)) {
+    warning("名前付きベクトルで指定された結合キーの数が一致しません")
   }
-
-  # データ型の確認
+  
+  # データ型の確認（対応するキーペアごとに）
   cat("\n【キー変数のデータ型】\n")
-  for (key in common_keys) {
-    type1 <- class(df1[[key]])[1]
-    type2 <- class(df2[[key]])[1]
-    match_symbol <- if(type1 == type2) "✓" else "✗"
-    cat(sprintf(" %s: %s (左側) vs %s (右側) %s\n",
-                key, type1, type2, match_symbol))
+  for (i in seq_along(by_df1)) {
+    key1 <- by_df1[i]
+    key2 <- by_df2[i]
+    
+    if (key1 %in% names(df1) && key2 %in% names(df2)) {
+      type1 <- class(df1[[key1]])[1]
+      type2 <- class(df2[[key2]])[1]
+      match_symbol <- if(type1 == type2) "✓" else "✗"
+      cat(sprintf(" %s (左) ⟷ %s (右): %s vs %s %s\n",
+                  key1, key2, type1, type2, match_symbol))
+    }
   }
-
+  
   # ユニークキーの数とマッチング率
   cat("\n【キーの分布】\n")
   cat(sprintf(" 左側データ行数: %d\n", nrow(df1)))
   cat(sprintf(" 右側データ行数: %d\n", nrow(df2)))
-
-  # グループ化が残っていても影響しないように ungroup() を明示
+  
+  # ★ 修正：各データフレームに存在するキーのみ選択
   df1_keys <- df1 %>%
     dplyr::ungroup() %>%
-    dplyr::select(dplyr::all_of(by_vars)) %>%
+    dplyr::select(dplyr::all_of(by_df1)) %>%
     dplyr::filter(stats::complete.cases(.))
-
+  
   df2_keys <- df2 %>%
     dplyr::ungroup() %>%
-    dplyr::select(dplyr::all_of(by_vars)) %>%
+    dplyr::select(dplyr::all_of(by_df2)) %>%
     dplyr::filter(stats::complete.cases(.))
-
-  for (key in by_vars) {
-    n_unique_df1 <- df1_keys %>% dplyr::distinct(.data[[key]]) %>% nrow()
-    n_unique_df2 <- df2_keys %>% dplyr::distinct(.data[[key]]) %>% nrow()
-    cat(sprintf(" %s のユニーク数: 左=%d, 右=%d\n", key, n_unique_df1, n_unique_df2))
+  
+  for (i in seq_along(by_df1)) {
+    key1 <- by_df1[i]
+    key2 <- by_df2[i]
+    
+    if (key1 %in% names(df1)) {
+      n_unique_df1 <- df1_keys %>% dplyr::distinct(.data[[key1]]) %>% nrow()
+    } else {
+      n_unique_df1 <- NA
+    }
+    
+    if (key2 %in% names(df2)) {
+      n_unique_df2 <- df2_keys %>% dplyr::distinct(.data[[key2]]) %>% nrow()
+    } else {
+      n_unique_df2 <- NA
+    }
+    
+    cat(sprintf(" %s (左) ⟷ %s (右) のユニーク数: 左=%d, 右=%d\n",
+                key1, key2, n_unique_df1, n_unique_df2))
   }
-
-  # マッチング診断用の anti_join / semi_join
+  
+  # マッチング診断
   cat("\n【マッチング診断】\n")
-  unmatched_left <- df1 %>%
-    dplyr::ungroup() %>%
-    dplyr::anti_join(df2 %>% dplyr::ungroup(), by = by_vars)
-
-  unmatched_right <- df2 %>%
-    dplyr::ungroup() %>%
-    dplyr::anti_join(df1 %>% dplyr::ungroup(), by = by_vars)
-
-  matched_rows <- df1 %>%
-    dplyr::ungroup() %>%
-    dplyr::semi_join(df2 %>% dplyr::ungroup(), by = by_vars) %>%
+  
+  # ★★★ 修正：名前付きベクトルの作成方法を変更 ★★★
+  # setNames(右側の変数名, 左側の変数名) → 正しい順序
+  by_named <- setNames(by_df2, by_df1)
+  
+  # ★★★ さらに修正：一時的に変数名を統一してマッチング診断を行う ★★★
+  # 左側データフレームの変数名を右側に合わせて一時的にリネーム
+  df1_temp <- df1 %>% dplyr::ungroup()
+  df2_temp <- df2 %>% dplyr::ungroup()
+  
+  # by_df1とby_df2が異なる場合、左側を右側の変数名にリネーム
+  if (!identical(by_df1, by_df2)) {
+    for (i in seq_along(by_df1)) {
+      if (by_df1[i] != by_df2[i] && by_df1[i] %in% names(df1_temp)) {
+        # 一時的な変数名を生成（衝突を避けるため）
+        temp_name <- paste0("__temp_join_key_", i, "__")
+        df1_temp <- df1_temp %>%
+          dplyr::rename(!!temp_name := !!by_df1[i])
+      }
+    }
+    
+    # 最終的に右側の変数名に統一
+    for (i in seq_along(by_df1)) {
+      temp_name <- paste0("__temp_join_key_", i, "__")
+      if (temp_name %in% names(df1_temp)) {
+        df1_temp <- df1_temp %>%
+          dplyr::rename(!!by_df2[i] := !!temp_name)
+      }
+    }
+  }
+  
+  # 統一されたキー名で診断
+  unmatched_left <- df1_temp %>%
+    dplyr::anti_join(df2_temp, by = by_df2)
+  
+  unmatched_right <- df2_temp %>%
+    dplyr::anti_join(df1_temp, by = by_df2)
+  
+  matched_rows <- df1_temp %>%
+    dplyr::semi_join(df2_temp, by = by_df2) %>%
     nrow()
-
+  
   match_rate <- 100 * matched_rows / nrow(df1)
+  
   cat(sprintf(" マッチング率: %.1f%%\n", match_rate))
-
-  # 警告の表示
+  cat(sprintf(" マッチした行数: %d / %d\n", matched_rows, nrow(df1)))
+  cat(sprintf(" マッチしなかった行数（左側）: %d\n", nrow(unmatched_left)))
+  cat(sprintf(" マッチしなかった行数（右側）: %d\n", nrow(unmatched_right)))
+  
   if (match_rate < 50) {
     warning("マッチング率が50%未満です。キー変数を確認してください。")
   }
-
+  
   cat(strrep("=", 80), "\n\n")
-
+  
   return(list(
-    common_keys = common_keys,
     match_rate = match_rate,
     unmatched_left = unmatched_left,
     unmatched_right = unmatched_right
   ))
 }
+# -------関数ここまで☺️-------------------------------------------------------
 
 # ===============================================================================
 # 3. 結合キーの重複を診断する関数
@@ -249,7 +299,10 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
 #' @param priority_key 右側データフレームで重複がある場合に
 #'   優先的に保持するキー変数のベクトル
 #'   - 例: c("date_updated", "version")
-#'
+#' @param priotiry_col_left 結合後に優先的に保持する列を
+#'  左側データフレームのものにするか（デフォルト
+#'  : TRUE）
+#'  
 #' @return 結合されたデータフレーム
 #'
 #' @description
@@ -285,8 +338,16 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
 #'
 #' @export
 left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
-                           priority_key = NULL) {
+                           priority_key = NULL, priotiry_col_left = TRUE) {
 
+  # ================================================================================
+  # Step 0: 引数join_nameの設定
+  # ================================================================================
+  
+  if (join_name == "") {
+    join_name <- paste0(deparse(substitute(df1)), " ⟵ ", deparse(substitute(df2)))
+  }
+  
   # ================================================================================
   # Step 1: by引数の解析と正規化
   # ================================================================================
@@ -310,9 +371,11 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
   # Step 3: 診断の実行（オプション）
   # ================================================================================
   if (diagnose) {
+    # ★★★ 修正点：diagnose_joinには by_df1 と by_df2 を別々に渡す ★★★
+    # 元の関数を呼ぶのではなく、修正版を使う
     diag_result <- diagnose_join(df1_normalized, df2_normalized,
-                                 by_vars, join_name)
-
+                                         by_df1, by_df2, join_name)
+    
     # 重複診断を追加
     cat("\n")
     dup_df1 <- diagnose_duplicates(df1_normalized, by_df1, "左側データ")
@@ -356,9 +419,16 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
   # ================================================================================
   # 結合直後に .y サフィックスが付いた列を削除
   # .x サフィックスをクリーンアップ
-  result <- result %>%
-    dplyr::select(-ends_with(".y")) %>%
-    rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+  
+  if (priotiry_col_left) {
+    result <- result %>%
+      dplyr::select(-ends_with(".y")) %>%
+      rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
+  } else {
+    result <- result %>%
+      dplyr::select(-ends_with(".x")) %>%
+      rename_with(~str_remove(., "\\.y$"), ends_with(".y"))
+  }
 
   # ================================================================================
   # Step 7: 結果の整合性チェック
