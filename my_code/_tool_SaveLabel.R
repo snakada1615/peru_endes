@@ -78,7 +78,31 @@ library(rlang)
 #   val_labels = val_label
 # )
 #' *************************************************************************
-
+#' ラベル情報を手動で作成する関数例
+#' @title create_labels_memory_manual
+#' @description 変数名、変数ラベル、値ラベルを手動で指定してラベル情報を作成します。
+#' @param list_name リスト名（例: "labels_memory_manual"）
+#' @param var_names 変数名ベクトル
+#' @param var_labs 変数ラベルベクトル
+#' @return ラベル情報を含むリスト
+#' @examples
+#' labels_memory_manual <- create_labels_memory_manual(
+#'  list_name = "labels_memory_manual",  
+#'  var_names = c(
+#'   "sex", "edu"
+#'   ),
+#'  var_labs =c(
+#'   "sex of participant", "education record"
+#'    ))
+#'  ***********************************************************************
+# create_labels_memory_manual <- function(list_name, var_names, var_labs) {
+#   # 変数ラベル（名前付きベクトル）
+#   var_label <- setNames(var_labs, var_names)
+#   
+#   result <- list( list_name = var_label )
+#   print(result)
+#   return(result)
+# }
 
 #' ************************************************************************
 #' @title 全てのラベルをリストとして保存

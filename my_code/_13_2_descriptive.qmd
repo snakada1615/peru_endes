@@ -70,12 +70,16 @@ hide_column <- c("var0", "var_label", "val_label", "all_label", "item", "Coeffic
 library(survey)
 library(glmnet)
 
+# 必要な変数の欠損チェック
+df_clean <- df_org %>%
+  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
+
 # Survey designオブジェクトの作成
 svy_design <- svydesign(
   ids = ~v021,          # Primary Sampling Unit (クラスター)
   strata = ~v022,       # 層化変数
   weights = ~sampling_weight_trimmed,
-  data = df_org,
+  data = df_clean,
   nest = TRUE           # 入れ子構造
 )
 

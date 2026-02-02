@@ -96,7 +96,7 @@ for (yr in yearlist) {
     filter(!is.na(hhid))
   
   if (yr == "2010") {
-    labels_memory <- save_labels_to_memory(year_data)
+    labels_memory_org <- save_labels_to_memory(year_data)
   }
   
   year_data <- remove_labels(year_data)
@@ -111,9 +111,6 @@ all_data_merged <- rbindlist(data_list, fill = TRUE, ignore.attr = TRUE)
 all_data_merged <- as_tibble(all_data_merged)
 
 print(paste("Total records:", nrow(all_data_merged)))
-
-# ラベル属性を復元
-all_data_merged <- restore_labels(all_data_merged, labels_memory)
 
 # 重複チェック
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
@@ -212,20 +209,27 @@ df_food_org <- readRDS(
     inc_quintile = as.numeric(inc_quintile)
     )
 
+# ******************************************************************************
 # 食品消費データ結合
-labels_memory <- save_labels_to_memory(all_data_merged)
-all_data_merged <- remove_labels(all_data_merged)
+# ******************************************************************************
+# 変数ラベル情報を一時保存してから削除
+labels_memory_food <- save_labels_to_memory(df_food_org)
+df_food_org <- remove_labels(df_food_org)
+
+# 結合前にall_data_mergedのキー変数を数値型に変換
 all_data_merged <- all_data_merged %>% 
   mutate(v024 = as.numeric(v024),
          dm_rural = as.numeric(dm_rural),
          v190 = as.numeric(v190)
          )
+
+# 食品摂取量データの結合
 all_data_merged <- all_data_merged %>%
   left_join(
     df_food_org,
     by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
   )
-all_data_merged <- restore_labels(all_data_merged, labels_memory)
+# all_data_merged <- restore_labels(all_data_merged, labels_memory_food)
 
 all_data_merged <- all_data_merged %>% 
   # stuntingデータの欠損値除去
@@ -277,9 +281,11 @@ all_data_merged <- all_data_merged %>%
       TRUE                  ~ 0L   # No と NA を 0 にする
     ),
     dm_sheeep_own = ifelse(dm_sheep_own == 1, 1, 0),
+    # ★修正箇所: 数値コード2を直接使用
     ph_wtr_far = case_when(
-      ph_wtr_time > 30   ~ 1L,
-      TRUE               ~ 0L
+      ph_wtr_time == 2 ~ 1L,              # コード2 = 30分超
+      is.na(ph_wtr_time) ~ NA_integer_,
+      TRUE ~ 0L
     ),
     dm_hh_head_30plus = ifelse(dm_age_of_hh_head == 1 | dm_age_of_hh_head == 2, 0, 1),
     dm_sani_open_yes = ifelse(ph_sani_open == 1, 1, 0),
@@ -298,6 +304,21 @@ all_data_merged <- all_data_merged %>%
       ph_wtr_improve_dummy = "improved water source",
       ch_below_2p5_yes = "child below -2.5SD",
       nt_wm_ovobese_yes = "overweight mother"
+    )
+
+  labels_memory_dm <- list(
+    var_labels = list(
+      dm_child_more_than3 = "more than 3 child under 12",
+      dm_sheeep_own = "own a sheep",
+      ph_wtr_far = "water fetching over 30min",
+      dm_hh_head_30plus = "HH head over 29",
+      dm_sani_open_yes = "open defication",
+      ch_stool_safe_no = "stool improper handling",
+      rc_agri_yes = "engaged in agriculture",
+      ph_wtr_improve_dummy = "improved water source",
+      ch_below_2p5_yes = "child below -2.5SD",
+      nt_wm_ovobese_yes = "overweight mother"
+      )
     )
 
   # ★ ラベル情報を保持しながらfactor型に変換
@@ -346,6 +367,12 @@ all_data_merged <- all_data_merged %>%
 
 # 元データのラベル適正化
 library(labelled)
+
+# 変数ラベルの統合
+label_merged_all <- merge_labels_memory(labels_memory_org, labels_memory_food)
+
+# ラベル属性の復元
+all_data_merged <- restore_labels(all_data_merged, label_merged_all)
 
 # 1. 元のhaven_labelledデータから変換
 all_data_merged <- all_data_merged %>%
