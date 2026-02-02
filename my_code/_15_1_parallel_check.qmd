@@ -3,21 +3,21 @@ title: "_13_3_parallel_check"
 format: html
 ---
 
-```{r}
+# 1. データ読み込み
 
+```{r}
 library(survey)
 library(srvyr)
 library(ggplot2)
 library(dplyr)
 library(haven)
 library(tidyr)
-library(srvyr) # surveyデータ処理用
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
 
 # DHSデータのルートフォルダを指定
-gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
 # 結果保存先
 save_path <- file.path(gdrive_dir, "output")
@@ -35,7 +35,7 @@ df_org <- readRDS(
 labels_memory <- save_labels_to_memory(df_org)
 df_org <- remove_labels(df_org)
 
-# キーテーブルの作成（グラフ作成次のグループ分けに利用）
+# キーテーブルの作成
 key_table <- distinct(
   df_org,
   year,
@@ -53,52 +53,269 @@ key_table <- distinct(
 variable_for_analysis <- names(df_org)
 variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
 
-# データ形式をロングに変換
-df_long <- df_org %>%
+# === ファクター型を数値に変換 + NaN/Inf対策 ===
+df_org <- df_org %>%
   mutate(
-    across(all_of(variable_for_analysis),
-           ~ as.numeric(as.character(.)))
-  ) %>%
-  pivot_longer(
-    cols = all_of(variable_for_analysis),
-    names_to = "variable",
-    values_to = "value"
-  ) 
+    across(
+      all_of(variable_for_analysis),
+      ~ {
+        result <- if (is.factor(.)) {
+          as.numeric(.) - 1
+        } else if (is.numeric(.)) {
+          .
+        } else if (is.character(.)) {
+          as.numeric(.)
+        } else if (is.logical(.)) {
+          as.numeric(.)
+        } else {
+          as.numeric(as.character(.))
+        }
+        
+        # NaN と Inf を NA に変換
+        result[is.nan(result) | is.infinite(result)] <- NA
+        result
+      }
+    )
+  )
+
+```
+
+#2 バッチ処理で平均値を算出
+
+```{r}
+
 
 # 孤立PSU問題に対処
 options(survey.lonely.psu = "adjust")
 
-# Survey designオブジェクトの作成
-svy_obj <- svydesign(
-  ids = ~v021,          # Primary Sampling Unit (クラスター)
-  strata = ~v022,       # 層化変数
-  weights = ~sampling_weight_trimmed,
-  data = df_long,
-  nest = TRUE           # 入れ子構造
+# === バッチ処理（エラーハンドリング付き） ===
+
+# 処理するvariableのリスト
+variables_list <- variable_for_analysis
+
+# バッチサイズの設定
+batch_size <- 5
+n_batches <- ceiling(length(variables_list) / batch_size)
+
+# 結果を格納するリスト
+results_by_treatment <- list()
+results_national <- list()
+
+# エラーが発生したバッチを記録
+error_batches <- c()
+
+# バッチ毎に処理
+for (batch_idx in 1:n_batches) {
+  
+  cat(sprintf("\n=== Processing batch %d of %d ===\n", batch_idx, n_batches))
+  
+  # 現在のバッチの変数を取得
+  start_idx <- (batch_idx - 1) * batch_size + 1
+  end_idx <- min(batch_idx * batch_size, length(variables_list))
+  current_vars <- variables_list[start_idx:end_idx]
+  
+  cat(sprintf("Variables: %s\n", paste(current_vars, collapse = ", ")))
+  
+  # === エラーハンドリング ===
+  tryCatch({
+    
+    # 現在のバッチの変数のみをロング形式に変換
+    df_long_batch <- df_org %>%
+      select(
+        v021, v022, sampling_weight_trimmed,
+        state, year,
+        all_of(current_vars)
+      ) %>%
+      pivot_longer(
+        cols = all_of(current_vars),
+        names_to = "variable",
+        values_to = "value"
+      ) %>%
+      # NaN, Inf, -Inf を NA に変換（念のため再確認）
+      mutate(value = ifelse(is.nan(value) | is.infinite(value), NA, value))
+    
+    # === 診断：各変数のデータ状況を確認 ===
+    data_check <- df_long_batch %>%
+      group_by(variable) %>%
+      summarise(
+        n_obs = n(),
+        n_nonNA = sum(!is.na(value)),
+        n_nonzero = sum(value != 0, na.rm = TRUE),
+        mean_raw = mean(value, na.rm = TRUE),
+        min_val = min(value, na.rm = TRUE),
+        max_val = max(value, na.rm = TRUE),
+        .groups = "drop"
+      )
+    print(data_check)
+    
+    # 有効データが存在するか確認
+    if (sum(data_check$n_nonNA) == 0) {
+      cat("WARNING: No valid data in this batch. Skipping...\n")
+      next
+    }
+    
+    # Survey designオブジェクトの作成
+    svy_obj_batch <- svydesign(
+      ids = ~v021,
+      strata = ~v022,
+      weights = ~sampling_weight_trimmed,
+      data = df_long_batch,
+      nest = TRUE
+    )
+    
+    # srvyrオブジェクトに変換
+    svy_obj_srvyr_batch <- as_survey_design(svy_obj_batch)
+    
+    # グループ別・年次別の加重平均を計算
+    summary_by_treatment_batch <- svy_obj_srvyr_batch %>%
+      group_by(state, year, variable) %>%
+      summarize(
+        n_obs = n(),
+        mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+        .groups = "drop"
+      )
+    
+    # 全国平均
+    summary_national_batch <- svy_obj_srvyr_batch %>%
+      group_by(year, variable) %>%
+      summarize(
+        n_obs = n(),
+        mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+        .groups = "drop"
+      )
+    
+    # 結果を保存
+    results_by_treatment[[batch_idx]] <- summary_by_treatment_batch
+    results_national[[batch_idx]] <- summary_national_batch
+    
+    # 中間結果をRDSで保存
+    saveRDS(
+      summary_by_treatment_batch,
+      file.path(save_path, sprintf("summary_by_treatment_batch_%03d.rds", batch_idx))
+    )
+    saveRDS(
+      summary_national_batch,
+      file.path(save_path, sprintf("summary_national_batch_%03d.rds", batch_idx))
+    )
+    
+    cat(sprintf("Batch %d completed and saved.\n", batch_idx))
+    
+    # メモリ解放
+    rm(df_long_batch, svy_obj_batch, svy_obj_srvyr_batch)
+    gc()
+    
+  }, error = function(e) {
+    cat(sprintf("\n!!! ERROR in batch %d !!!\n", batch_idx))
+    cat(sprintf("Error message: %s\n", e$message))
+    cat(sprintf("Variables: %s\n", paste(current_vars, collapse = ", ")))
+    
+    # エラーバッチを記録
+    error_batches <<- c(error_batches, batch_idx)
+    
+    # 個別変数で試行（1変数ずつ処理）
+    cat("Attempting to process variables individually...\n")
+    
+    for (var in current_vars) {
+      tryCatch({
+        cat(sprintf("  Processing %s...", var))
+        
+        df_long_single <- df_org %>%
+          select(v021, v022, sampling_weight_trimmed, state, year, all_of(var)) %>%
+          pivot_longer(
+            cols = all_of(var),
+            names_to = "variable",
+            values_to = "value"
+          ) %>%
+          mutate(value = ifelse(is.nan(value) | is.infinite(value), NA, value))
+        
+        # 有効データチェック
+        if (sum(!is.na(df_long_single$value)) == 0) {
+          cat(" No valid data. Skipped.\n")
+          next
+        }
+        
+        svy_obj_single <- svydesign(
+          ids = ~v021, strata = ~v022,
+          weights = ~sampling_weight_trimmed,
+          data = df_long_single, nest = TRUE
+        )
+        
+        svy_obj_srvyr_single <- as_survey_design(svy_obj_single)
+        
+        summary_single <- svy_obj_srvyr_single %>%
+          group_by(state, year, variable) %>%
+          summarize(
+            n_obs = n(),
+            mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+            .groups = "drop"
+          )
+        
+        summary_national_single <- svy_obj_srvyr_single %>%
+          group_by(year, variable) %>%
+          summarize(
+            n_obs = n(),
+            mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+            .groups = "drop"
+          )
+        
+        # 既存リストに追加
+        results_by_treatment[[length(results_by_treatment) + 1]] <- summary_single
+        results_national[[length(results_national) + 1]] <- summary_national_single
+        
+        cat(" Success.\n")
+        
+        rm(df_long_single, svy_obj_single, svy_obj_srvyr_single)
+        
+      }, error = function(e2) {
+        cat(sprintf(" Failed: %s\n", e2$message))
+      })
+    }
+    
+    cat("\n")
+  })
+}
+
+# 全バッチの結果を結合
+cat("\n=== Combining results ===\n")
+summary_by_treatment <- bind_rows(results_by_treatment)
+summary_national <- bind_rows(results_national)
+
+# 最終結果を保存
+saveRDS(
+  summary_by_treatment,
+  file.path(save_path, "summary_by_treatment_final.rds")
+)
+saveRDS(
+  summary_national,
+  file.path(save_path, "summary_national_final.rds")
 )
 
-# srvyrオブジェクトに変換
-svy_obj_srvyr <- as_survey_design(svy_obj)
+write.csv(summary_by_treatment_final, file.path(save_path, "summary_by_treatment_final.csv"))
 
-# ステップ3: グループ別・年次別の加重平均を計算
-summary_by_treatment <- svy_obj_srvyr %>%
-  group_by(state, year, variable) %>%
-  summarize(
-    mean_value = survey_mean(value, na.rm = TRUE,),
-    .groups = "drop"
-  )
+cat("\n=== All processing completed ===\n")
+cat(sprintf("Total variables processed: %d\n", length(variables_list)))
+cat(sprintf("Total batches: %d\n", n_batches))
 
-# 全国平均
-summary_national <- svy_obj_srvyr %>%
-  group_by(year, variable) %>%
-  summarize(
-    mean_value = survey_mean(value, na.rm = TRUE,),
-    .groups = "drop"
-  )
+if (length(error_batches) > 0) {
+  cat(sprintf("Batches with errors (but recovered): %s\n", 
+              paste(error_batches, collapse = ", ")))
+} else {
+  cat("No errors occurred.\n")
+}
 
-# 結果は通常のデータフレーム（tibble）として返される
-# 列：treatment_group, year, mean_stunted, mean_stunted_low, mean_stunted_upp
-head(plot_data)
+cat(sprintf("Results saved to: %s\n", save_path))
+
+stop("処理終了")
+
+
+
+# ****************************************************************************
+```
+
+#3　時系列プロット
+
+
+```{r}
 
 
 # ステップ3: グループ別・年次別の加重平均を計算
