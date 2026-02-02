@@ -348,6 +348,10 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
     join_name <- paste0(deparse(substitute(df1)), " ⟵ ", deparse(substitute(df2)))
   }
   
+  cat("\n", strrep("=", 80), "\n", sep = "")
+  cat("left_join_safe:", join_name, ": 結合を開始します","\n")
+  cat(strrep("=", 80), "\n")
+  
   # ================================================================================
   # Step 1: by引数の解析と正規化
   # ================================================================================
@@ -441,6 +445,10 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
     warning(sprintf("結合後の行数が変化しました: %s (元: %d, 結果: %d)",
                     join_name, nrow(df1), nrow(result)))
   }
+  
+  cat("\n", strrep("=", 80), "\n", sep = "")
+  cat("left_join_safe:", join_name, ": 結合を完了しました","\n")
+  cat(strrep("=", 80), "\n")
 
   return(result)
 }

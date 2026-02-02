@@ -3,20 +3,31 @@ library(labelled)  # またはhaven
 library(rlang)
 
 #' 関数一覧
-#' 1. save_all_labels: データフレーム内のすべての変数のラベル属性をリストとして保存
-#' 2. restore_all_labels: データフレーム内のすべて
-#' の変数のラベル属性をリストから復元
-#' 3. save_labels: データフレーム内の指定した変数
-#' のラベル属性をリストとして保存
-#' 4. restore_labels: データフレーム内の指定した
-#' 変数のラベル属性をリストから復元
-#' 5. pipe_with_labels: パイプ処理用ラベルバックアップ
-#' に組み込める簡潔版
-#' 6. with_labels: ラベルバックアップ付きデータフレーム作
-#' 成
-#' 7. restore_from_backup: ラベルバックアップから復元
-#' 8. with_labels_and_clean: ラベルをバックアップしな
-#' がらラベル属性を削除
+#' ============================================
+#' 1. save_all_labels(data): データフレーム内のすべ
+#' ての変数のラベル属性をリストとして保存
+#' 2. restore_all_labels(data, labels): データフレーム
+#' 内のすべての変数のラベル属性をリストから復
+#' 元
+#' 3. save_labels(data, columns = NULL): データフレーム
+#' 内の指定した変数のラベル属性をリストとして保存
+#' 4. restore_labels(data, labels, columns = NULL): デー
+#' タフレーム内の指定した変数のラベル属性をリスト
+#' から復元
+#' 5. pipe_with_labels(data): パイプ処理に組み込
+#' める簡潔版ラベルバックアップ
+#' 6. with_labels(data): ラベルバックアップ付きデー
+#' タフレーム作成
+#' 7. restore_from_backup(data): ラベルバックアップか
+#' ら復元
+#' 8. with_labels_and_clean(data): ラベルバックアップ
+#' 付きクリーンデータフレーム作成
+#' 9. save_labels_to_memory(data): ラベル情報を保存
+#' 10. merge_labels_memory(...): 複数のラベル情報を
+#' 一つにまとめる
+#' 11. remove_labels(data): ラベル属性を削除
+#' 12. restore_labels(data, labels_memory): ラベルを復元
+#' 
 #' ============================================
 
 

@@ -53,6 +53,7 @@ library(vctrs)
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_SaveLabel.R")
+source("_tool_safe_join.R")  # 安全な結合関数
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2012")
@@ -834,8 +835,8 @@ goAnalysis <- function(year) {
   cat("\n## 3. データセット統合\n")
   
   # 基本データから開始(ラベル保存)
-  labels_IR <- save_labels(IRdata, columns = c("caseid"))
-  labels_HR <- save_labels(HRdata, columns = c("hhid"))
+  labels_IR <- save_labels_to_memory(IRdata)
+  labels_HR <- save_labels_to_memory(HRdata)
   # 方法 1: IRdataの結合用ラベル削除
   IRdata_safe <- IRdata %>%
   dplyr::mutate(
@@ -862,8 +863,8 @@ goAnalysis <- function(year) {
   # IRdata <- safe_join_datasets(
   #   IRdata, child_count_safe, by=c("hhid", "caseid"), "IRdata-child_count")
   # ラベル復元
-  IRdata <- restore_labels(IR_HR_data, labels_IR, columns = c("caseid"))
-  IRdata <- restore_labels(IRdata, labels_HR, columns = c("hhid_HR"))
+  IRdata <- restore_labels(IR_HR_data, labels_IR)
+  IRdata <- restore_labels(IRdata, labels_HR)
   
   # ============================================================================
   # データ処理
@@ -882,10 +883,12 @@ goAnalysis <- function(year) {
   print(names(cooking_fuel))
   
   # データ結合
-  IRdata <- safe_join_datasets(
-    IRdata, cooking_fuel, by=c("hhid", "caseid"), "IRdata-cooking_fuel")
-  IRdata <- safe_join_datasets(
-    IRdata, child_count, by=c("hhid", "caseid"), "IRdata-child_count")
+  IRdata <- left_join_safe(
+    IRdata, cooking_fuel, by=c("hhid", "caseid"), "IRdata-cooking_fuel",
+    diagnose = TRUE)
+  IRdata <- left_join_safe(
+    IRdata, child_count, by=c("hhid", "caseid"), "IRdata-child_count",
+    diagnose = TRUE)
 
   # 調理燃料マッチング確認
   cat("調理燃料マッチング確認:\n")
