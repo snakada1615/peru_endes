@@ -30,6 +30,55 @@ library(rlang)
 #' 
 #' ============================================
 
+# *************************************************************************
+#' ラベル一覧のリスト構造の例 
+# *************************************************************************
+#' labels_set <- list(
+#' # まず変数ラベルは各変数を名前付きリストにする
+#'  var_labels = list(
+#'    sex = "sex of participant",
+#'    edu = "education record"
+#'    ),
+#'    
+#'  # 値ラベルは各変数ごとに名前付きベクトルを作成
+#'  val_labels = list(
+#'    sex = c(
+#'      male = "M",
+#'      female = "F"
+#'      ) # edu は値ラベルなしなので入れない
+#'    )
+#'  )
+#'  ************************************************************************* 
+#'  以下、実際に作成する手順
+#'  用意するもの
+#'  ①変数名ベクトル、②変数ラベルベクトル、
+#'  ③各変数ごとの値べクトル、④各変数ごとの値ラベルベクトル
+#'  *************************************************************************  
+# ## 変数ラベル（名前付きベクトル）
+# var_names  <- c("sex", "edu")
+# var_labs   <- c("sex of participant", "education record")
+# var_label  <- setNames(var_labs, var_names)
+# # names(var_label)  = c("sex","edu")
+# # unname(var_label) = c("sex of participant","education record")
+# 
+# ## 値ラベル（各変数ごとの名前付きベクトル）
+# sex_vals   <- c("M", "F")
+# sex_labs   <- c("male", "female")
+# sex_label  <- setNames(sex_vals, sex_labs)
+# # c(male = "M", female = "F")
+# 
+# val_label  <- list(
+#   sex = sex_label
+#   # edu は値ラベルなしなので入れない
+# )
+# 
+# ## save_labels_to_memory(df) と同じ構造にまとめる
+# labels_memory_manual <- list(
+#   var_labels = var_label,
+#   val_labels = val_label
+# )
+#' *************************************************************************
+
 
 #' ************************************************************************
 #' @title 全てのラベルをリストとして保存
