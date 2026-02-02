@@ -10,7 +10,8 @@ library(srvyr)
 library(ggplot2)
 library(dplyr)
 library(haven)
-library(tidyr)   
+library(tidyr)
+library(srvyr) # surveyデータ処理用
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
@@ -27,7 +28,8 @@ source("_tool_SaveLabel.R")
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged.rds")
-  )
+  ) %>%
+  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 # 変数ラベルをメモリに保存したうえでラベル消去
 labels_memory <- save_labels_to_memory(df_org)
@@ -71,12 +73,15 @@ svy_obj <- svydesign(
   ids = ~v021,          # Primary Sampling Unit (クラスター)
   strata = ~v022,       # 層化変数
   weights = ~sampling_weight_trimmed,
-  data = df_org,
+  data = df_long,
   nest = TRUE           # 入れ子構造
 )
 
+# srvyrオブジェクトに変換
+svy_obj_srvyr <- as_survey_design(svy_obj)
+
 # ステップ3: グループ別・年次別の加重平均を計算
-summary_by_treatment <- svy_obj %>%
+summary_by_treatment <- svy_obj_srvyr %>%
   group_by(state, year, variable) %>%
   summarize(
     mean_value = survey_mean(value, na.rm = TRUE,),
@@ -84,10 +89,32 @@ summary_by_treatment <- svy_obj %>%
   )
 
 # 全国平均
-summary_national <- svy_obj %>%
+summary_national <- svy_obj_srvyr %>%
   group_by(year, variable) %>%
   summarize(
     mean_value = survey_mean(value, na.rm = TRUE,),
+    .groups = "drop"
+  )
+
+# 結果は通常のデータフレーム（tibble）として返される
+# 列：treatment_group, year, mean_stunted, mean_stunted_low, mean_stunted_upp
+head(plot_data)
+
+
+# ステップ3: グループ別・年次別の加重平均を計算
+plot_data <- svy_obj_srvyr %>%
+  mutate(
+    nt_ch_stunt_num = case_when(
+      nt_ch_stunt == "Yes" ~ 1,
+      nt_ch_stunt == "No" ~ 0,
+      TRUE ~ NA_real_
+    ),
+    treatment_group = zap_labels(treatment_group) %>% as.factor()
+  ) %>%
+  # filter(year <= 2008) %>%
+  group_by(state, year) %>%
+  summarize(
+    mean_stunted = survey_mean(nt_ch_stunt_num, na.rm = TRUE, vartype = "ci"),
     .groups = "drop"
   )
 
@@ -114,44 +141,22 @@ ggplot(plot_data, aes(x = year, y = mean_stunted,
   theme_minimal() +
   theme(legend.position = "bottom")
 
-
-# ステップ3: グループ別・年次別の加重平均を計算
-plot_data <- svy_obj %>%
-  mutate(
-    nt_ch_stunt_num = case_when(
-      nt_ch_stunt == "Yes" ~ 1,
-      nt_ch_stunt == "No" ~ 0,
-      TRUE ~ NA_real_
-    ),
-    treatment_group = zap_labels(treatment_group) %>% as.factor()
-  ) %>%
-  # filter(year <= 2008) %>%
-  group_by(state, year) %>%
-  summarize(
-    mean_stunted = survey_mean(nt_ch_stunt_num, na.rm = TRUE, vartype = "ci"),
-    .groups = "drop"
-  )
-
-# 結果は通常のデータフレーム（tibble）として返される
-# 列：treatment_group, year, mean_stunted, mean_stunted_low, mean_stunted_upp
-head(plot_data)
-
-
-# ステップ4: ggplotで可視化
-ggplot(plot_data, aes(x = year, y = mean_stunted, 
-                      color = state, 
-                      group = state)) +
-  geom_line(size = 1) +
-  geom_point(size = 2.5) +
-  labs(
-    title = "stunting rate by treatment status over years",
-    x = "year",
-    y = "stunting rate (%)",
-    color = "state",
-    fill = "state"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom")
+# 
+# # ステップ4: ggplotで可視化
+# ggplot(plot_data, aes(x = year, y = mean_stunted, 
+#                       color = state, 
+#                       group = state)) +
+#   geom_line(size = 1) +
+#   geom_point(size = 2.5) +
+#   labs(
+#     title = "stunting rate by treatment status over years",
+#     x = "year",
+#     y = "stunting rate (%)",
+#     color = "state",
+#     fill = "state"
+#   ) +
+#   theme_minimal() +
+#   theme(legend.position = "bottom")
 
 
 ```
