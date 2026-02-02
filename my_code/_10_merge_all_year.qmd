@@ -106,14 +106,15 @@ for (yr in yearlist) {
   data_list[[yr]] <- year_data
 }
 
-all_data_merged <- rbindlist(data_list, fill = TRUE, ignore.attr = TRUE)
-
-all_data_merged <- as_tibble(all_data_merged)
+# ******************************************************************************
+# 全ての年次データの結合
+all_data_merged <- rbindlist(data_list, fill = TRUE, ignore.attr = TRUE) %>% as_tibble()
 
 print(paste("Total records:", nrow(all_data_merged)))
 
 # 重複チェック
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
+# ******************************************************************************
 
 # 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
@@ -135,10 +136,7 @@ endes_keys <- endes_keys %>%
 
 # 共通キーでマージ
 all_data_merged <- all_data_merged %>%
-  left_join_safe(endes_keys, c("year_trim", "hhid_trim"))
-
-# 重複チェック
-duplicate_check(all_data_merged, c("year_trim", "hhid_trim"), "all_data_merged")
+  left_join_safe(endes_keys, c("year_trim", "hhid_trim"), diagnose = TRUE)
 
 # 元のキー列（hhid, year）のみを残す
 # 正規化キー列（hhid_trim, year_trim）は削除
@@ -154,14 +152,14 @@ all_data_merged <- all_data_merged %>%
 # 食品群消費データの読み込み
 
 dummy_vars <- c(
-  "nt_wm_ht", 
+  "nt_wm_ht_below_145",
   "ch_below_2p5", 
   "dm_child_more_than3", 
   "rc_edu_acceptable",
    "dm_sheeep_own", 
   "rh_anc_pvskill", 
   "dm_refrigerator",            
-  "nt_wm_ovobese", 
+  "nt_wm_ovobese_yes",
   "ph_wtr_far", 
   "dm_hh_head_30plus",           
   "dm_city", 
@@ -271,40 +269,89 @@ all_data_merged <- all_data_merged %>%
   
   # 一部のカテゴリ変数をダミー化
   mutate(
-    dm_child_more_than3 = ifelse(dm_children_under12 > 3, 1, 0),
-        ch_below_2p5_yes = case_when(
-      ch_below_2p5 == "Yes" ~ 1L,
-      TRUE                  ~ 0L   # No と NA を 0 にする
+    # ★★★ パターン1: 不等式（>）による比較 ★★★
+    dm_child_more_than3 = case_when(
+      is.na(dm_children_under12) ~ NA_real_,
+      dm_children_under12 > 3 ~ 1,
+      TRUE ~ 0
     ),
+    
+    # ★★★ パターン2: 等号（==）による比較 ★★★
+    ch_below_2p5_yes = case_when(
+      is.na(ch_below_2p5) ~ NA_real_,
+      ch_below_2p5 == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
     nt_wm_ovobese_yes = case_when(
-      nt_wm_ovobese == "Yes" ~ 1L,
-      TRUE                  ~ 0L   # No と NA を 0 にする
+      is.na(nt_wm_ovobese) ~ NA_real_,
+      nt_wm_ovobese == 1 ~ 1,
+      TRUE ~ 0
     ),
-    dm_sheeep_own = ifelse(dm_sheep_own == 1, 1, 0),
-    # ★修正箇所: 数値コード2を直接使用
+    
+    nt_wm_ht_below_145 = case_when(
+      is.na(nt_wm_ht) ~ NA_real_,
+      nt_wm_ht == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    dm_sheeep_own = case_when(
+      is.na(dm_sheep_own) ~ NA_real_,
+      dm_sheep_own == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    # ★★★ パターン3: 既に適切に処理されている ★★★
     ph_wtr_far = case_when(
-      ph_wtr_time == 2 ~ 1L,              # コード2 = 30分超
-      is.na(ph_wtr_time) ~ NA_integer_,
-      TRUE ~ 0L
+      is.na(ph_wtr_time) ~ NA_real_,
+      ph_wtr_time == 2 ~ 1,
+      TRUE ~ 0
     ),
-    dm_hh_head_30plus = ifelse(dm_age_of_hh_head == 1 | dm_age_of_hh_head == 2, 0, 1),
-    dm_sani_open_yes = ifelse(ph_sani_open == 1, 1, 0),
-    ch_stool_safe_no = ifelse(ch_stool_safe == 0, 1, 0),
-    rc_agri_yes = ifelse(rc_agri == 1, 1, 0),
-    ph_wtr_improve_dummy = ifelse(as.numeric(ph_wtr_improve) == 1, 1, 0)
-  ) %>%
-  set_variable_labels(
-      dm_child_more_than3 = "more than 3 child under 12",
-      dm_sheeep_own = "own a sheep",
-      ph_wtr_far = "water fetching over 30min",
-      dm_hh_head_30plus = "HH head over 29",
-      dm_sani_open_yes = "open defication",
-      ch_stool_safe_no = "stool improper handling",
-      rc_agri_yes = "engaged in agriculture",
-      ph_wtr_improve_dummy = "improved water source",
-      ch_below_2p5_yes = "child below -2.5SD",
-      nt_wm_ovobese_yes = "overweight mother"
+    
+    # ★★★ パターン4: 論理演算（%in%）の否定 ★★★
+    dm_hh_head_30plus = case_when(
+      is.na(dm_age_of_hh_head) ~ NA_real_,
+      dm_age_of_hh_head %in% c(1, 2) ~ 0,
+      TRUE ~ 1
+    ),
+    
+    # ★★★ パターン5: 等号による比較（その他） ★★★
+    dm_sani_open_yes = case_when(
+      is.na(ph_sani_open) ~ NA_real_,
+      ph_sani_open == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    ch_stool_safe_no = case_when(
+      is.na(ch_stool_safe) ~ NA_real_,
+      ch_stool_safe == 0 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    rc_agri_yes = case_when(
+      is.na(rc_agri) ~ NA_real_,
+      rc_agri == 1 ~ 1,
+      TRUE ~ 0
+    ),
+    
+    ph_wtr_improve_dummy = case_when(
+      is.na(ph_wtr_improve) ~ NA_real_,
+      ph_wtr_improve == 1 ~ 1,
+      TRUE ~ 0
     )
+  ) 
+# set_variable_labels(
+  #     dm_child_more_than3 = "more than 3 child under 12",
+  #     dm_sheeep_own = "own a sheep",
+  #     ph_wtr_far = "water fetching over 30min",
+  #     dm_hh_head_30plus = "HH head over 29",
+  #     dm_sani_open_yes = "open defication",
+  #     ch_stool_safe_no = "stool improper handling",
+  #     rc_agri_yes = "engaged in agriculture",
+  #     ph_wtr_improve_dummy = "improved water source",
+  #     ch_below_2p5_yes = "child below -2.5SD",
+  #     nt_wm_ovobese_yes = "overweight mother"
+  #   )
 
   labels_memory_dm <- list(
     var_labels = list(
@@ -321,14 +368,14 @@ all_data_merged <- all_data_merged %>%
       )
     )
 
-  # ★ ラベル情報を保持しながらfactor型に変換
-  all_data_merged <- all_data_merged %>%
-    mutate(
-      across(
-        all_of(dummy_vars),
-        ~ as_factor(.)  # labelled型のラベルを保持
-      )
-    )
+  # # ★ ラベル情報を保持しながらfactor型に変換
+  # all_data_merged <- all_data_merged %>%
+  #   mutate(
+  #     across(
+  #       all_of(dummy_vars),
+  #       ~ as_factor(.)  # labelled型のラベルを保持
+  #     )
+  #   )
   
   
 # ================================================================================
@@ -400,5 +447,18 @@ write.xlsx(as.data.frame(m),
            file = file.path(gdrive_dir, "output", "all_data_merged_na_summary.xlsx"),
            rowNames = TRUE)
 print(m)
+
+# ===============================================================================
+# ダミー変数の確認
+for (var in dummy_vars) {
+  cat("========================================\n")
+  cat("変数:", var, "\n")
+  cat("値ラベル:\n")
+  print(attr(all_data_merged[[var]], "labels"))
+  cat("クラス:", class(all_data_merged[[var]]), "\n")
+  cat("頻度表:\n")
+  print(table(all_data_merged[[var]], useNA = "always"))
+  cat("\n")
+}
 
 ```
