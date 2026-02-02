@@ -79,6 +79,11 @@ normalize_keys <- function(df, key_vars) {
 #'                                    join_name = "Example Join")
 #' ****************************************************************************
 diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
+  # 引数join_nameの設定
+  if (join_name == "") {
+    join_name <- paste0(deparse(substitute(df1)), " ⟵ ", deparse(substitute(df2)))
+  }
+  
   cat("\n", strrep("=", 80), "\n", sep = "")
   cat("結合診断:", join_name, "\n")
   cat(strrep("=", 80), "\n")
@@ -121,8 +126,10 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
   
   # ユニークキーの数とマッチング率
   cat("\n【キーの分布】\n")
-  cat(sprintf(" 左側データ行数: %d\n", nrow(df1)))
-  cat(sprintf(" 右側データ行数: %d\n", nrow(df2)))
+  cat(sprintf(" 左側データ行数(%s): %d\n", deparse(substitute(df1)), 
+              nrow(df1)))
+  cat(sprintf(" 右側データ行数(%s): %d\n", deparse(substitute(df2)), 
+              nrow(df2)))
   
   # ★ 修正：各データフレームに存在するキーのみ選択
   df1_keys <- df1 %>%
@@ -156,7 +163,7 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
   }
   
   # マッチング診断
-  cat("\n【マッチング診断】\n")
+  cat("\n【マッチング診断】: ", join_name, "\n")
   
   # ★★★ 修正：名前付きベクトルの作成方法を変更 ★★★
   # setNames(右側の変数名, 左側の変数名) → 正しい順序
@@ -259,7 +266,8 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
   n_duplicates <- n_total - n_unique
 
   cat(sprintf(" 総行数: %d\n", n_total))
-  cat(sprintf(" ユニークなキー組み合わせ: %d\n", n_unique))
+  cat(sprintf(" ユニークなキー組み合わせ(%s): %d\n", 
+              paste(by_vars, collapse = "*"), n_unique))
   cat(sprintf(" 重複行数: %d\n", n_duplicates))
 
   if (n_duplicates > 0) {
@@ -382,8 +390,10 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
     
     # 重複診断を追加
     cat("\n")
-    dup_df1 <- diagnose_duplicates(df1_normalized, by_df1, "左側データ")
-    dup_df2 <- diagnose_duplicates(df2_normalized, by_df2, "右側データ")
+    left_name <- paste0("左側データ: ", deparse(substitute(df1)))
+    right_name <- paste0("右側データ: ", deparse(substitute(df2)))
+    dup_df1 <- diagnose_duplicates(df1_normalized, by_df1, left_name)
+    dup_df2 <- diagnose_duplicates(df2_normalized, by_df2, right_name)
   }
 
   # ================================================================================

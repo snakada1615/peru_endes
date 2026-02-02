@@ -15,6 +15,8 @@ editor:
   markdown: 
     wrap: 72
 execute-dir: project
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## 1. 共通データのセット
@@ -40,7 +42,7 @@ library(rJava)      # required for xlsx package
 library(naniar)     # to use replace_with_na function
 library(here)       # to get R project path
 library(fs)         # for file path manipulation
-library(openxlsx) 　# for exporting to excel
+library(openxlsx)   # for exporting to excel
 library(survey)       # for survey design
 library(tidyverse)  # most variable creation here uses tidyverse 
 # library(dplyr)
