@@ -298,9 +298,9 @@ var_set <- list(
     group_by_vars = c("year"),
     target_var = "nt_wm_ht",
     labs = list(
-      title = "height of mother",
+      title = "mother with height below 145cm",
       x = "year",
-      y = "height of mother",
+      y = "height below 145cm",
       color = "group_treated"
       )
     ),
@@ -334,42 +334,59 @@ panel_long <- summary_vars_by_state_year %>%
   rename(value = mean_value)
 
 # プロット作成
-res_map <- list(
-  fml = purrr::map(var_set, ~ { # map関数で変数セットに対して繰り返し。実行結果はリスト化
-    by_vars       <- .x$by
-    group_by_vars <- .x$group_by_vars    # ★ 追加
-    target_var    <- .x$target_var
-    labs_var      <- .x$labs
+res_map <- purrr::map(var_set, ~ { # map関数で変数セットに対して繰り返し。実行結果はリスト化
+  by_vars <- .x$by
+  group_by_vars <- .x$group_by_vars # ★ 追加
+  target_var <- .x$target_var
+  labs_var <- .x$labs
 
-    plot_data <- panel_long %>%
-      filter(variable %in% target_var) %>%
-      left_join(endes_keys, by = by_vars) %>%              # state + year で結合
-      group_by(across(all_of(group_by_vars)), group_treated) %>%  # year + group_treated で集計
-      summarize(
-        value = mean(value, na.rm = TRUE),
-        .groups = "drop"
-      ) %>%
-      mutate(value = 1 - value)
+  plot_data <- panel_long %>%
+    filter(variable %in% target_var) %>%
+    left_join(endes_keys, by = by_vars) %>% # state + year で結合
+    group_by(across(all_of(group_by_vars)), group_treated) %>% # year + group_treated で集計
+    summarize(
+      value = mean(value, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(value = 1 - value)
 
-    plot_res <- ggplot(plot_data, aes(
-      x = year, y = value,
-      color = group_treated,
-      group = group_treated
-    )) +
-      geom_line(linewidth = 1) +
-      geom_point(size = 2.5) +
-      do.call(labs, labs_var) +
-      theme_minimal() +
-      theme(legend.position = "bottom")
-    
-    return(plot_res)
-  })
-)
+  plot_res <- ggplot(plot_data, aes(
+    x = year, y = value,
+    color = group_treated,
+    group = group_treated
+  )) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2.5) +
+    do.call(labs, labs_var) +
+    theme_minimal() +
+    theme(legend.position = "bottom")
 
+  return(plot_res)
+})
 
-saveRDS(plot_res, file = file.path(save_path, "plot_year_treaatmentGrp.rds"))
+saveRDS(res_map, file = file.path(save_path, "plot_year_treaatmentGrp.rds"))
 
-print("無事終了しました😊")
+stop("無事終了しました😊")
+
+#' ****************************************************************************
+# グラフをpdf出力(必要に応じて)
+#' ****************************************************************************
+library(gridExtra)
+library(grid)
+
+# 余白の調整
+plots2 <- lapply(res_map, function(p){
+  p + theme(plot.margin = unit(c(0.8, 0.8, 0.8, 0.8), "cm"))
+})
+
+# 2x3のレイアウトでPDF出力
+g <- marrangeGrob(plots2, nrow = 3, ncol = 2)
+
+# ggplot2で保存
+ggsave("plots_2x3_marginWide.pdf",
+       g, width = 11.7, height = 8.3, units = "in")
+
+print("pdf出力しました😊")
 
 ```
 
