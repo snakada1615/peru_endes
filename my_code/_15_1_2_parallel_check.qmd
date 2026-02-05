@@ -1,0 +1,306 @@
+---
+title: "_13_3_parallel_check"
+format: html
+---
+
+# 1. データ読み込み
+
+```{r}
+library(survey)
+library(srvyr)
+library(ggplot2)
+library(dplyr)
+library(haven)
+library(tidyr)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# 必要な関数読み込み
+source("_tool_SaveLabel.R")
+
+# ステップ1: 元データの読み込み
+# キーテーブルの読み込み
+endes_keys <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
+  mutate(year = as.numeric(year)) %>%
+  select(year, state, group_treated) %>% 
+  distinct(state, year, .keep_all = TRUE)
+
+# summary_vars_by_state_yearを読み込み
+summary_vars_by_state_year <- readRDS(
+  file.path(save_path, "summary_vars_by_state_year.rds")
+)
+
+
+
+```
+
+
+# 3. ヒートマップ作成
+
+```{r}
+library(tidyverse)
+library(reshape2)
+
+# spike_yearを先に定義
+spike_year <- 2011
+
+# 並べ替えルール用のテーブルを作る
+state_order <- endes_keys %>%
+  filter(year == spike_year) %>%
+  mutate(
+    group_treated = factor(
+      group_treated,
+      levels = c("treat2_grp", "treat1_grp", "control_grp")
+    )
+  ) %>%
+  arrange(group_treated, state) %>%
+  pull(state)
+
+# summary_vars_by_state_yearを読み込み
+panel_long <- summary_vars_by_state_year %>%
+  mutate(year = as.numeric(year)) %>%
+  select(state, year, variable, mean_value) %>%
+  rename(value = mean_value)
+
+# 変数ごとに年対年の変化率を計算
+panel_change <- panel_long %>%
+  group_by(state, variable) %>%
+  arrange(year) %>%
+  mutate(pct_change = (value - lag(value)) / lag(value) * 100) %>%
+  filter(!is.na(pct_change),
+         !is.infinite(pct_change))
+
+# データ準備
+heatmap_data <- panel_change %>%
+  filter(year == spike_year) %>%
+  left_join(endes_keys %>% filter(year == spike_year), 
+            by = c("state", "year")) %>%
+  mutate(
+    group_treated = factor(
+      group_treated,
+      levels = c("control_grp", "treat1_grp", "treat2_grp")
+    ),
+    state = factor(state, levels = state_order)
+  )
+
+# グループごとの色（お好みで変更）
+grp_cols <- c(
+  control_grp = "grey30",
+  treat1_grp  = "steelblue",
+  treat2_grp  = "firebrick"
+)
+
+# 州のlevels順に対応したグループを取得
+state_group_map <- endes_keys %>%
+  filter(year == spike_year) %>%
+  select(state, group_treated) %>%
+  distinct()
+
+# levels順に色を並べる
+y_cols <- state_group_map %>%
+  mutate(state = factor(state, levels = levels(heatmap_data$state))) %>%
+  arrange(state) %>%
+  pull(group_treated) %>%
+  {grp_cols[.]}
+
+# ヒートマップの作成
+plot_res <- ggplot(heatmap_data,
+                   aes(x = variable, y = state, fill = pct_change)) +
+  geom_tile(color = "white") +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red",
+                       midpoint = 0, limits = c(-100, 100)) +
+  theme_minimal() +
+  # theme(axis.text.x = element_text(angle = 90, hjust = 1, size = 6)) +
+  theme(
+    axis.text.x = element_text(angle = 90, hjust = 1, size = 6),
+    axis.text.y = element_text(colour = y_cols, size = 8)
+  ) +
+  labs(title = paste("Year-on-Year Change in", spike_year),
+       x = "Variables", y = "State", fill = "% Change")
+
+
+ggsave(plot_res, file = file.path(save_path, "heatmap_spike_year.png"), 
+       width = 40, height = 8)
+
+```
+
+# 3.　時系列プロット用データ(介入群でまとめる)
+
+```{r}
+
+# year*group_treatedごとに集計
+summary_vars_by_trtGroup <- summary_vars_by_state_year %>%
+  mutate(year = as.numeric(year)) %>%
+  select(state, year, variable, mean_value) %>%
+  rename(value = mean_value) %>%
+
+# year*group_treatedごとに集計
+  left_join(endes_keys, by = c("state", "year")) %>%
+  group_by(year, group_treated, variable) %>%
+  summarize(
+    value = mean(value, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  mutate(value = 1 - value)
+
+# 保存
+saveRDS(
+  summary_vars_by_trtGroup,
+  file.path(save_path, "summary_vars_by_trtGroup.rds")
+)
+# write.csv(summary_vars_by_trtGroup, file.path(save_path, "summary_key_variable_by_treatment-group_year2026_02_04.csv"))
+
+# 終了
+print("無事終了しました😊")
+
+```
+
+# 4. 2011年スパイクの条件で変数を抽出
+
+```{r}
+
+# 1. データ読み込み
+library(dplyr)
+
+# summary_vars_by_trtGroupを読み込み
+summary_vars_by_trtGroup <- readRDS(
+  file.path(save_path, "summary_vars_by_trtGroup.rds")
+)
+
+# 2. 2011年スパイクで変数抽出
+spike_year <- 2011
+variables_spike <- summary_vars_by_trtGroup %>%
+  filter(year %in% c(spike_year - 1, spike_year, spike_year + 1)) %>%
+  group_by(variable, group_treated) %>%
+  summarize(
+    value_before = value[year == (spike_year - 1)],
+    value_spike = value[year == spike_year], 
+    value_after = value[year == (spike_year + 1)],
+    pct_change_before = (value_spike - value_before) / value_before * 100,
+    pct_change_after = (value_after - value_spike) / value_spike * 100,
+    .groups = "drop"
+  ) %>%
+  mutate(
+    spike_yes = case_when(
+      pct_change_before >= 5 & pct_change_after <= -5 ~ TRUE,
+      pct_change_before <= -5 & pct_change_after >= 5 ~ TRUE,
+      TRUE ~ FALSE
+    )
+  )
+
+variables_spike_filtered <- variables_spike %>%
+  pivot_wider(
+    id_cols = variable,
+    names_from = group_treated,
+    values_from = spike_yes
+    ) %>%
+    mutate(
+     sync_spike = ifelse(
+       (treat2_grp == TRUE & treat1_grp == TRUE & control_grp == FALSE), TRUE, FALSE
+     ) 
+    ) %>%
+  filter(sync_spike == TRUE)
+
+print(variables_spike_filtered)
+
+print("無事終了しました😊")
+
+```
+
+# 5. 時系列プロット
+```{r}
+var_set <- list(
+  base = list(
+    by = c("state", "year"),           # ★ state を含める
+    group_by_vars = c("year"),         # ★ 集計は year のみ
+    target_var = "nt_ch_stunt",
+    labs = list(
+      title = "stunting rate by treatment status over years",
+      x = "year",
+      y = "stunting rate (%)",
+      color = "group_treated"
+    )
+  ),
+  ari = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "ch_ari",
+    labs = list(
+      title = "ARI rate by treatment status over years",
+      x = "year",
+      y = "ARI rate (%)",
+      color = "group_treated"
+    )
+  ),
+  ari_gov = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "ch_ari_govcent_trt",
+    labs = list(
+      title = "ARI treatment status by government",
+      x = "year",
+      y = "ARI government treated (%)",
+      color = "group_treated"
+      )
+    ),
+  ch_stool_safe = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "ch_stool_safe",
+    labs = list(
+      title = "child stool disposed safely",
+      x = "year",
+      y = "child stool safely disposed (%)",
+      color = "group_treated"
+      )
+    ),
+  
+)
+
+res_map <- list(
+  fml = purrr::map(var_set, ~ {
+    by_vars       <- .x$by
+    group_by_vars <- .x$group_by_vars    # ★ 追加
+    target_var    <- .x$target_var
+    labs_var      <- .x$labs
+
+    plot_data <- panel_long %>%
+      filter(variable %in% target_var) %>%
+      left_join(endes_keys, by = by_vars) %>%              # state + year で結合
+      group_by(across(all_of(group_by_vars)), group_treated) %>%  # year + group_treated で集計
+      summarize(
+        value = mean(value, na.rm = TRUE),
+        .groups = "drop"
+      ) %>%
+      mutate(value = 1 - value)
+
+    plot_res <- ggplot(plot_data, aes(
+      x = year, y = value,
+      color = group_treated,
+      group = group_treated
+    )) +
+      geom_line(linewidth = 1) +
+      geom_point(size = 2.5) +
+      do.call(labs, labs_var) +
+      theme_minimal() +
+      theme(legend.position = "bottom")
+    
+    return(plot_res)
+  })
+)
+
+
+saveRDS(plot_res, file = file.path(save_path, "plot_year_treaatmentGrp.rds"))
+
+print("無事終了しました😊")
+
+```
+
+
