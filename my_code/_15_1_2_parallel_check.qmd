@@ -38,11 +38,10 @@ summary_vars_by_state_year <- readRDS(
 )
 
 
-
 ```
 
 
-# 3. ヒートマップ作成
+# 2. ヒートマップ作成
 
 ```{r}
 library(tidyverse)
@@ -131,7 +130,7 @@ ggsave(plot_res, file = file.path(save_path, "heatmap_spike_year.png"),
 
 ```
 
-# 3.　時系列プロット用データ(介入群でまとめる)
+# 3. 時系列プロット用データ作成(介入群でまとめる)
 
 ```{r}
 
@@ -261,11 +260,82 @@ var_set <- list(
       color = "group_treated"
       )
     ),
-  
+  nt_bf_cont_2yr = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "nt_bf_cont_2yr",
+    labs = list(
+      title = "continue BF for 2 years",
+      x = "year",
+      y = "continue BF for 2 years (%)",
+      color = "group_treated"
+      )
+    ),
+  nt_ch_any_anem = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "nt_ch_any_anem",
+    labs = list(
+      title = "mother with any anemia",
+      x = "year",
+      y = "mother with any anemia (%)",
+      color = "group_treated"
+      )
+    ),
+  nt_milk = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "nt_milk",
+    labs = list(
+      title = "child consume milk yeasterday",
+      x = "year",
+      y = "child consume milk yeasterday",
+      color = "group_treated"
+      )
+    ),
+  nt_wm_ht = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "nt_wm_ht",
+    labs = list(
+      title = "height of mother",
+      x = "year",
+      y = "height of mother",
+      color = "group_treated"
+      )
+    ),
+  ph_wtr_improve_dummy = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "ph_wtr_improve_dummy",
+    labs = list(
+      title = "access to improved water source",
+      x = "year",
+      y = "access to improved water source",
+      color = "group_treated"
+      )
+    ),
+  rc_hins_any = list(
+    by = c("state", "year"),
+    group_by_vars = c("year"),
+    target_var = "rc_hins_any",
+    labs = list(
+      title = "member of any health insurance",
+      x = "year",
+      y = "member of any health insurance",
+      color = "group_treated"
+      )
+    )
 )
+# summary_vars_by_state_yearを読み込み
+panel_long <- summary_vars_by_state_year %>%
+  mutate(year = as.numeric(year)) %>%
+  select(state, year, variable, mean_value) %>%
+  rename(value = mean_value)
 
+# プロット作成
 res_map <- list(
-  fml = purrr::map(var_set, ~ {
+  fml = purrr::map(var_set, ~ { # map関数で変数セットに対して繰り返し。実行結果はリスト化
     by_vars       <- .x$by
     group_by_vars <- .x$group_by_vars    # ★ 追加
     target_var    <- .x$target_var
