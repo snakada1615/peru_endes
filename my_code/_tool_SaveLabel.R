@@ -340,26 +340,56 @@ library(dplyr)
 # ============================================
 
 #' ************************************************************************
-#' @title ラベル情報を保存
+#' @title save_labels_to_memory
 #' @description データフレーム内のすべての変数の
-#' ラベル情報を保存します。
+#' 変数ラベルと値ラベルを保存します。
 #' @param data データフレーム
+#' @param exist_label_only 複数のデータセットを結合する際に、
+#' ラベル付き変数のみを保存するかどうかの論理値。
+#' デフォルトはTRUE。
 #' @return 変数ラベルと値ラベルを含むリスト
 #' @examples
 #' labels_memory <- save_labels_to_memory(df)
 #' ************************************************************************
-save_labels_to_memory <- function(data) {
-  
+save_labels_to_memory <- function(data, exist_label_only = TRUE) {
   # 変数ラベルを保存
   var_labels <- labelled::var_label(data)
   
   # 値ラベルを保存（各変数のattr "labels"を抽出）
   val_labels <- lapply(data, function(x) attr(x, "labels"))
   
+  # factor情報を保存
+  factor_info <- lapply(names(data), function(nm) {
+    x <- data[[nm]]
+    if (is.factor(x)) {
+      list(
+        levels  = levels(x),
+        ordered = is.ordered(x)
+      )
+    } else {
+      NULL
+    }
+  })
+  names(factor_info) <- names(data)
+  factor_info <- factor_info[!vapply(factor_info, is.null, logical(1))]
+  
+  # exist_label_only = TRUE のとき、ラベル付き変数だけに絞る
+  if (exist_label_only) {
+    has_var_lab <- !vapply(var_labels, function(x) is.null(x) || (is.character(x) && x == ""), logical(1))
+    has_val_lab <- !vapply(val_labels, is.null, logical(1))
+    
+    target_vars <- names(data)[has_var_lab | has_val_lab]
+    
+    var_labels <- var_labels[target_vars]
+    val_labels <- val_labels[target_vars]
+    factor_info <- factor_info[target_vars]
+  }
+  
   # リストとして返す
   list(
     var_labels = var_labels,
-    val_labels = val_labels
+    val_labels = val_labels,
+    factor_info = factor_info
   )
 }
 
@@ -368,34 +398,76 @@ save_labels_to_memory <- function(data) {
 # ステップ1-2: 複数のラベル情報を一つにまとめる
 # ============================================
 # 複数のlabels_memoryを結合
+#' ************************************************************************
+#' @title merge_labels_memory
+#' @description 複数のラベル情報を一つにまとめます。
+#' @param ... 複数のラベル情報リスト
+#' @return 結合されたラベル情報リスト
+#' @examples
+#' merged_labels <- merge_labels_memory(labels1, labels2, labels3)
+#' ************************************************************************
 merge_labels_memory <- function(...) {
   labs_list <- list(...)
-  
-  # 空チェック
   labs_list <- labs_list[!vapply(labs_list, is.null, logical(1))]
   if (length(labs_list) == 0) {
-    return(list(var_labels = NULL, val_labels = NULL))
+    return(list(var_labels = NULL, val_labels = NULL, factor_info = NULL))
   }
   
-  # var_labelsのマージ（後勝ち）
-  merged_var <- do.call(c, lapply(labs_list, function(x) x$var_labels))
-  merged_var <- merged_var[!duplicated(names(merged_var), fromLast = TRUE)]
+  # すべての var_names の集合
+  all_vars <- unique(unlist(lapply(labs_list, function(x) names(x$var_labels))))
   
-  # val_labelsのマージ（後勝ち）
-  merged_val <- do.call(c, lapply(labs_list, function(x) x$val_labels))
-  merged_val <- merged_val[!duplicated(names(merged_val), fromLast = TRUE)]
+  # var_labels のマージ（非欠損優先）
+  merged_var <- setNames(vector("list", length(all_vars)), all_vars)
+  for (v in all_vars) {
+    vals <- lapply(labs_list, function(x) x$var_labels[[v]])
+    # 後ろから見て、非NAかつ長さ>0のものを優先
+    for (lab in rev(vals)) {
+      if (!is.null(lab) && !(length(lab) == 1 && (is.na(lab) || lab == ""))) {
+        merged_var[[v]] <- lab
+        break
+      }
+    }
+  }
+  
+  # val_labels も同様に（list なので NULL かどうかで判断）
+  all_val_vars <- unique(unlist(lapply(labs_list, function(x) names(x$val_labels))))
+  merged_val <- setNames(vector("list", length(all_val_vars)), all_val_vars)
+  for (v in all_val_vars) {
+    vals <- lapply(labs_list, function(x) x$val_labels[[v]])
+    for (lab in rev(vals)) {
+      if (!is.null(lab)) {
+        merged_val[[v]] <- lab
+        break
+      }
+    }
+  }
+  
+  # factor_info を導入するなら同様に
+  all_factor_vars <- unique(unlist(lapply(labs_list, function(x) names(x$factor_info))))
+  merged_factor <- setNames(vector("list", length(all_factor_vars)), all_factor_vars)
+  for (v in all_factor_vars) {
+    vals <- lapply(labs_list, function(x) x$factor_info[[v]])
+    for (info in rev(vals)) {
+      if (!is.null(info)) {
+        merged_factor[[v]] <- info
+        break
+      }
+    }
+  }
   
   list(
-    var_labels = merged_var,
-    val_labels = merged_val
+    var_labels  = merged_var,
+    val_labels  = merged_val,
+    factor_info = merged_factor
   )
 }
+
 #' ----------関数ここまで------------------------------------------------
 # ============================================
 # ステップ2: データフレームからラベル属性を除去
 # ============================================
 #' ************************************************************************
-#' @title ラベル属性を削除
+#' @title remove_labels
 #' @description データフレーム内のすべての変数の
 #' ラベル属性を削除します。
 #' @param data データフレーム
@@ -404,33 +476,35 @@ merge_labels_memory <- function(...) {
 #' df_clean <- remove_labels(df)
 #' ************************************************************************
 remove_labels <- function(data) {
-  # すべてのラベル属性を削除
   data[] <- lapply(data, function(x) {
-    # haven 関連のラベル属性を削除
-    attr(x, "label") <- NULL
+    # ラベル属性などを削除
+    attr(x, "label")  <- NULL
     attr(x, "labels") <- NULL
-
-    # SPSS フォーマット属性を削除
-    attr(x, "format.spss") <- NULL
-    attr(x, "display_width") <- NULL
-
-    # haven_labelled, labelled, vctrs_vctr クラスを削除
-    attr(x, "class") <- setdiff(
-      attr(x, "class"),
-      c("haven_labelled", "labelled", "vctrs_vctr")
-    )
+    attr(x, "format.spss")     <- NULL
+    attr(x, "display_width")   <- NULL
+    
+    # クラスから haven_labelled, labelled, vctrs_vctr を削除
+    cl <- class(x)
+    cl <- setdiff(cl, c("haven_labelled", "labelled", "vctrs_vctr"))
+    # factor / ordered はここで character に落とす（好み）
+    if ("factor" %in% cl || "ordered" %in% cl) {
+      x <- as.character(x)
+      cl <- setdiff(cl, c("factor", "ordered"))
+    }
+    class(x) <- cl
     x
   })
-
   return(data)
 }
+
+
 #' ----------関数ここまで------------------------------------------------
 
 # ============================================
 # ステップ3: 保存したラベルを復元
 # ============================================
 #' ************************************************************************
-#' @title ラベルを復元
+#' @title restore_labels
 #' @description 保存したラベル情報をデータフレームに復元します
 #' @param data データフレーム
 #' @param labels_memory 変数ラベルと値ラベルを含むリ
@@ -475,7 +549,34 @@ restore_labels <- function(data, labels_memory) {
       }
     }
   }
-
+  
+  # ============================================
+  # factor情報の復元
+  # factor の復元（必要な変数だけ）
+  # ============================================
+  if (!is.null(factor_info)) {
+    for (var in names(factor_info)) {
+      if (var %in% names(data)) {
+        info <- factor_info[[var]]
+        # いったん素のベクトルを取り出して factor にし直す
+        data[[var]] <- if (isTRUE(info$ordered)) {
+          factor(data[[var]], levels = info$levels, ordered = TRUE)
+        } else {
+          factor(data[[var]], levels = info$levels)
+        }
+      }
+    }
+  }
+  
+  #' =============================================
+  #' ラベル情報（var_labels）が欠損している変数名の一覧を取得して表示
+  #' =============================================
+  missing_var_labels <- setdiff(names(data), names(var_labels))
+  if (length(missing_var_labels) > 0) {
+   warning("The following variables are missing variable labels: ", paste(missing_var_labels
+   , collapse = ", "))
+   }
+  
   return(data)
 }
 #' ----------関数ここまで------------------------------------------------
