@@ -27,7 +27,7 @@ library(rlang)
 #' 一つにまとめる
 #' 11. remove_labels(data): ラベル属性を削除
 #' 12. restore_labels(data, labels_memory): ラベルを復元
-#' 
+#'     
 #' ============================================
 
 # *************************************************************************
@@ -185,7 +185,7 @@ save_labels <- function(data, columns = NULL) {
 #' df <- restore_labels(df, labels, columns = c("var1", "var
 #' 2"))
 #' ************************************************************************
-restore_labels <- function(data, labels, columns = NULL) {
+restore_labels_col <- function(data, labels, columns = NULL) {
   if (is.null(columns)) {
     columns <- names(labels)
   }
