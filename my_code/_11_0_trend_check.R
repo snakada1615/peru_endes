@@ -67,6 +67,7 @@ var_summary <- sapply(names(df_vars), function(x) {
   res <- list(
     variable = x,
     is_factor = is.factor(df_vars[[x]]),
+    num_factor_levels = ifelse(is.factor(df_vars[[x]]), length(na.omit(unique(df_vars[[x]]))), NA),
     is_binary = length(na.omit(unique(df_vars[[x]]))) == 2,
     is_logical = is.logical(df_vars[[x]]),
     is_character = is.character(df_vars[[x]]),
