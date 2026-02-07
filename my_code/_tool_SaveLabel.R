@@ -471,11 +471,12 @@ merge_labels_memory <- function(...) {
 #' @description データフレーム内のすべての変数の
 #' ラベル属性を削除します。
 #' @param data データフレーム
+#' @param remove_factor 論理値。TRUEの場合、factorクラスを削除します。デフォルトはTRUE。
 #' @return ラベル属性が削除されたデータフレーム
 #' @examples
 #' df_clean <- remove_labels(df)
 #' ************************************************************************
-remove_labels <- function(data) {
+remove_labels <- function(data, remove_factor=TRUE) {
   data[] <- lapply(data, function(x) {
     # ラベル属性などを削除
     attr(x, "label")  <- NULL
@@ -486,17 +487,20 @@ remove_labels <- function(data) {
     # クラスから haven_labelled, labelled, vctrs_vctr を削除
     cl <- class(x)
     cl <- setdiff(cl, c("haven_labelled", "labelled", "vctrs_vctr"))
-    # factor / ordered はここで character に落とす（好み）
-    if ("factor" %in% cl || "ordered" %in% cl) {
-      x <- as.character(x)
-      cl <- setdiff(cl, c("factor", "ordered"))
+    
+    # factor / ordered はここで character に落とす（option）
+    if (remove_factor){
+      if ("factor" %in% cl || "ordered" %in% cl) {
+        x <- as.character(x)
+        cl <- setdiff(cl, c("factor", "ordered"))
+      }
     }
+    
     class(x) <- cl
     x
   })
   return(data)
 }
-
 
 #' ----------関数ここまで------------------------------------------------
 
