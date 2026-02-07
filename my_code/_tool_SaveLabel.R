@@ -182,8 +182,8 @@ save_labels <- function(data, columns = NULL) {
 #' の場合はすべての列を対象とします。
 #' @return ラベル属性が復元されたデータフレーム
 #' @examples
-#' df <- restore_labels(df, labels, columns = c("var1", "var
-#' 2"))
+#' df <- restore_labels_col(df, labels, columns = c("var1", "
+#' var2"))
 #' ************************************************************************
 restore_labels_col <- function(data, labels, columns = NULL) {
   if (is.null(columns)) {
@@ -212,6 +212,7 @@ restore_labels_col <- function(data, labels, columns = NULL) {
 #' df_final <- df_backup$restore(df_processed)
 #' ***********************************************************************
 pipe_with_labels <- function(data) {
+  stop("この関数は更新が必要です")
   return(structure(
     list(
       data = data,
@@ -526,6 +527,7 @@ restore_labels <- function(data, labels_memory) {
 
   var_labels <- labels_memory$var_labels
   val_labels <- labels_memory$val_labels
+  factor_info <- labels_memory$factor_info
 
   # ============================================
   # 変数ラベルの復元
@@ -577,8 +579,10 @@ restore_labels <- function(data, labels_memory) {
   #' =============================================
   missing_var_labels <- setdiff(names(data), names(var_labels))
   if (length(missing_var_labels) > 0) {
-   warning("The following variables are missing variable labels: ", paste(missing_var_labels
-   , collapse = ", "))
+   warning("The following variables are missing variable labels: ")
+    for (var in missing_var_labels){
+      print(var)
+    }
    }
   
   return(data)

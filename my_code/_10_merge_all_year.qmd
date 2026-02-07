@@ -423,7 +423,8 @@ all_data_merged <- restore_labels(all_data_merged, label_merged_all)
 
 # 1. 元のhaven_labelledデータから変換
 all_data_merged <- all_data_merged %>%
-  mutate(across(where(is.labelled), labelled::to_factor))
+  mutate(across(where(is.labelled), labelled::to_factor)) %>%
+  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 # -----------------------------------------------------------------------------
 
