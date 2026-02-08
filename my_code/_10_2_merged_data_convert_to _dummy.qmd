@@ -23,8 +23,8 @@ df_org <- readRDS(
 
 # 変数ラベルをメモリに保存したうえでラベル消去
 labels_memory <- save_labels_to_memory(df_org)
-df_org <- remove_labels(df_org, remove_factor = FALSE)
-saveRDS(labels_memory, file = file.path(gdrive_dir, "output","labels_all_data_merged.rds"))
+df_org_plane <- remove_labels(df_org, remove_factor = FALSE)
+saveRDS(labels_memory, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged.rds"))
 
 ```
 
@@ -33,14 +33,14 @@ saveRDS(labels_memory, file = file.path(gdrive_dir, "output","labels_all_data_me
 ```{r}
 library(fastDummies)
 
-df_dummied <- df_org
+df_dummied <- df_org_plane
 
 # ダミー化したい factor 変数を選ぶ
 vars <- names(df_dummied)[sapply(df_dummied, is.factor)]
 
 for (v in vars) {
   # v だけを対象に dummy_cols（行数はそのまま）
-  tmp <- dummy_cols(
+  _tmp_dummy <- dummy_cols(
     df_dummied[c(v)],
     remove_first_dummy = FALSE,
     ignore_na = FALSE,              # NA専用ダミー列も作る
@@ -49,18 +49,18 @@ for (v in vars) {
 
   # v_NA 列を利用して、「元がNAの行では他レベルをNAにする」
   na_col   <- paste0(v, "_NA")
-  lvl_cols <- grep(paste0("^", v, "_"), names(tmp), value = TRUE)
+  lvl_cols <- grep(paste0("^", v, "_"), names(_tmp_dummy), value = TRUE)
   lvl_cols <- setdiff(lvl_cols, na_col)
 
-  idx_na <- which(tmp[[na_col]] == 1)
-  tmp[idx_na, lvl_cols] <- NA
+  idx_na <- which(_tmp_dummy[[na_col]] == 1)
+  _tmp_dummy[idx_na, lvl_cols] <- NA
 
   # v_NA 列を不要なら削除
-  tmp[[na_col]] <- NULL
+  _tmp_dummy[[na_col]] <- NULL
 
   # 元の df_dummied から v を削除して、ダミー列を結合
   df_dummied[[v]] <- NULL
-  df_dummied <- cbind(df_dummied, tmp)
+  df_dummied <- cbind(df_dummied, _tmp_dummy)
 }
 
 
@@ -114,7 +114,7 @@ df_dummied <- restore_labels(df_dummied, labels_memory)
 
 # 最終的なラベル一覧を保存
 final_labels_memory <- save_labels_to_memory(df_dummied)
-saveRDS(final_labels_memory, file = file.path(gdrive_dir, "output","labels_all_data_merged_dummy.rds"))
+saveRDS(final_labels_memory, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
 
 # ダミー変数化後のデータ保存
 saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
