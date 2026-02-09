@@ -22,9 +22,9 @@ df_org <- readRDS(
 ) 
 
 # 変数ラベルをメモリに保存したうえでラベル消去
-labels_memory <- save_labels_to_memory(df_org)
+final_labels <- save_labels_to_memory(df_org)
 df_org_plane <- remove_labels(df_org, remove_factor = FALSE)
-saveRDS(labels_memory, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged.rds"))
+saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged.rds"))
 
 ```
 
@@ -70,56 +70,102 @@ for (v in vars) {
 
 ```{r}
 
-dummy_labels <- list()
-
-# 元のラベル情報を取得
-var_labels <- labels_memory$var_labels
-val_labels <-labels_memory$val_labels
-
-for (v in vars) {
-  # 変数ラベルを取得
-  var_label <- var_labels[[v]]
-
-  # 展開したダミー変数の列名(レベルの数だけ存在)を取得
-  lvl_cols <- grep(paste0("^", v, "_"), names(df_dummied), value = TRUE)
-
-  for (lvl_col in lvl_cols) {
-    # レベル名を抽出
-    lvl_name <- sub(paste0("^", v, "_"), "", lvl_col)
-
-    # ラベルを作成
-    if (lvl_name %in% names(val_labels)) {
-      # 値ラベルが存在する場合
-      lvl_label <- value_labels[[lvl_name]]
-    } else if (lvl_name == "NA") {
-      # NAレベルの場合
-      lvl_label <- "Missing"
-    } else {
-      # 値ラベルが存在しない場合、そのままレベル名を使用
-      lvl_label <- lvl_name
-    }
-
-    # 変数ラベルを設定
-    full_label <- paste0(var_label, ": ", lvl_label)
-    dummy_labels[[lvl_col]] <- full_label
+# ダミー変数のラベル作成関数
+#' ****************************************************************************
+#' @title factor_to_dummy_labels
+#' @description
+#' 元の変数ラベルとレベルラベルを組み合わせて、ダミー変数のラベルを作成する。
+#' 例えば、元の変数が "gender"で、レベルが "male" の場合、ラベルは "gender: male" となる。
+#' @param var_name 元の変数名
+#' @param level_name レベル名
+#' @param var_labels 変数ラベルのリスト
+#' @param val_labels 値ラベルのリスト
+#' @return ダミー変数のラベル文字列
+#' @examples
+#' factor
+#' ****************************************************************************
+factor_to_dummy_labels <- function(var_name, level_name, var_labels, val_labels) {
+  var_label <- var_labels[[var_name]]
+  if (level_name %in% names(val_labels)) {
+    # 値ラベルが存在する場合
+    level_label <- val_labels[[level_name]]
+  } else if (level_name == "NA") {
+    # NAレベルの場合
+    level_label <- "Missing"
+  } else {
+    # 値ラベルが存在しない場合、そのままレベル名を使用
+    level_label <- level_name
   }
+  full_label <- paste0(var_label, ": ", level_label)
+  return(full_label)
 }
+#' ---------関数ここまで😊------------------------------------------------------
+#' ****************************************************************************
+#' @title factor_to_dummy_all
+#' @description
+#' データフレーム内の指定された変数に対して、ダミ
+#' ー変数のラベルを生成し、ラベル情報を更新する。
+#' @param df データフレーム
+#' @param current_label 現在のラベル情報（変数ラベルと
+#' 値ラベルのリスト）
+#' @param vars ダミー変数化された変数のリスト
+#' @return 更新されたラベル情報
+#' @examples
+#' factor_to_dummy_all(df, current_label, vars)
+#' ****************************************************************************
+factor_to_dummy_all <- function(df, current_label, vars) {
+  dummy_labels <- list()
 
-# 新ラベルをデータフレームに適用
-new_label_set <- list(var_labels = dummy_labels, val_labels = list())
-df_dummied <- restore_labels(df_dummied, new_label_set)
+  # 元のラベル情報を取得
+  var_labels <- current_label$var_labels
+  val_labels <-current_label$val_labels
 
-# 残りの旧ラベル（オリジナル）も復元
-df_dummied <- restore_labels(df_dummied, labels_memory)
+  for (v in vars) {
+    # 変数ラベルを取得
+    level_name <- var_labels[[v]]
+    # 展開したダミー変数の列名(レベルの数だけ存在)を取得
+    lvl_cols <- grep(paste0("^", v, "_"), names(df), value = TRUE)
+
+    for (lvl_col in lvl_cols) {
+      # レベル名を抽出
+      lvl_name <- sub(paste0("^", v, "_"), "", lvl_col)
+
+      dummy_label <- factor_to_dummy_labels(
+        var_name = v,
+        level_name = lvl_name,
+        var_labels = var_labels,
+        val_labels = val_labels
+      )
+      dummy_labels[[lvl_col]] <- dummy_label
+    }
+  }
+  # ラベルを統合
+  tmp_new_label_set <- list(var_labels = dummy_labels, val_labels = list())
+  final_labels <- merge_labels_memory(tmp_new_label_set, current_label)  
+
+  return(final_labels)
+}
+#' ---------関数ここまで😊------------------------------------------------------
+
+# ここから実行部分
+# ダミー変数化後のラベル情報を作成
+final_labels <- factor_to_dummy_all(
+  df = df_dummied,
+  current_label = final_labels,
+  vars = vars
+)
+
+# ラベルを復元
+df_dummied <- restore_labels(df_dummied, final_labels)
 
 # 最終的なラベル一覧を保存
-final_labels_memory <- save_labels_to_memory(df_dummied)
-saveRDS(final_labels_memory, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
+saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
 
 # ダミー変数化後のデータ保存
 saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
 
-# スクリプト末尾で一時変数を一括削除
+# スクリプト先頭で一時変数を一括削除
 rm(list = ls(pattern = "^tmp_"))
+rm(df_org_plane)
 
 ```
