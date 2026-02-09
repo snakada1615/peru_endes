@@ -22,9 +22,9 @@ df_org <- readRDS(
 ) 
 
 # 変数ラベルをメモリに保存したうえでラベル消去
-final_labels <- save_labels_to_memory(df_org)
+org_labels <- save_labels_to_memory(df_org)
 df_org_plane <- remove_labels(df_org, remove_factor = FALSE)
-saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged.rds"))
+saveRDS(org_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged.rds"))
 
 ```
 
@@ -35,19 +35,40 @@ library(fastDummies)
 
 df_dummied <- df_org_plane
 
-# ダミー化したい factor 変数を選ぶ
-vars <- names(df_dummied)[sapply(df_dummied, is.factor)]
+# --- (A) factor変数 ---
+factor_vars <- names(df_dummied)[sapply(df_dummied, is.factor)]
 
+# --- (B) 名前付き変数（factorでないがval_labelsを持つ変数） ---
+named_vars <- intersect(
+  names(org_labels$val_labels),
+  names(df_dummied)
+)
+named_vars <- setdiff(named_vars, factor_vars)  # factorは除外
+
+# 名前付き変数を factor に変換
+for (v in named_vars) {
+  vl     <- org_labels$val_labels[[v]]   # 例: c("1"="male", "2"="female")
+  vals   <- names(vl)                     # コード値 ("1","2",...)
+
+  df_dummied[[v]] <- factor(
+    as.character(df_dummied[[v]]),
+    levels = vals,
+    labels = vals   # レベル名はコード値のまま（ラベル付けはセクション3で処理）
+  )
+}
+
+# --- (C) 全対象変数を統合 ---
+vars <- c(factor_vars, named_vars)
+
+# --- (D) ダミー化ループ（既存と同一） ---
 for (v in vars) {
-  # v だけを対象に dummy_cols（行数はそのまま）
   tmp_dummy <- dummy_cols(
     df_dummied[c(v)],
     remove_first_dummy = FALSE,
-    ignore_na = FALSE,              # NA専用ダミー列も作る
+    ignore_na = FALSE,
     remove_selected_columns = TRUE
   )
 
-  # v_NA 列を利用して、「元がNAの行では他レベルをNAにする」
   na_col   <- paste0(v, "_NA")
   lvl_cols <- grep(paste0("^", v, "_"), names(tmp_dummy), value = TRUE)
   lvl_cols <- setdiff(lvl_cols, na_col)
@@ -55,10 +76,8 @@ for (v in vars) {
   idx_na <- which(tmp_dummy[[na_col]] == 1)
   tmp_dummy[idx_na, lvl_cols] <- NA
 
-  # v_NA 列を不要なら削除
   tmp_dummy[[na_col]] <- NULL
 
-  # 元の df_dummied から v を削除して、ダミー列を結合
   df_dummied[[v]] <- NULL
   df_dummied <- cbind(df_dummied, tmp_dummy)
 }
@@ -141,7 +160,7 @@ factor_to_dummy_all <- function(df, current_label, vars) {
   }
   # ラベルを統合
   tmp_new_label_set <- list(var_labels = dummy_labels, val_labels = list())
-  final_labels <- merge_labels_memory(tmp_new_label_set, current_label)  
+  final_labels <- merge_labels_memory(current_label, tmp_new_label_set)  
 
   return(final_labels)
 }
@@ -151,12 +170,15 @@ factor_to_dummy_all <- function(df, current_label, vars) {
 # ダミー変数化後のラベル情報を作成
 final_labels <- factor_to_dummy_all(
   df = df_dummied,
-  current_label = final_labels,
+  current_label = org_labels,
   vars = vars
 )
 
 # ラベルを復元
 df_dummied <- restore_labels(df_dummied, final_labels)
+
+# ここまでのfinal_labelsには不要な列、ラベルも含まれているため再度取得する
+final_labels <- save_labels_to_memory(df_dummied)
 
 # 最終的なラベル一覧を保存
 saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
@@ -166,6 +188,6 @@ saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy
 
 # スクリプト先頭で一時変数を一括削除
 rm(list = ls(pattern = "^tmp_"))
-rm(df_org_plane)
+rm(df_org_plane, org_labels)
 
 ```
