@@ -35,15 +35,21 @@ library(fastDummies)
 
 df_dummied <- df_org_plane
 
+# --- (C) 残すべき変数（分析には用いないカテゴリ変数など） ---
+exception_vars <- c("treatment_group", "analysis_grp", "treatment_group", "v013", "v026", "v024", "v001", "v002", "v003", "v005", "v022", "age", "wt")  # 除外する変数名を指定
+
 # --- (A) factor変数 ---
 factor_vars <- names(df_dummied)[sapply(df_dummied, is.factor)]
+factor_vars <- setdiff(factor_vars, exception_vars)  # 例外変数は除外
 
 # --- (B) 名前付き変数（factorでないがval_labelsを持つ変数） ---
 named_vars <- intersect(
   names(org_labels$val_labels),
   names(df_dummied)
 )
+
 named_vars <- setdiff(named_vars, factor_vars)  # factorは除外
+named_vars <- setdiff(named_vars, exception_vars)  # 例外変数は除外
 
 # 名前付き変数を factor に変換
 for (v in named_vars) {
@@ -57,7 +63,7 @@ for (v in named_vars) {
   )
 }
 
-# --- (C) 全対象変数を統合 ---
+# --- (D) 全対象変数を統合 ---
 vars <- c(factor_vars, named_vars)
 
 # --- (D) ダミー化ループ（既存と同一） ---
