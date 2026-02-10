@@ -184,7 +184,7 @@ final_labels <- factor_to_dummy_all(
 df_dummied <- restore_labels(df_dummied, final_labels)
 
 # ここまでのfinal_labelsには不要な列、ラベルも含まれているため再度取得する
-final_labels <- save_labels_to_memory(df_dummied)
+final_labels <- save_labels_to_memory(df_dummied, exist_label_only = FALSE)
 
 # 最終的なラベル一覧を保存
 saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
