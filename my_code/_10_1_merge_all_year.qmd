@@ -118,7 +118,7 @@ duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 
 # 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  dplyr::select(-c(v026, v024, v005, v021, v022, v025, v001, v002, v003))
+  dplyr::select(-c(v026, v024, v025, v001, v002, v003))
 
 # 2005/2006のデータが特殊なため、キーを正規化してマージする
 # 正規化済みキーを新しい列として作成
@@ -151,40 +151,40 @@ all_data_merged <- all_data_merged %>%
 # ******************************************************************************
 # 食品群消費データの読み込み
 
-dummy_vars <- c(
-  "nt_wm_ht_below_145",
-  "ch_below_2p5", 
-  "dm_child_more_than3", 
-  "rc_edu_acceptable",
-   "dm_sheeep_own", 
-  "rh_anc_pvskill", 
-  "dm_refrigerator",            
-  "nt_wm_ovobese_yes",
-  "ph_wtr_far", 
-  "dm_hh_head_30plus",           
-  "dm_city", 
-  "dm_sani_open_yes", 
-  "dm_cooking_fuel_traditional",           
-  "rh_prob_permit", 
-  "ms_afm_15",      
-  "ph_wtr_trt_cloth", 
-  "ch_stool_safe_no", 
-  "dm_dvjustify_onereas",
-  "nt_mdd", 
-  "nt_mmf",
-  "nt_grains", 
-  "nt_root", 
-  "nt_nuts",
-  "nt_meatfish", 
-  "nt_milk", 
-  "nt_dairy", 
-  "nt_eggs", 
-  "nt_vita",
-  "nt_frtveg", 
-  "nt_ch_stunt", 
-  "nt_ch_wast", 
-  "nt_ch_any_anem"
-)
+# dummy_vars <- c(
+#   "nt_wm_ht_below_145",
+#   "ch_below_2p5", 
+#   "dm_child_more_than3", 
+#   "rc_edu_acceptable",
+#    "dm_sheeep_own", 
+#   "rh_anc_pvskill", 
+#   "dm_refrigerator",            
+#   "nt_wm_ovobese_yes",
+#   "ph_wtr_far", 
+#   "dm_hh_head_30plus",           
+#   "dm_city", 
+#   "dm_sani_open_yes", 
+#   "dm_cooking_fuel_traditional",           
+#   "rh_prob_permit", 
+#   "ms_afm_15",      
+#   "ph_wtr_trt_cloth", 
+#   "ch_stool_safe_no", 
+#   "dm_dvjustify_onereas",
+#   "nt_mdd", 
+#   "nt_mmf",
+#   "nt_grains", 
+#   "nt_root", 
+#   "nt_nuts",
+#   "nt_meatfish", 
+#   "nt_milk", 
+#   "nt_dairy", 
+#   "nt_eggs", 
+#   "nt_vita",
+#   "nt_frtveg", 
+#   "nt_ch_stunt", 
+#   "nt_ch_wast", 
+#   "nt_ch_any_anem"
+# )
 
 df_food_org <- readRDS(
     file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")
@@ -218,14 +218,14 @@ df_food_org <- remove_labels(df_food_org)
 all_data_merged <- all_data_merged %>% 
   mutate(v024 = as.numeric(v024),
          dm_rural = as.numeric(dm_rural),
-         v190 = as.numeric(v190)
+         dm_wealth_class = as.numeric(dm_wealth_class)
          )
 
 # 食品摂取量データの結合
 all_data_merged <- all_data_merged %>%
   left_join(
     df_food_org,
-    by = c("v024" = "department", "dm_rural", "v190" = "inc_quintile")
+    by = c("v024" = "department", "dm_rural", "dm_wealth_class" = "inc_quintile")
   )
 # all_data_merged <- restore_labels(all_data_merged, labels_memory_food)
 
@@ -450,16 +450,16 @@ write.xlsx(as.data.frame(m),
 print(m)
 
 # ===============================================================================
-# ダミー変数の確認
-for (var in dummy_vars) {
-  cat("========================================\n")
-  cat("変数:", var, "\n")
-  cat("値ラベル:\n")
-  print(attr(all_data_merged[[var]], "labels"))
-  cat("クラス:", class(all_data_merged[[var]]), "\n")
-  cat("頻度表:\n")
-  print(table(all_data_merged[[var]], useNA = "always"))
-  cat("\n")
-}
+# # ダミー変数の確認
+# for (var in dummy_vars) {
+#   cat("========================================\n")
+#   cat("変数:", var, "\n")
+#   cat("値ラベル:\n")
+#   print(attr(all_data_merged[[var]], "labels"))
+#   cat("クラス:", class(all_data_merged[[var]]), "\n")
+#   cat("頻度表:\n")
+#   print(table(all_data_merged[[var]], useNA = "always"))
+#   cat("\n")
+# }
 
 ```
