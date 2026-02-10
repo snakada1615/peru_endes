@@ -141,6 +141,10 @@ goAnalysis <- function(year){
       df_RE223132, by = "caseid", diagnose = TRUE) %>%
     left_join_safe(
       df_REC42, by = "caseid", diagnose = TRUE)
+  
+  # データセットの結合後に年の変数を追加
+  IRdata <- IRdata %>%
+  mutate(year = year)
 
   print("データセットの結合が完了しました")
   print(paste("レコード数:", nrow(IRdata)))
@@ -246,8 +250,12 @@ goAnalysis <- function(year){
   source(here(paste0(chap,"/RH_DEL.R")), local = environment())
   # Purpose: 	Code indicators for problems accessing health care
   
-  # 変数ラベルを復元
-  # BRdata <- restore_labels_from_memory(BRdata, labels_IR)
+  vars_to_keep <- BRdata %>%
+    select(starts_with("rh_")) %>%
+    names() %>%
+    append(c("year", "caseid")) # add the variables we need to keep
+
+  BRdata <- BRdata[, vars_to_keep]
   
   # 出力データにどれくらいNA値が含まれるか
   print("***************************************************************")
