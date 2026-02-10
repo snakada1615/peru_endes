@@ -14,7 +14,6 @@ format:
 editor: 
   markdown: 
     wrap: 72
-execute-dir: project
 ---
 
 ## 1. 共通データのセット
@@ -48,6 +47,7 @@ library(tidyverse)  # most variable creation here uses tidyverse
 library(vctrs)
 
 # 各種の関数セット読み込み
+print(getwd())
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_SaveLabel.R")
 source("_tool_safe_join.R")
@@ -398,11 +398,7 @@ create_demographic_variables <- function(data) {
         )),
       
       # 資産五分位（logical → numeric変換）
-      dm_poorest = as.numeric(ifelse(hv270 == 1, 1, 0)),
-      dm_poorer = as.numeric(ifelse(hv270 == 2, 1, 0)),
-      dm_middle = as.numeric(ifelse(hv270 == 3, 1, 0)),
-      dm_richer = as.numeric(ifelse(hv270 == 4, 1, 0)),
-      dm_richest = as.numeric(ifelse(hv270 == 5, 1, 0)),
+      dm_wealth_class = hv270,
       dm_weath_index = hv271/100000
     )
 }
@@ -518,11 +514,7 @@ set_all_variable_labels <- function(data) {
       dm_town = "living in small town",
       dm_city = "living in medium city",
       dm_capital = "living in capital city",
-      dm_poorest = "poorest wealth quintile",
-      dm_poorer = "poorer wealth quintile",
-      dm_middle = "middle wealth quintile",
-      dm_richer = "richer wealth quintile",
-      dm_richest = "richest wealth quintile",
+      dm_wealth_class = "wealth index (quintile)",
       dm_weath_index = "wealth index (normalized score)",
       dm_shared_toilet = "shared toilet(10 or more HH)",
       dm_ag_land_ha = "agricultural land (hectare)",
@@ -563,8 +555,7 @@ set_all_value_labels <- function(data) {
   # ラベルを設定する列名のリスト
   label_cols <- c("dm_cooking_fuel", "dm_cooking_fuel_traditional", 
                   "dm_rural", "dm_town", "dm_city", "dm_capital",
-                  "dm_poorest", "dm_poorer", "dm_middle", "dm_richer", 
-                  "dm_richest", "dm_shared_toilet", "dm_cooking_house",
+                  "dm_shared_toilet", "dm_cooking_house",
                   "dm_cooking_outdoor", "dm_cooking_separate", 
                   "dm_cattle_own", "dm_goat_own", "dm_sheep_own",
                   "dm_poultry_own", "dm_refrigerator", 
@@ -585,11 +576,6 @@ set_all_value_labels <- function(data) {
       dm_town = c("Yes" = 1, "No" = 0),
       dm_city = c("Yes" = 1, "No" = 0),
       dm_capital = c("Yes" = 1, "No" = 0),
-      dm_poorest = c("Yes" = 1, "No" = 0),
-      dm_poorer = c("Yes" = 1, "No" = 0),
-      dm_middle = c("Yes" = 1, "No" = 0),
-      dm_richer = c("Yes" = 1, "No" = 0),
-      dm_richest = c("Yes" = 1, "No" = 0),
       dm_shared_toilet = c("Yes (10 or more households)" = 1, "No (less than 10 households)" = 0),
       dm_cooking_house = c("Yes (cooking inside house)" = 1, "No (cooking outside or in separate building)" = 0),
       dm_cooking_outdoor = c("Yes (cooking outdoor)" = 1, "No (cooking inside house or in separate building)" = 0),
