@@ -35,14 +35,14 @@ library(fastDummies)
 
 df_dummied <- df_org_plane
 
-# --- (C) 残すべき変数（分析には用いないカテゴリ変数など） ---
+# --- (A) 残すべき変数（分析には用いないカテゴリ変数など） ---
 exception_vars <- c("treatment_group", "analysis_grp", "treatment_group", "v013", "v026", "v024", "v001", "v002", "v003", "v005", "v022", "age", "wt")  # 除外する変数名を指定
 
-# --- (A) factor変数 ---
+# --- (B) factor変数 ---
 factor_vars <- names(df_dummied)[sapply(df_dummied, is.factor)]
 factor_vars <- setdiff(factor_vars, exception_vars)  # 例外変数は除外
 
-# --- (B) 名前付き変数（factorでないがval_labelsを持つ変数） ---
+# --- (C) 名前付き変数（factorでないがval_labelsを持つ変数） ---
 named_vars <- intersect(
   names(org_labels$val_labels),
   names(df_dummied)
@@ -66,7 +66,7 @@ for (v in named_vars) {
 # --- (D) 全対象変数を統合 ---
 vars <- c(factor_vars, named_vars)
 
-# --- (D) ダミー化ループ（既存と同一） ---
+# --- (E) ダミー化ループ（既存と同一） ---
 for (v in vars) {
   tmp_dummy <- dummy_cols(
     df_dummied[c(v)],
@@ -188,9 +188,11 @@ final_labels <- save_labels_to_memory(df_dummied, exist_label_only = FALSE)
 
 # 最終的なラベル一覧を保存
 saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
+final_labels$var_labels %>% stack() %>% 
+  write.xlsx(file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.xlsx"))
 
 # ダミー変数化後のデータ保存
-saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
+  saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
 
 # スクリプト先頭で一時変数を一括削除
 rm(list = ls(pattern = "^tmp_"))

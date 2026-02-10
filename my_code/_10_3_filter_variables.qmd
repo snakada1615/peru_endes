@@ -1,0 +1,31 @@
+---
+title: "_10_3_filter_variables"
+format: html
+---
+
+
+# 1. 必要データの読み込み
+```{r}
+library(dplyr)
+
+rm(list = ls(all = TRUE))
+
+# 各種の関数セット読み込み
+source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("_tool_SaveLabel.R")  # survey用関数群
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+df_dummied <- readRDS(
+  file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
+) 
+
+
+```
+
+# 2. 変数フィルタリング
+
+```{r}
+
+```
