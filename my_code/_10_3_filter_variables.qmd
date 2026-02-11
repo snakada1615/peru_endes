@@ -21,11 +21,59 @@ df_dummied <- readRDS(
   file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
 ) 
 
+remove_vars <- read.xlsx(
+  file.path(gdrive_dir, "output","labels", "labels_all_data_merged_dummy_checked.xlsx"),
+  sheet = "labels_all_data_merged_dummy") %>%
+  filter(remove == TRUE) %>% select(ind)
+
+# 変数ラベルを退避
+label_org <- save_labels_to_memory(df_dummied)
+df_dummied_plane <- remove_labels(df_dummied)
+
 
 ```
 
-# 2. 変数フィルタリング
+# 2. 統合変数の作成
 
 ```{r}
+
+df_dummied_plane <- df_dummied_plane %>%
+  mutate(
+    rh_del_stay_less_1day = ifelse(rh_del_stay_6_11_hours == 1 | rh_del_stay_12_23_hours == 1, 1, 0),
+    rc_education_secondary_plus = ifelse(rc_edu_Secundaria_Completa == 1 | rc_edu_Superior == 1, 1, 0),
+    rc_insurance_any = ifelse(
+      rc_hins_ss_Sí == 1 | rc_hins_empl_Sí == 1 | rc_hins_comm_Sí == 1 | rc_hins_priv_Sí == 1, 1, 0),
+    dm_young_family = ifelse(dm_age_of_hh_head_10s == 1 | dm_age_of_hh_head_20s == 1, 1, 0),
+    dm_wtr_far = ifelse(ph_wtr_time_More_than_30_minutes == 1, 1, 0)
+  ) %>%
+  set_variable_labels(
+    rh_del_stay_less_1day = "Delivery stay less than 1 day",
+    rc_education_secondary_plus = "Mother education secondary complete or higher",
+    rc_insurance_any = "Mother has any health insurance",
+    dm_young_family = "Household head age 10s or 20s",
+    dm_wtr_far = "Water source more than 30 minutes away"
+  )
+
+
+```
+
+
+
+# 3.分析用変数の絞りこみ
+
+```{r}
+
+# 必要な変数に絞りこみ
+df_dummied <- df_dummied %>%
+  select(-all_of(remove_vars$ind))
+
+# 変数ラベルを復元
+df_dummied <- restore_labels(df_dummied, label_org)
+
+# 保存
+saveRDS(
+  df_dummied,
+  file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
+)
 
 ```
