@@ -88,10 +88,10 @@ for (v in vars) {
   df_dummied <- cbind(df_dummied, tmp_dummy)
 }
 
+# 列名のスペースをアンダースコアに変換
 df_dummied <- df_dummied %>%
   rename_with(
-    ~ gsub(" ", "_", .x),
-    .cols = contains(" ")
+    ~ gsub("[[:space:]+-]+", "_", .x)
   )
 
 ```
