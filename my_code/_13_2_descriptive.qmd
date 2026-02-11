@@ -229,7 +229,13 @@ get_summary <- function(design_obj, covariates, grp_var, dummy_vars) {
         design_obj$variables[[v]] <- factor(as.character(current_val),
                                             levels = val_exist,
                                             labels = "0") 
-        # 注意: レベルが1つだけ(0のみ)の場合、記述統計で1(割合)が出力されない可能性があります
+        # 注意: レベルが1つだけ(0のみ)の場合、記述統計で1(割合)が出力されない
+        # 可能性があります。その場合、tbl_svysummary内での処理が
+        # 必要になるかもしれません
+        # 例: 全員 "Yes" の場合
+        # design_obj$variables[[v]] <- factor(as.character(current_val),
+        #                             levels = val_exist, labels = "1")
+        
       }
     }
   }
