@@ -88,6 +88,11 @@ for (v in vars) {
   df_dummied <- cbind(df_dummied, tmp_dummy)
 }
 
+df_dummied <- df_dummied %>%
+  rename_with(
+    ~ gsub(" ", "_", .x),
+    .cols = contains(" ")
+  )
 
 ```
 
