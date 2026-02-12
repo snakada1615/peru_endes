@@ -29,7 +29,7 @@ source("my_code/_tool_SaveLabel.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-  file.path(gdrive_dir, "output","all_data_merged.rds")
+  file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
 ) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 

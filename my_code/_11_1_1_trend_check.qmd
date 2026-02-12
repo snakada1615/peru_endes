@@ -3,6 +3,21 @@ title: "_13_3_parallel_check"
 format: html
 ---
 
+```{r}
+#' --------------------------------------------------------------------------
+#' 目的:
+#'  - DHSデータを用いて、各変数の年次推移を把握するための加重平均値を計算
+#'  - 分析対象変数は、特定の接頭辞を持つ変数群
+#'  - surveyパッケージとsrvyrパッケージを活用
+#'  - 大量の変数をバッチ処理で効率的に処理
+#'  - エラーハンドリングを実装し、処理の安定性を向上
+#'  作成者：仲田 俊一
+#'  作成日：2026-01-09
+#'  ------------------------------------------------------------------------
+
+```
+
+
 # 1. データ読み込み
 
 ```{r}
@@ -27,7 +42,7 @@ source("_tool_SaveLabel.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-    file.path(gdrive_dir, "output","all_data_merged.rds")
+    file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
   ) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
