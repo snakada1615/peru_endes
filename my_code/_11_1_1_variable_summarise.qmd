@@ -77,6 +77,18 @@ variable_for_analysis <- names(df_org)
 variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
 
 
+# # 要約結果の確認
+# data_check <- df_org %>% group_by(year, group_treated) %>% summarise(
+#     across(
+#         .cols = all_of(names(df_org)[grepl("^[a-zA-Z]{2}_|^enaho_|^jumtos", names(df_org))]),
+#          .fns = list(
+#            count_positive = ~ sum(.x>0 & !is.na(.x))
+#            zero_proportion = ~ mean(.x == 0, na.rm = TRUE)
+#             ),
+#          .names = "{.col}_{.fn}"
+#     )
+#   )
+
 ```
 
 

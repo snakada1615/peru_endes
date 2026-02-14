@@ -199,6 +199,21 @@ final_labels$var_labels %>% stack() %>%
 # ダミー変数化後のデータ保存
   saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
 
+  
+# 要約結果の確認
+data_check <- df_dummied %>% group_by(year, group_treated) %>% summarise(
+    across(
+        .cols = all_of(names(df_dummied)[grepl("^[a-zA-Z]{2}_|^enaho_|^jumtos", names(df_org))]),
+         .fns = list(
+           count_positive = ~ sum(.x>0 & !is.na(.x))
+           zero_proportion = ~ mean(.x == 0, na.rm = TRUE)
+            ),
+         .names = "{.col}_{.fn}"
+    )
+  )
+
+    
+  
 # スクリプト先頭で一時変数を一括削除
 rm(list = ls(pattern = "^tmp_"))
 rm(df_org_plane, org_labels)

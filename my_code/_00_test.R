@@ -1,3 +1,26 @@
+---
+  title: "_13_3_parallel_check"
+format: html
+---
+  
+  ```{r}
+#' --------------------------------------------------------------------------
+#' 目的:
+#'  - DHSデータを用いて、各変数の年次推移を把握するための加重平均値を計算
+#'  - 分析対象変数は、特定の接頭辞を持つ変数群
+#'  - surveyパッケージとsrvyrパッケージを活用
+#'  - 大量の変数をバッチ処理で効率的に処理
+#'  - エラーハンドリングを実装し、処理の安定性を向上
+#'  作成者：仲田 俊一
+#'  作成日：2026-01-09
+#'  ------------------------------------------------------------------------
+
+```
+
+
+# 1. データ読み込み
+
+```{r}
 library(survey)
 library(srvyr)
 library(ggplot2)
@@ -14,12 +37,13 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 # 結果保存先
 save_path <- file.path(gdrive_dir, "output")
 
-source("myTools.R")
-source("my_code/_tool_SaveLabel.R")
+# 必要な関数読み込み
+source("_tool_SaveLabel.R")
+source("_tool_safe_join.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-  file.path(gdrive_dir, "output","all_data_merged.rds")
+  file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
 ) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
@@ -27,66 +51,152 @@ df_org <- readRDS(
 labels_memory <- save_labels_to_memory(df_org)
 df_org <- remove_labels(df_org)
 
-# キーテーブルの作成
-key_table <- distinct(
-  df_org,
-  year,
-  state,
-  treatment_group,
-  treated_status,
-  year_treated,
-  treatment_start,
-  treatment_group,
-  analysis_grp,
-  group_treated
-)
+
+# 先に year を numeric に
+df_org <- df_org %>%
+  mutate(year = as.numeric(year))
+
+# キーテーブルの読み込み
+endes_keys <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
+  mutate(year = as.numeric(year)) %>%
+  select(year, state, group_treated) %>%
+  distinct(state, year, .keep_all = TRUE)
+
+# year, state 単位の group_treated を df_org に付与
+df_org <- df_org %>%
+  left_join_safe(endes_keys, by = c("state", "year"))
+
+# join 直後に確認（ここを Rmd に書いて実行）
+cat("group_treated in df_org? ", "group_treated" %in% names(df_org), "\n")
+print(table(df_org$year)[1:10])
+print(head(df_org[, c("state", "year", "group_treated")], 20))
+
 
 # 分析に利用する変数名の抽出
 variable_for_analysis <- names(df_org)
 variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
 
-# === ファクター型を数値に変換 + NaN/Inf対策 ===
-# df_org <- df_org %>%
-#   mutate(
-#     across(
-#       all_of(variable_for_analysis),
-#       ~ {
-#         result <- if (is.factor(.)) {
-#           as.numeric(.) - 1
-#         } else if (is.numeric(.)) {
-#           .
-#         } else if (is.character(.)) {
-#           as.numeric(.)
-#         } else if (is.logical(.)) {
-#           as.numeric(.)
-#         } else {
-#           as.numeric(as.character(.))
-#         }
-#         
-#         # NaN と Inf を NA に変換
-#         result[is.nan(result) | is.infinite(result)] <- NA
-#         result
-#       }
-#     )
-#   )
 
-df_vars <- df_org %>%
-  select(
-    all_of(c("year", "state", "treatment_group", "treated_status", "year_treated", "treatment_start", "treatment_group", "analysis_grp", "group_treated")),
-    all_of(variable_for_analysis)
-  ) %>% slice_head()
-df_vars <- restore_labels(df_vars, labels_memory)
-
-var_summary <- sapply(names(df_vars), function(x) {
-  res <- list(
-    is_factor = is.factor(df_vars[[x]]),
-    is_character = is.character(df_vars[[x]]),
-    is_logical = is.logical(df_vars[[x]]),
-    is_numeric = is.numeric(df_vars[[x]]),
-    factor_levels = levels(df_vars[[x]]),
-    value_labels = paste(attr(df_vars[[x]], "labels"), "_")
+# 要約結果の確認
+data_check <- df_org %>% group_by(year, group_treated) %>% summarise(
+  across(
+    .cols = all_of(names(df_org)[grepl("^[a-zA-Z]{2}_|^enaho_|^jumtos", names(df_org))]),
+    .fns = list(
+      count_positive = ~ sum(.x>0 & !is.na(.x))
+      zero_proportion = ~ mean(.x == 0, na.rm = TRUE)
+    ),
+    .names = "{.col}_{.fn}"
   )
-  return(res)
-})
+)
+
+```
+
+
+# 2 グループごとに平均値を算出（実行に長時間要するので要注意）
+
+```{r}
+
+# === 1変数ずつ処理（バッチ不要） ===
+options(survey.lonely.psu = "adjust")
+
+variables_list <- variable_for_analysis
+
+results_by_state    <- list()
+results_by_trtGroup <- list()
+results_national    <- list()
+
+skipped_vars <- c()
+
+for (i in seq_along(variables_list)) {
+  var <- variables_list[i]
+  cat(sprintf("[%d/%d] %s ... ", i, length(variables_list), var))
+  
+  tryCatch({
+    df_single <- df_org %>%
+      select(
+        v021, v022, sampling_weight_trimmed,
+        state, year, group_treated,
+        all_of(var)
+      ) %>%
+      rename(value = !!sym(var)) %>%
+      mutate(value = ifelse(is.nan(value) | is.infinite(value), NA, value))
+    
+    # 有効データチェック
+    if (sum(!is.na(df_single$value)) == 0) {
+      cat("No valid data. Skipped.\n")
+      skipped_vars <- c(skipped_vars, var)
+      next
+    }
+    
+    # Survey design
+    svy_obj <- svydesign(
+      ids     = ~v021,
+      strata  = ~v022,
+      weights = ~sampling_weight_trimmed,
+      data    = df_single,
+      nest    = TRUE
+    ) %>% as_survey_design()
+    
+    # 州別 × 年別
+    results_by_state[[i]] <- svy_obj %>%
+      group_by(state, year) %>%
+      summarize(
+        n_obs      = n(),
+        mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+        .groups    = "drop"
+      ) %>%
+      mutate(variable = var)
+    
+    # 介入区分別 × 年別
+    results_by_trtGroup[[i]] <- svy_obj %>%
+      group_by(year, group_treated) %>%
+      summarize(
+        n_obs      = n(),
+        mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+        .groups    = "drop"
+      ) %>%
+      mutate(variable = var)
+    
+    # 全国 × 年別
+    results_national[[i]] <- svy_obj %>%
+      group_by(year) %>%
+      summarize(
+        n_obs      = n(),
+        mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
+        .groups    = "drop"
+      ) %>%
+      mutate(variable = var)
+    
+    cat("OK\n")
+    rm(df_single, svy_obj)
+    
+  }, error = function(e) {
+    cat(sprintf("ERROR: %s\n", e$message))
+    skipped_vars <<- c(skipped_vars, var)
+  })
+  
+  # 定期的にメモリ解放
+  if (i %% 10 == 0) gc()
+}
+
+# 結合
+summary_by_state    <- bind_rows(results_by_state)
+summary_by_trtGroup <- bind_rows(results_by_trtGroup)
+summary_national    <- bind_rows(results_national)
+
+# 保存
+saveRDS(summary_by_state,    file.path(save_path, "summary_vars_by_state_year.rds"))
+saveRDS(summary_by_trtGroup, file.path(save_path, "summary_vars_by_trtGroup_year.rds"))
+saveRDS(summary_national,    file.path(save_path, "summary_vars_national_year.rds"))
+
+cat(sprintf("\nDone. %d vars processed, %d skipped.\n",
+            length(variables_list) - length(skipped_vars),
+            length(skipped_vars)))
+
+# 終了
+print("無事終了しました😊")
+
+# ****************************************************************************
+```
 
 

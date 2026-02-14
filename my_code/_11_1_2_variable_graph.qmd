@@ -35,7 +35,14 @@ endes_keys <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
 # summary_by_stateを読み込み
 summary_by_state<- readRDS(
   file.path(save_path, "summary_vars_by_state_year.rds")
-)
+) %>%
+  rename(value = mean_value)
+
+
+summary_by_group <- readRDS(
+  file.path(save_path, "summary_vars_by_trtGroup_year.rds")
+) %>%
+  rename(value = mean_value)
 
 
 ```
