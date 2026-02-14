@@ -151,41 +151,6 @@ all_data_merged <- all_data_merged %>%
 # ******************************************************************************
 # 食品群消費データの読み込み
 
-# dummy_vars <- c(
-#   "nt_wm_ht_below_145",
-#   "ch_below_2p5", 
-#   "dm_child_more_than3", 
-#   "rc_edu_acceptable",
-#    "dm_sheeep_own", 
-#   "rh_anc_pvskill", 
-#   "dm_refrigerator",            
-#   "nt_wm_ovobese_yes",
-#   "ph_wtr_far", 
-#   "dm_hh_head_30plus",           
-#   "dm_city", 
-#   "dm_sani_open_yes", 
-#   "dm_cooking_fuel_traditional",           
-#   "rh_prob_permit", 
-#   "ms_afm_15",      
-#   "ph_wtr_trt_cloth", 
-#   "ch_stool_safe_no", 
-#   "dm_dvjustify_onereas",
-#   "nt_mdd", 
-#   "nt_mmf",
-#   "nt_grains", 
-#   "nt_root", 
-#   "nt_nuts",
-#   "nt_meatfish", 
-#   "nt_milk", 
-#   "nt_dairy", 
-#   "nt_eggs", 
-#   "nt_vita",
-#   "nt_frtveg", 
-#   "nt_ch_stunt", 
-#   "nt_ch_wast", 
-#   "nt_ch_any_anem"
-# )
-
 df_food_org <- readRDS(
     file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")
   ) %>% 
@@ -267,117 +232,7 @@ all_data_merged <- all_data_merged %>%
                                     "control_post(>=2010)", "treat_post"))  
   )
   
-  # # 一部のカテゴリ変数をダミー化
-  # mutate(
-  #   # ★★★ パターン1: 不等式（>）による比較 ★★★
-  #   dm_child_more_than3 = case_when(
-  #     is.na(dm_children_under12) ~ NA_real_,
-  #     dm_children_under12 > 3 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   # ★★★ パターン2: 等号（==）による比較 ★★★
-  #   ch_below_2p5_yes = case_when(
-  #     is.na(ch_below_2p5) ~ NA_real_,
-  #     ch_below_2p5 == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   nt_wm_ovobese_yes = case_when(
-  #     is.na(nt_wm_ovobese) ~ NA_real_,
-  #     nt_wm_ovobese == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   nt_wm_ht_below_145 = case_when(
-  #     is.na(nt_wm_ht) ~ NA_real_,
-  #     nt_wm_ht == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   dm_sheeep_own = case_when(
-  #     is.na(dm_sheep_own) ~ NA_real_,
-  #     dm_sheep_own == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   # ★★★ パターン3: 既に適切に処理されている ★★★
-  #   ph_wtr_far = case_when(
-  #     is.na(ph_wtr_time) ~ NA_real_,
-  #     ph_wtr_time == 2 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   # ★★★ パターン4: 論理演算（%in%）の否定 ★★★
-  #   dm_hh_head_30plus = case_when(
-  #     is.na(dm_age_of_hh_head) ~ NA_real_,
-  #     dm_age_of_hh_head %in% c(1, 2) ~ 0,
-  #     TRUE ~ 1
-  #   ),
-  #   
-  #   # ★★★ パターン5: 等号による比較（その他） ★★★
-  #   dm_sani_open_yes = case_when(
-  #     is.na(ph_sani_open) ~ NA_real_,
-  #     ph_sani_open == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   ch_stool_safe_no = case_when(
-  #     is.na(ch_stool_safe) ~ NA_real_,
-  #     ch_stool_safe == 0 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   rc_agri_yes = case_when(
-  #     is.na(rc_agri) ~ NA_real_,
-  #     rc_agri == 1 ~ 1,
-  #     TRUE ~ 0
-  #   ),
-  #   
-  #   ph_wtr_improve_dummy = case_when(
-  #     is.na(ph_wtr_improve) ~ NA_real_,
-  #     ph_wtr_improve == 1 ~ 1,
-  #     TRUE ~ 0
-  #   )
-  # ) 
-# set_variable_labels(
-  #     dm_child_more_than3 = "more than 3 child under 12",
-  #     dm_sheeep_own = "own a sheep",
-  #     ph_wtr_far = "water fetching over 30min",
-  #     dm_hh_head_30plus = "HH head over 29",
-  #     dm_sani_open_yes = "open defication",
-  #     ch_stool_safe_no = "stool improper handling",
-  #     rc_agri_yes = "engaged in agriculture",
-  #     ph_wtr_improve_dummy = "improved water source",
-  #     ch_below_2p5_yes = "child below -2.5SD",
-  #     nt_wm_ovobese_yes = "overweight mother"
-  #   )
-  # 
-  # labels_memory_dm <- list(
-  #   var_labels = list(
-  #     dm_child_more_than3 = "more than 3 child under 12",
-  #     dm_sheeep_own = "own a sheep",
-  #     ph_wtr_far = "water fetching over 30min",
-  #     dm_hh_head_30plus = "HH head over 29",
-  #     dm_sani_open_yes = "open defication",
-  #     ch_stool_safe_no = "stool improper handling",
-  #     rc_agri_yes = "engaged in agriculture",
-  #     ph_wtr_improve_dummy = "improved water source",
-  #     ch_below_2p5_yes = "child below -2.5SD",
-  #     nt_wm_ovobese_yes = "overweight mother"
-  #     )
-  #   )
-
-  # # ★ ラベル情報を保持しながらfactor型に変換
-  # all_data_merged <- all_data_merged %>%
-  #   mutate(
-  #     across(
-  #       all_of(dummy_vars),
-  #       ~ as_factor(.)  # labelled型のラベルを保持
-  #     )
-  #   )
-  
-  
+ 
 # ================================================================================
 # 2. sampling weightの年次補正
 # ================================================================================
@@ -449,17 +304,5 @@ write.xlsx(as.data.frame(m),
            rowNames = TRUE)
 print(m)
 
-# ===============================================================================
-# # ダミー変数の確認
-# for (var in dummy_vars) {
-#   cat("========================================\n")
-#   cat("変数:", var, "\n")
-#   cat("値ラベル:\n")
-#   print(attr(all_data_merged[[var]], "labels"))
-#   cat("クラス:", class(all_data_merged[[var]]), "\n")
-#   cat("頻度表:\n")
-#   print(table(all_data_merged[[var]], useNA = "always"))
-#   cat("\n")
-# }
 
 ```
