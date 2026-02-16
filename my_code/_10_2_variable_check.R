@@ -29,27 +29,14 @@ source("my_code/_tool_SaveLabel.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-  file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
+  # file.path(gdrive_dir, "output","all_data_merged.rds")
+  file.path(gdrive_dir, "output","all_data_merged.rds")
 ) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 # 変数ラベルをメモリに保存したうえでラベル消去
 # labels_memory <- save_labels_to_memory(df_org)
 # df_org <- remove_labels(df_org)
-
-# キーテーブルの作成
-key_table <- distinct(
-  df_org,
-  year,
-  state,
-  treatment_group,
-  treated_status,
-  year_treated,
-  treatment_start,
-  treatment_group,
-  analysis_grp,
-  group_treated
-)
 
 # 分析に利用する変数名の抽出
 variable_for_analysis <- names(df_org)
@@ -63,31 +50,53 @@ df_vars <- df_org %>%
   )
 # df_vars <- restore_labels(df_vars, labels_memory)
 
-var_summary <- sapply(names(df_vars), function(x) {
+var_summary <- lapply(names(df_vars), function(x) {
+  v <- df_vars[[x]]
+  
   res <- list(
-    variable = x,
-    is_factor = is.factor(df_vars[[x]]),
-    num_factor_levels = ifelse(is.factor(df_vars[[x]]), length(na.omit(unique(df_vars[[x]]))), NA),
-    is_binary = length(na.omit(unique(df_vars[[x]]))) == 2,
-    is_logical = is.logical(df_vars[[x]]),
-    is_character = is.character(df_vars[[x]]),
-    is_numeric = is.numeric(df_vars[[x]]),
-    factor_levels = paste(levels(df_vars[[x]]), collapse = "_"),
-    value_labels = paste(names(attr(df_vars[[x]], "labels")), collapse = ":"),
-    var1 = df_vars[[x]][1],
-    var2 = df_vars[[x]][2],
-    var3 = df_vars[[x]][3],
-    var4 = df_vars[[x]][4],
-    var5 = df_vars[[x]][5]
+    variable          = as.character(x),
+    is_factor         = is.factor(v),
+    num_factor_levels = if (is.factor(v)) length(na.omit(unique(v))) else NA_integer_,
+    is_binary         = length(na.omit(unique(v))) == 2,
+    is_logical        = is.logical(v),
+    is_character      = is.character(v),
+    is_numeric        = is.numeric(v),
+    factor_levels     = if (is.factor(v)) paste(levels(v), collapse = "_") else NA_character_,
+    value_labels      = {
+      labs <- attr(v, "labels")
+      if (!is.null(labs)) paste(names(labs), collapse = ":") else NA_character_
+    },
+    new_variable_name = x,
+    Yes_value        = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
+                          levels(v)[1] 
+                        else NA_character_,
+    No_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
+                          levels(v)[2] 
+                        else NA_character_
   )
-  return(res)
+  res
 })
 
-var_summary <- t(var_summary)
-write.csv(
+var_summary <- do.call(rbind, lapply(var_summary, as.data.frame, 
+                                     stringsAsFactors = FALSE))
+row.names(var_summary) <- NULL
+
+
+# var_summary <- t(var_summary) %>% as.data.frame()
+
+write.xlsx(
   var_summary,
-  file = file.path(save_path, "variable_type_summary.csv"),
-  row.names = TRUE,
-  fileEncoding = "UTF-8"
+  file = file.path(save_path, "labels", "variable_type_summary.xlsx"),
+  sheetName = "main",
+  rowNames = FALSE,
+  na.string = "NA"
 )
+
+# csvで保存するとスペイン語が文字化けする
+# write.csv(
+#   var_summary,
+#   file = file.path(save_path, "variable_type_summary.csv"),
+#   row.names = TRUE,
+#   fileEncoding = "UTF-8"
+# )
 

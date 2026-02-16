@@ -88,6 +88,27 @@ variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^jun
 #          .names = "{.col}_{.fn}"
 #     )
 #   )
+# 1. 全て0のダミー変数を特定
+df_base <- readRDS(
+  file.path(gdrive_dir, "output","all_data_merged.rds")
+) 
+
+
+all_zero_cols <- names(df_org)[
+  sapply(df_org, function(x) all(x == 0, na.rm = TRUE))
+]
+
+# 2. 元の変数名を逆引き
+# 例: "v190_3" → 元変数は "v190", レベルは "3"
+problem_origins <- unique(sub("_[^_]+$", "", all_zero_cols))
+
+# 3. factor変換前のデータで実際の値を確認
+for (v in problem_origins) {
+  cat("---", v, "---\n")
+  cat("実データの値: ", head(unique(as.character(df_base[[v]]))), "\n")
+  cat("val_labelsの定義: ", names(df_base$val_labels[[v]]), "\n\n")
+}
+
 
 ```
 
