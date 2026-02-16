@@ -1,7 +1,9 @@
 #' ------------------------------------------------------------
-#' 目的：
-#' 主要変数にfactor, numeric, character, logicalのどれが含まれているかを確認し、変数タイプの一覧を作成する。
-#' また、factor変数についてはレベル情報、value label情報も取得する
+#' 目的：変数の型とfactorレベル情報を整理し、あとでfactorのダミー化に利用する
+#' - 変数の型や水準を確認し、分析に利用する変数の概要を把握する
+#' - 変数の型や水準をExcelファイルにまとめる
+#' - 変数の型や水準を確認することで、分析に利用する変数の特徴を把握し、適切な分析手法を選択するための基礎情報を得る
+#' - 変数の型や水準を確認することで、データの品質や欠損値の状況を把握し、データクリーニングや前処理の必要性を判断するための基礎情報を得る
 #' 作成日：2024/06/10
 #' 作成者：仲田俊一
 #' 更新履歴：
@@ -42,6 +44,33 @@ df_org <- readRDS(
 variable_for_analysis <- names(df_org)
 variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
 
+#-----------------------------------
+
+# バイナリ変数のyes/noレベルを特定する関数------
+yesno_level <- function(v){
+  # Yes/No 変数のレベル名の候補を定義
+  yes_vars <- c("Yes", "yes", "Sí", "si")  # Yes 側のレベル名の候補
+  no_vars <- c("No", "no")  # No 側のレベル名の候補
+
+  res <- list(
+    yes_var = NA_character_,
+    no_var = NA_character_
+  )
+  
+  if (!is.vector(v) | length(v) != 2) {
+    stop("Input must be a vector of length 2.")
+  }
+  
+  for (x in v) {
+    if (x %in% yes_vars) {
+      res$yes_var <- x
+    } else if (x %in% no_vars) {
+      res$no_var <- x
+    }
+  }
+  return(res)
+}
+#------------------------------------
 
 df_vars <- df_org %>%
   select(
@@ -68,10 +97,10 @@ var_summary <- lapply(names(df_vars), function(x) {
     },
     new_variable_name = x,
     Yes_value        = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
-                          levels(v)[1] 
+                        yesno_level(levels(v))$yes_var
                         else NA_character_,
     No_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
-                          levels(v)[2] 
+                          yesno_level(levels(v))$no_var
                         else NA_character_
   )
   res

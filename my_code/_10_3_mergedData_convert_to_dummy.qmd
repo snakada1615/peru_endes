@@ -56,202 +56,81 @@ df_vars <- df_vars %>%
 
 ```
 
-# 2. ダミー変数化
+# 2. ダミー変数化関数
 
 ```{r}
-
 mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
-  # df: データ本体
-  # vars: ダミー化したい factor 名
-  # meta: 上記のメタ（variable, is_binary, factor_levels, new_variable_name, Yes_value, No_value など）
-  # drop_original: 元の変数を削除するかどうか  
+  yes_no_levels <- c("Yes_No", "yes_no", "No_Yes", "No_Sí", "Si_No")
+
   for (v in vars) {
+    info <- meta[meta$variable == v, ]
 
-  # 1. メタから行を抽出
-  info <- meta[meta$variable == v, ]
+    x <- df[[v]]
 
-  # 2. (3)パターンの判定
-  #   - is_factor == TRUE
-  #   - factor_levels に "Yes_No" を含む
-  #   - かつ、実データ df[[v]] が NA か 1種類の値しか持たない
-  if (条件(3)) {
-    # → この変数は意味を持たないので削除
-    df[[v]] <- NULL
-    next  # 次の変数へ
-  }
+    # 実データのユニーク値で(3)パターン判定
+    # - is_factor == TRUE
+    # - factor_levels に "Yes_No" を含む
+    # - かつ、実データ df[[v]] が NA か 1種類の値しか持たない
+    # 実データのユニーク値で(3)パターン判定
+    if (isTRUE(info$is_factor)) {
+      u <- unique(x[!is.na(x)])
+      if (info$factor_levels %in% yes_no_levels && length(u) == 1) {
+        df[[v]] <- NULL
+        next
+      }
+    }
+    
+    # factor でない場合はスキップ
+    if (!is.factor(x)) next
 
-  # 3. 変数が本当に factor か確認
-  x <- df[[v]]
-  if (!is.factor(x)) next  # 念のため
-
-  # 4. (1) or (2) or (4) の判定
-
-  if (info$is_binary == TRUE) {
-    # 4a. 2値 factor の場合
-
-    if (info$factor_levels %in% c("Yes_No", "Si_No", "No_Yes", "No_Sí")) {
-      # → パターン(1)または「Yes_No系」
-      #    lvls <- levels(x) から "Yes" 側を判定
-      yes_level <- 決定ロジック_YES系(lvls, info$factor_levels)
-
-      new_name <- paste0(v, "_yes")  
-      df[[new_name]] <- ifelse(x == yes_level, 1L,
-                               ifelse(is.na(x), NA_integer_, 0L))
-
-    } else {
-      # → パターン(2): Yes_No ではない2値（rc_agriなど）
-      #    meta の new_variable_name, Yes_value, No_value を使う
+    # ダミー変数の処理
+    if (isTRUE(info$is_binary)) {
       yes_level <- info$Yes_value
-      no_level  <- info$No_value
-      new_name  <- info$new_variable_name  # 例: "rc_agri:Agriculture_yes"
+      no_level <- info$No_value
+      new_name <- info$new_variable_name
 
       df[[new_name]] <- ifelse(x == yes_level, 1L,
-                               ifelse(x == no_level, 0L, NA_integer_))
+        ifelse(x == no_level, 0L, NA_integer_)
+      )
+    } else {
+    # 多レベルのfactor変数は、レベルごとにダミー変数を作成
+      lvls <- levels(x)
+      for (lev in lvls) {
+        new_name <- paste0(v, ":", lev, "_yes")
+        df[[new_name]] <- ifelse(x == lev, 1L,
+          ifelse(is.na(x), NA_integer_, 0L)
+        )
+      }
     }
 
-  } else {
-    # 4b. 複数レベル → パターン(4)
-    lvls <- levels(x)
-    for (lev in lvls) {
-      new_name <- paste0(v, ":", lev, "_yes")
-      df[[new_name]] <- ifelse(x == lev, 1L,
-                               ifelse(is.na(x), NA_integer_, 0L))
-    }
+    if (drop_original) df[[v]] <- NULL
   }
-
-  # 5. 必要なら元の v を削除
-  if (drop_original) {
-    df[[v]] <- NULL
-  }
+  return(df)
 }
-
-  
-}
-
-
 
 ```
 
-# 3. ダミー変数化後のデータに変数ラベルを付与
+# 3. メインループ
 
 ```{r}
 
-# ダミー変数のラベル作成関数
-#' ****************************************************************************
-#' @title factor_to_dummy_labels
-#' @description
-#' 元の変数ラベルとレベルラベルを組み合わせて、ダミー変数のラベルを作成する。
-#' 例えば、元の変数が "gender"で、レベルが "male" の場合、ラベルは "gender: male" となる。
-#' @param var_name 元の変数名
-#' @param level_name レベル名
-#' @param var_labels 変数ラベルのリスト
-#' @param val_labels 値ラベルのリスト
-#' @return ダミー変数のラベル文字列
-#' @examples
-#' factor
-#' ****************************************************************************
-factor_to_dummy_labels <- function(var_name, level_name, var_labels, val_labels) {
-  var_label <- var_labels[[var_name]]
-  if (level_name %in% names(val_labels)) {
-    # 値ラベルが存在する場合
-    level_label <- val_labels[[level_name]]
-  } else if (level_name == "NA") {
-    # NAレベルの場合
-    level_label <- "Missing"
-  } else {
-    # 値ラベルが存在しない場合、そのままレベル名を使用
-    level_label <- level_name
-  }
-  full_label <- paste0(var_label, ": ", level_label)
-  return(full_label)
-}
-#' ---------関数ここまで😊------------------------------------------------------
-#' ****************************************************************************
-#' @title factor_to_dummy_all
-#' @description
-#' データフレーム内の指定された変数に対して、ダミ
-#' ー変数のラベルを生成し、ラベル情報を更新する。
-#' @param df データフレーム
-#' @param current_label 現在のラベル情報（変数ラベルと
-#' 値ラベルのリスト）
-#' @param vars ダミー変数化された変数のリスト
-#' @return 更新されたラベル情報
-#' @examples
-#' factor_to_dummy_all(df, current_label, vars)
-#' ****************************************************************************
-factor_to_dummy_all <- function(df, current_label, vars) {
-  dummy_labels <- list()
+# --- (A) 残すべき変数（分析には用いないカテゴリ変数など） ---
+exception_vars <- c("treatment_group", "analysis_grp", "treatment_group", "v013", "v026", "v024", "v001", "v002", "v003", "v005", "v022", "age", "wt")  # 除外する変数名を指定
 
-  # 元のラベル情報を取得
-  var_labels <- current_label$var_labels
-  val_labels <-current_label$val_labels
+# --- (B) factor変数 ---
+factor_vars <- names(df_org)[sapply(df_org, is.factor)]
+factor_vars <- setdiff(factor_vars, exception_vars)  # 例外変数は除外
 
-  for (v in vars) {
-    # 変数ラベルを取得
-    level_name <- var_labels[[v]]
-    # 展開したダミー変数の列名(レベルの数だけ存在)を取得
-    lvl_cols <- grep(paste0("^", v, "_"), names(df), value = TRUE)
-
-    for (lvl_col in lvl_cols) {
-      # レベル名を抽出
-      lvl_name <- sub(paste0("^", v, "_"), "", lvl_col)
-
-      dummy_label <- factor_to_dummy_labels(
-        var_name = v,
-        level_name = lvl_name,
-        var_labels = var_labels,
-        val_labels = val_labels
-      )
-      dummy_labels[[lvl_col]] <- dummy_label
-    }
-  }
-  # ラベルを統合
-  tmp_new_label_set <- list(var_labels = dummy_labels, val_labels = list())
-  final_labels <- merge_labels_memory(current_label, tmp_new_label_set)  
-
-  return(final_labels)
-}
-#' ---------関数ここまで😊------------------------------------------------------
-
-# ここから実行部分
-# ダミー変数化後のラベル情報を作成
-final_labels <- factor_to_dummy_all(
-  df = df_dummied,
-  current_label = org_labels,
-  vars = vars
+df_dummied <- mutate_dummy_all(
+  df = df_org,
+  vars = factor_vars,
+  meta = df_vars,
+  drop_original = TRUE
 )
-
-# ラベルを復元
-df_dummied <- restore_labels(df_dummied, final_labels)
-
-# ここまでのfinal_labelsには不要な列、ラベルも含まれているため再度取得する
-final_labels <- save_labels_to_memory(df_dummied, exist_label_only = FALSE)
-
-# 最終的なラベル一覧を保存
-saveRDS(final_labels, file = file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.rds"))
-final_labels$var_labels %>% stack() %>% 
-  write.xlsx(file.path(gdrive_dir, "output", "labels", "labels_all_data_merged_dummy.xlsx"))
 
 # ダミー変数化後のデータ保存
   saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
 
-  
-# 要約結果の確認
-data_check <- df_dummied %>% group_by(year, group_treated) %>% summarise(
-    across(
-        .cols = all_of(names(df_dummied)[grepl("^[a-zA-Z]{2}_|^enaho_|^jumtos", names(df_org))]),
-         .fns = list(
-           count_positive = ~ sum(.x>0 & !is.na(.x))
-           zero_proportion = ~ mean(.x == 0, na.rm = TRUE)
-            ),
-         .names = "{.col}_{.fn}"
-    )
-  )
-
-    
-  
-# スクリプト先頭で一時変数を一括削除
-rm(list = ls(pattern = "^tmp_"))
-rm(df_org_plane, org_labels)
 
 ```
+
