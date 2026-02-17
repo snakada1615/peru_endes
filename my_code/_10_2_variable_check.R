@@ -101,7 +101,8 @@ var_summary <- lapply(names(df_vars), function(x) {
                         else NA_character_,
     No_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
                           yesno_level(levels(v))$no_var
-                        else NA_character_
+                        else NA_character_,
+    var_label_base   = attr(v, "label", exact = TRUE) %||% x
   )
   res
 })
@@ -120,12 +121,6 @@ write.xlsx(
   rowNames = FALSE,
   na.string = "NA"
 )
-
 # csvで保存するとスペイン語が文字化けする
-# write.csv(
-#   var_summary,
-#   file = file.path(save_path, "variable_type_summary.csv"),
-#   row.names = TRUE,
-#   fileEncoding = "UTF-8"
-# )
+
 
