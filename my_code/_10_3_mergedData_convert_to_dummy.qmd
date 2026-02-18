@@ -13,7 +13,8 @@ rm(list = ls(all = TRUE))
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
-source("_tool_SaveLabel.R")  # survey用関数群
+# source("_tool_SaveLabel.R")  # survey用関数群
+source("_tool_paper.R")  # labelled → papeRのラベル形式に変換する関数)
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -61,21 +62,43 @@ df_vars <- df_vars %>%
 
 ```{r}
 mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
+
   yes_no_levels <- c("Yes_No", "yes_no", "No_Yes", "No_Sí", "Si_No")
 
+  # --- 事前チェック: df の列名に NA/"" がないか ---
+  nms <- names(df)
+  bad_nms <- is.na(nms) | nms == ""
+  if (any(bad_nms)) {
+    warning("df に NA または空文字の列名が ", sum(bad_nms), " 個あります。仮名を付与します。")
+    nms[bad_nms] <- paste0("V_auto_", seq_len(sum(bad_nms)))
+    names(df) <- make.unique(nms)
+  }
+
   for (v in vars) {
+
+    # --- meta から該当行を取得 ---
     info <- meta[meta$variable == v, ]
+
+    # meta に該当行がない場合はスキップ
+    if (nrow(info) == 0) {
+      message("SKIP: meta に変数 '", v, "' が見つかりません")
+      next
+    }
+    # 複数行ある場合は最初の1行を使用
+    if (nrow(info) > 1) {
+      warning("meta に変数 '", v, "' が複数行あります。最初の行を使用します。")
+      info <- info[1, ]
+    }
 
     x <- df[[v]]
 
-    # 実データのユニーク値で(3)パターン判定
-    # - is_factor == TRUE
-    # - factor_levels に "Yes_No" を含む
-    # - かつ、実データ df[[v]] が NA か 1種類の値しか持たない
-    # 実データのユニーク値で(3)パターン判定
+    # --- (1) Yes/No 系で実データが1種類しかない factor → 列を削除してスキップ ---
     if (isTRUE(info$is_factor)) {
       u <- unique(x[!is.na(x)])
-      if (info$factor_levels %in% yes_no_levels && length(u) == 1) {
+      if (!is.na(info$factor_levels) &&
+          info$factor_levels %in% yes_no_levels &&
+          length(u) <= 1) {
+        message("DROP: '", v, "' は Yes/No 型だがユニーク値が ", length(u), " 個のため削除")
         df[[v]] <- NULL
         next
       }
@@ -84,35 +107,69 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
     # factor でない場合はスキップ
     if (!is.factor(x)) next
 
-    # ダミー変数の処理
+    # --- (2) バイナリ変数の処理 ---
     if (isTRUE(info$is_binary)) {
-      yes_level <- info$Yes_value
-      no_level <- info$No_value
-      new_name <- info$new_variable_name
-      new_label <- paste0(info$var_label_base, " (", yes_level, " vs ", no_level, ")")
 
-      # ダミー変数を作成（NAはNAのまま）
+      yes_level <- info$yes_value
+      no_level  <- info$no_value
+      new_name  <- v
+      label_base <- info$var_label_base
+
+      # # フォールバック: new_name が NA/"" の場合
+      # if (is.na(new_name) || new_name == "") {
+      #   new_name <- paste0(v, "_dummy")
+      #   warning("'", v, "' の new_variable_name が NA/空です。'", new_name, "' を使用します。")
+      # }
+
+      # フォールバック: label_base が NA の場合
+      if (is.na(label_base) || label_base == "") {
+        label_base <- v
+      }
+
+      # フォールバック: yes_level / no_level が NA の場合
+      if (is.na(yes_level) || is.na(no_level)) {
+        warning("'", v, "' の Yes_value/No_value が NA です。スキップします。")
+        next
+      }
+
+      new_label <- paste0(label_base, " (", yes_level, " vs ", no_level, ")")
+
+      # ダミー変数を作成（NA は NA のまま）
       df[[new_name]] <- ifelse(x == yes_level, 1L,
-        ifelse(x == no_level, 0L, NA_integer_)
-      )
+                               ifelse(x == no_level, 0L, NA_integer_))
 
       # 変数ラベルを付与
-      papeR::labels(df, which = c(new_name)) <- new_label
+      papeR::labels(df, which = new_name) <- new_label
+
     } else {
-      # 多レベルのfactor変数は、レベルごとにダミー変数を作成
+      # --- (3) 多レベル factor 変数の処理 ---
       lvls <- levels(x)
+      label_base <- info$var_label_base
+      if (is.na(label_base) || label_base == "") {
+        label_base <- v
+      }
+
       for (lev in lvls) {
         new_name <- paste0(v, ":", lev, "_yes")
+
+        # new_name が有効か確認
+        if (is.na(new_name) || new_name == "") {
+          warning("多レベル変数 '", v, "' のレベル '", lev, "' でダミー名が不正です。スキップ。")
+          next
+        }
+
         df[[new_name]] <- ifelse(x == lev, 1L,
-          ifelse(is.na(x), NA_integer_, 0L)
-        )
-        new_label <- paste0(info$var_label_base, ": ", lev)
-        papeR::labels(df, which = c(new_name)) <- new_label
+                                 ifelse(is.na(x), NA_integer_, 0L))
+
+        new_label <- paste0(label_base, ": ", lev)
+        papeR::labels(df, which = new_name) <- new_label
       }
     }
 
+    # 元のカテゴリ変数を削除
     if (drop_original) df[[v]] <- NULL
   }
+
   return(df)
 }
 
@@ -139,6 +196,17 @@ df_dummied <- mutate_dummy_all(
 
 # ダミー変数化後のデータ保存
   saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
+  
+# ダミー変数化後のラベル情報一覧
+  var_summary_dummied <- variable_summary(df_dummied)
+  
+  write.xlsx(
+    var_summary_dummied,
+    file = file.path(gdrive_dir, "output", "labels", "label_all_data_merged_dummy.xlsx"),
+    sheetName = "main",
+    rowNames = FALSE,
+    na.string = "NA"
+  )
 
 
 ```

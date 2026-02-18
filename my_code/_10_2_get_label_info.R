@@ -40,74 +40,13 @@ df_org <- readRDS(
 variable_for_analysis <- names(df_org)
 variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
 
-#-----------------------------------
-
-# バイナリ変数のyes/noレベルを特定する関数------
-yesno_level <- function(v){
-  # Yes/No 変数のレベル名の候補を定義
-  yes_vars <- c("Yes", "yes", "Sí", "si")  # Yes 側のレベル名の候補
-  no_vars <- c("No", "no")  # No 側のレベル名の候補
-
-  res <- list(
-    yes_var = NA_character_,
-    no_var = NA_character_
-  )
-  
-  if (!is.vector(v) | length(v) != 2) {
-    stop("Input must be a vector of length 2.")
-  }
-  
-  for (x in v) {
-    if (x %in% yes_vars) {
-      res$yes_var <- x
-    } else if (x %in% no_vars) {
-      res$no_var <- x
-    }
-  }
-  return(res)
-}
-#------------------------------------
-
 df_vars <- df_org %>%
   select(
     all_of(c("year", "state", "treatment_group", "treated_status", "year_treated", "treatment_start", "treatment_group", "analysis_grp", "group_treated")),
     all_of(variable_for_analysis)
   )
-# df_vars <- restore_labels(df_vars, labels_memory)
 
-# papeRのラベル形式に変換
-df_vars <- papeR::as.ldf(df_vars)
-
-var_labs <- labels(df_vars)  # named character vector
-# names(var_labs) は変数名、var_labs[変数名] がラベル
-
-var_summary <- lapply(names(df_vars), function(x) {
-  v <- df_vars[[x]]
-  
-  res <- list(
-    variable          = as.character(x),
-    is_factor         = is.factor(v),
-    num_factor_levels = if (is.factor(v)) length(na.omit(unique(v))) else NA_integer_,
-    is_binary         = length(na.omit(unique(v))) == 2,
-    is_logical        = is.logical(v),
-    is_character      = is.character(v),
-    is_numeric        = is.numeric(v),
-    factor_levels     = if (is.factor(v)) paste(levels(v), collapse = "_") else NA_character_,
-    new_variable_name = x,
-    Yes_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2)
-      yesno_level(levels(v))$yes_var
-    else NA_character_,
-    No_value          = if (is.factor(v) && length(na.omit(unique(v))) == 2)
-      yesno_level(levels(v))$no_var
-    else NA_character_,
-    var_label_base    = var_labs[[x]] %||% x
-  )
-  res
-})
-
-var_summary <- do.call(rbind, lapply(var_summary, as.data.frame, 
-                                     stringsAsFactors = FALSE))
-row.names(var_summary) <- NULL
+var_summary <- variable_summary(df_vars)
 
 
 # var_summary <- t(var_summary) %>% as.data.frame()
