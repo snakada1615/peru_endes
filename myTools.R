@@ -485,9 +485,9 @@ add_missing_columns <- function(df, columns, isnumber = FALSE) {
 duplicate_check <- function(df, key_vars, df_name) {
   print(paste("Checking duplicates in", df_name, "using keys:", paste(key_vars, collapse = ", ")))
   temp <- df %>%
-    group_by(across(all_of(key_vars))) %>%
-    summarise(n = n(), .groups = 'drop') %>%
-    filter(n > 1)
+    dplyr::group_by(across(all_of(key_vars))) %>%
+    dplyr::summarise(n = n(), .groups = 'drop') %>%
+    dplyr::filter(n > 1)
   
   if (nrow(temp) > 0) {
     print(paste(df_name, "には重複レコードがあります"))
@@ -516,9 +516,9 @@ duplicate_check <- function(df, key_vars, df_name) {
 duplicate_check_detail <- function(df, key_vars, df_name) {
   print(paste("Checking duplicates in", df_name, "using keys:", paste(key_vars, collapse = ", ")))
   temp <- df %>%
-    group_by(across(all_of(key_vars))) %>%
-    summarise(n = n(), .groups = 'drop') %>%
-    filter(n > 1)
+    dplyr::group_by(across(all_of(key_vars))) %>%
+    dplyr::summarise(n = n(), .groups = 'drop') %>%
+    dplyr::filter(n > 1)
   
   if (nrow(temp) > 0) {
     print(paste("重複レコードがあります in", df_name))
@@ -582,9 +582,9 @@ duplicate_check_detail <- function(df, key_vars, df_name) {
 #' ******************************************************************************
 duplicate_check_detail_most <- function(df, key_vars, df_name) {
   temp <- df %>%
-    group_by(across(all_of(key_vars))) %>%
-    summarise(n = n(), .groups = 'drop') %>%
-    filter(n > 1)
+    dplyr::group_by(across(all_of(key_vars))) %>%
+    dplyr::summarise(n = n(), .groups = 'drop') %>%
+    dplyr::filter(n > 1)
   
   if (nrow(temp) > 0) {
     print(paste("重複レコードがあります in", df_name))

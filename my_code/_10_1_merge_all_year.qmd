@@ -44,6 +44,7 @@ library(survey)       # for survey design
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_SaveLabel.R")  # survey用関数群
+source("_tool_paper.R")  # 安全なラベル管理
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2006","2007", "2008", "2009", "2010", "2011",
@@ -238,8 +239,8 @@ all_data_merged <- all_data_merged %>%
 # ================================================================================
 # 年ごとの元 v005 合計を算出
 year_totals <- all_data_merged %>%
-  group_by(year) %>%
-  summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
+  dplyr::group_by(year) %>%
+  dplyr::summarise(total_v005 = sum(v005, na.rm = TRUE), .groups = 'drop')
 
 # Survey designオブジェクトの作成前に変数を変換
 all_data_merged <- all_data_merged %>%
@@ -281,6 +282,9 @@ all_data_merged <- all_data_merged %>%
   mutate(across(where(is.labelled), labelled::to_factor)) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
+# ラベルをpapeRで変換
+all_data_merged <- convert_lbl_to_paper(all_data_merged)[[1]]
+
 # -----------------------------------------------------------------------------
 
 # ファイルをRDSで保存
@@ -294,8 +298,8 @@ colnames <- names(all_data_merged)
 colnames <- colnames[grepl("^[a-zA-Z]{2}_", colnames)] 
 row_num <- nrow(all_data_merged)
 na_summary_year <- all_data_merged %>%
-  group_by(year) %>%
-  summarise(across(all_of(colnames), ~ round(sum(100*is.na(.x))/row_num, 1))) 
+  dplyr::group_by(year) %>%
+  dplyr::summarise(across(all_of(colnames), ~ round(sum(100*is.na(.x))/row_num, 1))) 
 
 m <- apply(na_summary_year, 2, as.numeric)  # 数値マトリクスに
 m <- t(m)  # 転置

@@ -7,6 +7,7 @@ format: html
 # 1. 必要データの読み込み
 ```{r}
 library(dplyr)
+library("papeR")
 
 rm(list = ls(all = TRUE))
 
@@ -35,23 +36,23 @@ library(stringr)
 
 df_vars <- df_vars %>% 
   left_join(df_factors_rename, by = "variable") %>%
-  mutate(
-    across(
-      ends_with(".y"),
-      ~ coalesce(
+  dplyr::mutate(
+    dplyr::across(
+      dplyr::ends_with(".y"),
+      ~ dplyr::coalesce(
         .,
-        get(str_replace(cur_column(), "\\.y$", ".x"))
+        get(stringr::str_replace(dplyr::cur_column(), "\\.y$", ".x"))
       )
     )
   ) %>%
   # .x を削除
-  select(
-    -ends_with(".x")
+  dplyr::select(
+    -dplyr::ends_with(".x")
   ) %>%
   # .y を元の名前に戻す
-  rename_with(
-    ~ str_remove(.x, "\\.y$"),
-    ends_with(".y")
+  dplyr::rename_with(
+    ~ stringr::str_remove(.x, "\\.y$"),
+    dplyr::ends_with(".y")
   )
 
 ```
@@ -79,7 +80,7 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
         next
       }
     }
-    
+
     # factor でない場合はスキップ
     if (!is.factor(x)) next
 
@@ -88,18 +89,25 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
       yes_level <- info$Yes_value
       no_level <- info$No_value
       new_name <- info$new_variable_name
+      new_label <- paste0(info$var_label_base, " (", yes_level, " vs ", no_level, ")")
 
+      # ダミー変数を作成（NAはNAのまま）
       df[[new_name]] <- ifelse(x == yes_level, 1L,
         ifelse(x == no_level, 0L, NA_integer_)
       )
+
+      # 変数ラベルを付与
+      papeR::labels(df, which = c(new_name)) <- new_label
     } else {
-    # 多レベルのfactor変数は、レベルごとにダミー変数を作成
+      # 多レベルのfactor変数は、レベルごとにダミー変数を作成
       lvls <- levels(x)
       for (lev in lvls) {
         new_name <- paste0(v, ":", lev, "_yes")
         df[[new_name]] <- ifelse(x == lev, 1L,
           ifelse(is.na(x), NA_integer_, 0L)
         )
+        new_label <- paste0(info$var_label_base, ": ", lev)
+        papeR::labels(df, which = c(new_name)) <- new_label
       }
     }
 
@@ -107,14 +115,6 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
   }
   return(df)
 }
-
-```
-
-# 3.ダミー変数にラベル付与する関数
-
-```{r}
-
-
 
 ```
 

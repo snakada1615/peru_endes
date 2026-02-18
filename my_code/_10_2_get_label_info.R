@@ -28,17 +28,13 @@ save_path <- file.path(gdrive_dir, "output")
 
 source("myTools.R")
 source("my_code/_tool_SaveLabel.R")
+source("my_code/_tool_paper.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-  # file.path(gdrive_dir, "output","all_data_merged.rds")
-  file.path(gdrive_dir, "output","all_data_merged.rds")
-) %>%
+  file.path(gdrive_dir, 
+            "output","all_data_merged.rds")) %>% 
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
-
-# 変数ラベルをメモリに保存したうえでラベル消去
-# labels_memory <- save_labels_to_memory(df_org)
-# df_org <- remove_labels(df_org)
 
 # 分析に利用する変数名の抽出
 variable_for_analysis <- names(df_org)
@@ -79,6 +75,12 @@ df_vars <- df_org %>%
   )
 # df_vars <- restore_labels(df_vars, labels_memory)
 
+# papeRのラベル形式に変換
+df_vars <- papeR::as.ldf(df_vars)
+
+var_labs <- labels(df_vars)  # named character vector
+# names(var_labs) は変数名、var_labs[変数名] がラベル
+
 var_summary <- lapply(names(df_vars), function(x) {
   v <- df_vars[[x]]
   
@@ -91,18 +93,14 @@ var_summary <- lapply(names(df_vars), function(x) {
     is_character      = is.character(v),
     is_numeric        = is.numeric(v),
     factor_levels     = if (is.factor(v)) paste(levels(v), collapse = "_") else NA_character_,
-    value_labels      = {
-      labs <- attr(v, "labels")
-      if (!is.null(labs)) paste(names(labs), collapse = ":") else NA_character_
-    },
     new_variable_name = x,
-    Yes_value        = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
-                        yesno_level(levels(v))$yes_var
-                        else NA_character_,
-    No_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2) 
-                          yesno_level(levels(v))$no_var
-                        else NA_character_,
-    var_label_base   = attr(v, "label", exact = TRUE) %||% x
+    Yes_value         = if (is.factor(v) && length(na.omit(unique(v))) == 2)
+      yesno_level(levels(v))$yes_var
+    else NA_character_,
+    No_value          = if (is.factor(v) && length(na.omit(unique(v))) == 2)
+      yesno_level(levels(v))$no_var
+    else NA_character_,
+    var_label_base    = var_labs[[x]] %||% x
   )
   res
 })
