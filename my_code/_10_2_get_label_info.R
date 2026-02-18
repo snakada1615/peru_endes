@@ -116,7 +116,7 @@ row.names(var_summary) <- NULL
 
 write.xlsx(
   var_summary,
-  file = file.path(save_path, "labels", "variable_type_summary.xlsx"),
+  file = file.path(save_path, "labels", "label_all_data_merged.xlsx"),
   sheetName = "main",
   rowNames = FALSE,
   na.string = "NA"

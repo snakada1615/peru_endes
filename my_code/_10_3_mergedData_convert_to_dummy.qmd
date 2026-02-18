@@ -22,7 +22,7 @@ df_org <- readRDS(
 )
 
 df_vars <- read.xlsx(
-  file.path(gdrive_dir, "output","labels", "variable_type_summary.xlsx"),
+  file.path(gdrive_dir, "output","labels", "label_all_data_merged.xlsx"),
   sheet = "main") 
 
 df_factors_rename <- read.xlsx(
@@ -109,6 +109,15 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
 }
 
 ```
+
+# 3.ダミー変数にラベル付与する関数
+
+```{r}
+
+
+
+```
+
 
 # 3. メインループ
 
