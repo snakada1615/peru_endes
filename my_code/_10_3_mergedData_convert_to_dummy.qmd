@@ -151,7 +151,12 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
           warning("多レベル変数 '", v, "' のレベル '", lev, "' でダミー名が不正です。スキップ。")
           next
         }
+        
+        # スペースや特殊文字をアンダースコアに置換)
+        new_name <- make.names(new_name)
+        new_name <- gsub("\\.+", ".", new_name)  # 1個以上の . を 1つに縮約
 
+        
         df[[new_name]] <- ifelse(x == lev, 1L,
                                  ifelse(is.na(x), NA_integer_, 0L))
 
@@ -159,7 +164,8 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
         papeR::labels(df, which = new_name) <- new_label
       }
     }
-
+    
+    
     # 元のカテゴリ変数を削除（3値以上の場合のみ）
     if (drop_original && !isTRUE(info$is_binary)) df[[v]] <- NULL
 
@@ -192,17 +198,6 @@ df_dummied <- mutate_dummy_all(
 # ダミー変数化後のデータ保存
   saveRDS(df_dummied, file = file.path(gdrive_dir, "output","all_data_merged_dummy.rds"))
   
-# ダミー変数化後のラベル情報一覧
-  var_summary_dummied <- variable_summary(df_dummied)
-  
-  write.xlsx(
-    var_summary_dummied,
-    file = file.path(gdrive_dir, "output", "labels", "label_all_data_merged_dummy.xlsx"),
-    sheetName = "main",
-    rowNames = FALSE,
-    na.string = "NA"
-  )
-
 
 ```
 
