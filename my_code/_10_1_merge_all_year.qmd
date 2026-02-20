@@ -266,7 +266,8 @@ all_data_merged <- all_data_merged %>%
            quantile(sampling_weight_norm, 0.99, na.rm = TRUE)),
       quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
     )
-  )
+  ) %>%
+  select(-dhs_weight, -year_norm, -total_v005, -year_treated)  # 中間変数は削除
 
 # 元データのラベル適正化
 library(labelled)
@@ -284,6 +285,39 @@ all_data_merged <- all_data_merged %>%
 
 # ラベルをpapeRで変換
 all_data_merged <- convert_lbl_to_paper(all_data_merged)[[1]]
+
+# ラベル不足分を追記
+blanc_var <- c("age_months", "analysis_grp", "caseid", "child_alive", 
+               "group_treated", "hhid", "juntos_non_participation", 
+               "juntos_participation", "living_with_mother", "ms_age", 
+               "nt_ch_waz", "rc_tobc_any", "rc_tobc_anysmkless", 
+               "rc_tobc_osmkless", "rc_tobc_snuffm", "rc_tobv_betel", 
+               "rh_anc_neotet", "sampling_weight_norm", 
+               "sampling_weight_trimmed", "state", "treated_status", 
+               "treatment_start", "v021", "year"
+               )
+fill_label <- c("child age in month", 
+                "treated status (control-pre/post and treatment-pre/pos)", 
+                "Case Identification", "is child alive?", 
+                "hh category by treatment assignment (control, treat1, treat2))", 
+                "household id", "participate in juntos program: no", 
+                "participate in juntos program: yes", "child living with mother", 
+                "Age at first marriage", "weight for age", 
+                "Uses any type of tobacco - smoke or smokeless", 
+                "Uses any type of smokeless tobacco", 
+                "Uses other type of smokeless tobacco", 
+                "Uses snuff smokeless tobacco by nose", 
+                "Uses betel quid with tobacco", 
+                "Protected against neonatal tetanus", 
+                "normalized sampling weight", 
+                "normalized sampling weight (trimmed extreme)", "name of state", 
+                "treated status for staggered did", 
+                "year of treatment implementation", "Primary sampling unit", 
+                "year of treatment implementation"
+                )
+papeR::labels(all_data_merged, which = blanc_var) <- fill_label
+
+
 
 # -----------------------------------------------------------------------------
 
