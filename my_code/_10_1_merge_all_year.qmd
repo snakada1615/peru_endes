@@ -267,7 +267,7 @@ all_data_merged <- all_data_merged %>%
       quantile(sampling_weight_norm, 0.01, na.rm = TRUE)
     )
   ) %>%
-  select(-dhs_weight, -year_norm, -total_v005, -year_treated)  # 中間変数は削除
+  select(-dhs_weight, -year_norm, -total_v005, -treatment_start)  # 中間変数は削除
 
 # 元データのラベル適正化
 library(labelled)
@@ -294,7 +294,7 @@ blanc_var <- c("age_months", "analysis_grp", "caseid", "child_alive",
                "rc_tobc_osmkless", "rc_tobc_snuffm", "rc_tobv_betel", 
                "rh_anc_neotet", "sampling_weight_norm", 
                "sampling_weight_trimmed", "state", "treated_status", 
-               "treatment_start", "v021", "year"
+               "year_treated", "v021", "year"
                )
 fill_label <- c("child age in month", 
                 "treated status (control-pre/post and treatment-pre/pos)", 

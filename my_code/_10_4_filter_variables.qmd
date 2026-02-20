@@ -13,6 +13,7 @@ rm(list = ls(all = TRUE))
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_SaveLabel.R")  # survey用関数群
+source("_tool_paper.R")  # labelled → papeRのラベル形式に変換する関数)
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
@@ -21,15 +22,6 @@ df_dummied <- readRDS(
   file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
 ) 
 
-remove_vars <- read.xlsx(
-  file.path(gdrive_dir, "output","labels", "labels_all_data_merged_dummy_checked.xlsx"),
-  sheet = "labels_all_data_merged_dummy") %>%
-  filter(remove == TRUE) %>% select(ind)
-
-# 変数ラベルを退避
-label_org <- save_labels_to_memory(df_dummied)
-df_dummied_plane <- remove_labels(df_dummied)
-
 
 ```
 
@@ -37,43 +29,50 @@ df_dummied_plane <- remove_labels(df_dummied)
 
 ```{r}
 
-df_dummied_plane <- df_dummied_plane %>%
+df_dummied <- df_dummied %>%
   mutate(
-    rh_del_stay_less_1day = ifelse(rh_del_stay_6_11_hours == 1 | rh_del_stay_12_23_hours == 1, 1, 0),
-    rc_education_secondary_plus = ifelse(rc_edu_Secundaria_Completa == 1 | rc_edu_Superior == 1, 1, 0),
-    rc_insurance_any = ifelse(
-      rc_hins_ss_Sí == 1 | rc_hins_empl_Sí == 1 | rc_hins_comm_Sí == 1 | rc_hins_priv_Sí == 1, 1, 0),
-    dm_young_family = ifelse(dm_age_of_hh_head_10s == 1 | dm_age_of_hh_head_20s == 1, 1, 0),
-    dm_wtr_far = ifelse(ph_wtr_time_More_than_30_minutes == 1, 1, 0)
-  ) %>%
-  set_variable_labels(
-    rh_del_stay_less_1day = "Delivery stay less than 1 day",
-    rc_education_secondary_plus = "Mother education secondary complete or higher",
-    rc_insurance_any = "Mother has any health insurance",
-    dm_young_family = "Household head age 10s or 20s",
-    dm_wtr_far = "Water source more than 30 minutes away"
+    rh_del_stay_less_1day = case_when(
+      rh_del_stay_6_11_hours_yes == 1 | rh_del_stay_12_23_hours_yes == 1 ~ 1L, 
+      rh_del_stay_Dont_know_missing_yes == 1 ~ NA_integer_,
+      TRUE ~ 0L
+      ),
+    rh_del_facility_any = case_when(
+      rh_del_place_Health_facility_yes == 1 ~ 1L,
+      rh_del_place_Missing_yes == 1 ~ NA_integer_,
+      TRUE ~ 0L
+      ),
+    dm_young_family = ifelse(dm_age_of_hh_head_10s_yes == 1 | dm_age_of_hh_head_20s_yes == 1, 1L, 0L),
+    ph_wtr_far = ifelse(ph_wtr_time_More_than_30_minutes_yes == 1, 1L, 0L),
+    ms_teen_preg = ifelse(ms_afm_15 == 1|ms_afm_18 == 1, 1L, 0L),
+    nt_wm_micro_iron_appropriate = case_when(
+      nt_wm_micro_iron_90__yes == 1 ~ 1L,
+      nt_wm_micro_iron_Dont_know_missing_yes == 1 ~ NA_integer_,
+      TRUE ~ 0L
+    )
   )
 
+  labels_new <- list(
+    rh_del_stay_less_1day = "Delivery stay less than 1 day",
+    rh_del_facility_any = "Delivery at any facility",
+    dm_young_family = "Household head age 10s or 20s",
+    ph_wtr_far = "Water source more than 30 minutes away",
+    ms_teen_preg = "Teenage pregnancy",
+    nt_wm_micro_iron_appropriate = "Appropriate micronutrient intake"
+  )
+  
+  papeR::labels(df_dummied, which = names(labels_new)) <- unlist(labels_new, use.names = FALSE)
+  
+
+# ダミー変数化後のラベル情報一覧
+  var_summary_dummied <- variable_summary(df_dummied)
+  
+  write.xlsx(
+    var_summary_dummied,
+    file = file.path(gdrive_dir, "output", "labels", "label_all_data_merged_dummy.xlsx"),
+    sheetName = "main",
+    rowNames = FALSE,
+    na.string = "NA"
+  )
 
 ```
 
-
-
-# 3.分析用変数の絞りこみ
-
-```{r}
-
-# 必要な変数に絞りこみ
-df_dummied <- df_dummied %>%
-  select(-all_of(remove_vars$ind))
-
-# 変数ラベルを復元
-df_dummied <- restore_labels(df_dummied, label_org)
-
-# 保存
-saveRDS(
-  df_dummied,
-  file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
-)
-
-```

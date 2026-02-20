@@ -42,7 +42,7 @@ variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^jun
 
 df_vars <- df_org %>%
   select(
-    all_of(c("year", "state", "treatment_group", "treated_status", "year_treated", "treatment_start", "treatment_group", "analysis_grp", "group_treated")),
+    all_of(c("year", "state", "treatment_group", "treated_status", "year_treated", "treatment_group", "analysis_grp", "group_treated")),
     all_of(variable_for_analysis)
   )
 
