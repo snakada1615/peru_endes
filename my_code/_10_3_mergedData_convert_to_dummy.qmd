@@ -115,12 +115,6 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
       new_name  <- v
       label_base <- info$var_label_base
 
-      # # フォールバック: new_name が NA/"" の場合
-      # if (is.na(new_name) || new_name == "") {
-      #   new_name <- paste0(v, "_dummy")
-      #   warning("'", v, "' の new_variable_name が NA/空です。'", new_name, "' を使用します。")
-      # }
-
       # フォールバック: label_base が NA の場合
       if (is.na(label_base) || label_base == "") {
         label_base <- v
@@ -166,8 +160,9 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
       }
     }
 
-    # 元のカテゴリ変数を削除
-    if (drop_original) df[[v]] <- NULL
+    # 元のカテゴリ変数を削除（3値以上の場合のみ）
+    if (drop_original && !isTRUE(info$is_binary)) df[[v]] <- NULL
+
   }
 
   return(df)
