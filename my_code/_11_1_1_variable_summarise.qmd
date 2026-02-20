@@ -152,9 +152,12 @@ for (i in seq_along(variables_list)) {
 }
 
 # 結合
-summary_by_state    <- bind_rows(results_by_state)
-summary_by_trtGroup <- bind_rows(results_by_trtGroup)
-summary_national    <- bind_rows(results_national)
+summary_by_state    <- bind_rows(results_by_state) %>% convert_lbl_to_paper()
+summary_by_state <- summary_by_state[["df"]]
+summary_by_trtGroup <- bind_rows(results_by_trtGroup) %>% convert_lbl_to_paper()
+summary_by_trtGroup <- summary_by_trtGroup[["df"]]
+summary_national    <- bind_rows(results_national) %>% convert_lbl_to_paper()
+summary_national <- summary_national[["df"]]
 
 # 保存
 saveRDS(summary_by_state,    file.path(save_path, "summary_vars_by_state_year.rds"))

@@ -23,14 +23,16 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 # 必要な関数読み込み
-source("_tool_SaveLabel.R")
+source("_tool_paper.R")
 
 # ステップ1: 元データの読み込み
 # キーテーブルの読み込み
-endes_keys <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  mutate(year = as.numeric(year)) %>%
-  select(year, state, group_treated) %>% 
-  distinct(state, year, .keep_all = TRUE)
+endes_keys <- read_spss_and_papeR(
+  file.path(gdrive_dir, "output", "endes_keys.rds")
+  )[["df"]] %>%
+  dplyr::mutate(year = as.numeric(year)) %>%
+  dplyr::select(year, state, group_treated) %>% 
+  dplyr::distinct(state, year, .keep_all = TRUE)
 
 # summary_by_stateを読み込み
 summary_by_state<- readRDS(
@@ -38,11 +40,11 @@ summary_by_state<- readRDS(
 ) %>%
   rename(value = mean_value)
 
-
+# summary_by_trtGroupを読み込み
 summary_by_group <- readRDS(
   file.path(save_path, "summary_vars_by_trtGroup_year.rds")
 ) %>%
-  rename(value = mean_value)
+  dplyr::rename(value = mean_value)
 
 
 ```
@@ -72,8 +74,7 @@ state_order <- endes_keys %>%
 # summary_by_stateを読み込み
 panel_long <- summary_by_state %>%
   mutate(year = as.numeric(year)) %>%
-  select(state, year, variable, mean_value) %>%
-  rename(value = mean_value)
+  select(state, year, variable, value)
 
 # 変数ごとに年対年の変化率を計算
 panel_change <- panel_long %>%
