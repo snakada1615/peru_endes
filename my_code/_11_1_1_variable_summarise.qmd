@@ -38,77 +38,28 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 # 必要な関数読み込み
-source("_tool_SaveLabel.R")
+source("_tool_paper.R")
 source("_tool_safe_join.R")
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
-    file.path(gdrive_dir, "output","all_data_merged_dummy_filtered.rds")
+    file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
   ) %>%
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
-
-# 変数ラベルをメモリに保存したうえでラベル消去
-labels_memory <- save_labels_to_memory(df_org)
-df_org <- remove_labels(df_org)
 
 
 # 先に year を numeric に
 df_org <- df_org %>%
   mutate(year = as.numeric(year))
 
-# キーテーブルの読み込み
-endes_keys <- readRDS(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  mutate(year = as.numeric(year)) %>%
-  select(year, state, group_treated) %>%
-  distinct(state, year, .keep_all = TRUE)
-
-# year, state 単位の group_treated を df_org に付与
-df_org <- df_org %>%
-  left_join_safe(endes_keys, by = c("state", "year"))
-
-# join 直後に確認（ここを Rmd に書いて実行）
-cat("group_treated in df_org? ", "group_treated" %in% names(df_org), "\n")
-print(table(df_org$year)[1:10])
-print(head(df_org[, c("state", "year", "group_treated")], 20))
-
-
 # 分析に利用する変数名の抽出
-variable_for_analysis <- names(df_org)
-variable_for_analysis <- variable_for_analysis[grepl("^[a-zA-Z]{2}_|^enaho_|^juntos_", variable_for_analysis)]
-
-
-# # 要約結果の確認
-# data_check <- df_org %>% group_by(year, group_treated) %>% summarise(
-#     across(
-#         .cols = all_of(names(df_org)[grepl("^[a-zA-Z]{2}_|^enaho_|^jumtos", names(df_org))]),
-#          .fns = list(
-#            count_positive = ~ sum(.x>0 & !is.na(.x))
-#            zero_proportion = ~ mean(.x == 0, na.rm = TRUE)
-#             ),
-#          .names = "{.col}_{.fn}"
-#     )
-#   )
-# 1. 全て0のダミー変数を特定
-df_base <- readRDS(
-  file.path(gdrive_dir, "output","all_data_merged.rds")
-) 
-
-
-all_zero_cols <- names(df_org)[
-  sapply(df_org, function(x) all(x == 0, na.rm = TRUE))
-]
-
-# 2. 元の変数名を逆引き
-# 例: "v190_3" → 元変数は "v190", レベルは "3"
-problem_origins <- unique(sub("_[^_]+$", "", all_zero_cols))
-
-# 3. factor変換前のデータで実際の値を確認
-for (v in problem_origins) {
-  cat("---", v, "---\n")
-  cat("実データの値: ", head(unique(as.character(df_base[[v]]))), "\n")
-  cat("val_labelsの定義: ", names(df_base$val_labels[[v]]), "\n\n")
-}
-
+variable_for_analysis <- read.xlsx(
+  file.path(gdrive_dir, "output","labels", "label_all_data_merged_dummy_filtered.xlsx"),
+  sheet = "main") %>%
+  select(new_variable_name, set01) %>%
+  filter(set01 == TRUE) %>%
+  filter(str_detect(new_variable_name, "^[a-zA-Z]{2}_|^enaho_|^juntos_")) %>%
+  pull(new_variable_name)
 
 ```
 
