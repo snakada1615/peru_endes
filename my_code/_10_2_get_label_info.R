@@ -33,7 +33,7 @@ source("my_code/_tool_paper.R")
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
   file.path(gdrive_dir, 
-            "output","all_data_merged.rds")) %>% 
+            "output","all_data_merged_temp1.rds")) %>% 
   filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 # 分析に利用する変数名の抽出
