@@ -27,6 +27,7 @@ library(ggplot2)
 library(dplyr)
 library(haven)
 library(tidyr)
+library(readxl)
 
 # オブジェクトクリア
 rm(list = ls(all = TRUE))
@@ -53,7 +54,7 @@ df_org <- df_org %>%
   mutate(year = as.numeric(year))
 
 # 分析に利用する変数名の抽出
-variable_for_analysis <- read.xlsx(
+variable_for_analysis <- read_excel(
   file.path(gdrive_dir, "output","labels", "label_all_data_merged_dummy_filtered.xlsx"),
   sheet = "main") %>%
   select(new_variable_name, set01) %>%
@@ -92,6 +93,9 @@ for (i in seq_along(variables_list)) {
       ) %>%
       rename(value = !!sym(var)) %>%
       mutate(value = ifelse(is.nan(value) | is.infinite(value), NA, value))
+      # as_data_frame()
+    
+    cat((sprintf("Data loaded. %d observations, %d NAs. \n", nrow(df_single), sum(is.na(df_single$value)))))
     
     # 有効データチェック
     if (sum(!is.na(df_single$value)) == 0) {
@@ -101,38 +105,42 @@ for (i in seq_along(variables_list)) {
     }
     
     # Survey design
-    svy_obj <- svydesign(
-      ids     = ~v021,
-      strata  = ~v022,
-      weights = ~sampling_weight_trimmed,
-      data    = df_single,
-      nest    = TRUE
-    ) %>% as_survey_design()
+    svy_obj <- df_single %>%
+      as_survey_design(
+        ids     = v021,
+        strata  = v022,
+        weights = sampling_weight_trimmed,
+        nest    = TRUE
+      )
+
+    cat("Survey design created. Calculating means... \n")
     
     # 州別 × 年別
     results_by_state[[i]] <- svy_obj %>%
       group_by(state, year) %>%
-      summarize(
+      srvyr::summarize(
         n_obs      = n(),
         mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
         .groups    = "drop"
       ) %>%
       mutate(variable = var)
+    cat("Means calculated. Now calculating means by treatment group... \n")
     
     # 介入区分別 × 年別
     results_by_trtGroup[[i]] <- svy_obj %>%
       group_by(year, group_treated) %>%
-      summarize(
+      srvyr::summarize(
         n_obs      = n(),
         mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
         .groups    = "drop"
       ) %>%
       mutate(variable = var)
+    cat("Means calculated. Now calculating national means... \n")
     
     # 全国 × 年別
     results_national[[i]] <- svy_obj %>%
       group_by(year) %>%
-      summarize(
+      srvyr::summarize(
         n_obs      = n(),
         mean_value = survey_mean(value, na.rm = TRUE, vartype = "se"),
         .groups    = "drop"
@@ -144,6 +152,8 @@ for (i in seq_along(variables_list)) {
     
   }, error = function(e) {
     cat(sprintf("ERROR: %s\n", e$message))
+    print(e)                 # 追加
+    traceback()              # 追加（ただしコンソールでうるさければ一時的に）
     skipped_vars <<- c(skipped_vars, var)
   })
   
@@ -152,12 +162,15 @@ for (i in seq_along(variables_list)) {
 }
 
 # 結合
-summary_by_state    <- bind_rows(results_by_state) %>% convert_lbl_to_paper()
-summary_by_state <- summary_by_state[["df"]]
-summary_by_trtGroup <- bind_rows(results_by_trtGroup) %>% convert_lbl_to_paper()
-summary_by_trtGroup <- summary_by_trtGroup[["df"]]
-summary_national    <- bind_rows(results_national) %>% convert_lbl_to_paper()
-summary_national <- summary_national[["df"]]
+summary_by_state    <- bind_rows(results_by_state) %>% convert_lbl_to_paper() %>%
+  rename_with(~ gsub("mean_value", "value", .x))
+# summary_by_state <- summary_by_state[["df"]]
+summary_by_trtGroup <- bind_rows(results_by_trtGroup) %>% convert_lbl_to_paper() %>%
+  rename_with(~ gsub("mean_value", "value", .x))
+# summary_by_trtGroup <- summary_by_trtGroup[["df"]]
+summary_national    <- bind_rows(results_national) %>% convert_lbl_to_paper() %>%
+  rename_with(~ gsub("mean_value", "value", .x))
+# summary_national <- summary_national[["df"]]
 
 # 保存
 saveRDS(summary_by_state,    file.path(save_path, "summary_vars_by_state_year.rds"))

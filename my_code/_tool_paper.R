@@ -5,55 +5,36 @@ library(papeR)
 
 # --------------------------------------------------------------------------
 #' @title convert_lbl_to_paper
-#' @description
-#' SPSSやStataのファイルを読み込むと、havenのlabelledクラスの変数ができることがあります。
-#' これらの変数は、papeRのラベル形式とは異なるため、papeRで扱いやすい形式に変換する必要があります。
-#' この関数は、havenのlabelledクラスの変数をpape
-#' Rのラベル形式に変換するための関数です。
-#' @param 
-#' df havenのread_savやread_dtaで読み込んだデータフレーム
-#' @return list(df = 変換後のデータフレーム, meta = 変数ラベルの一覧)
+#' @description SPSSのデータラベルをpapeRのラベル形式に変換する関数。
+#' @param df 変換するデータフレーム
+#' @return SPSSのラベル属性が削除され、papeR形式に変換されたもの
 #'------------------------------------------------------------------------ 
 convert_lbl_to_paper <- function(df) {
-  # 2. 変数ラベル（variable.label属性）を取り出す
-  #    havenのlabelledは、attr(x, "label") に変数ラベルを持っているので、
-  #    それをpapeR::labels() に渡す形に整える。
-  var_labs <- sapply(df, function(x) attr(x, "label"))
-  var_labs[sapply(var_labs, is.null)] <- NA_character_
+  # 1. papeRラベル + ldf/lv クラス付与
+  df <- papeR::as.ldf(df)
   
-  labelsdf <- data.frame(
-    variable = names(var_labs),
-    varlabel = as.character(var_labs),
-    stringsAsFactors = FALSE
-  )
-  
-  # 3. dfをdata.frameに変換しつつ、
-  #    factor以外の列からは haven由来のラベル属性を削除
-  df <- as.data.frame(df)
-  
-  df <- lapply(df, function(x) {
+  # 2. SPSS/haven 由来の属性だけ削除（ldf クラスは触らない）
+  for (nm in names(df)) {
+    x <- df[[nm]]
     if (!is.factor(x)) {
-      attr(x, "label")        <- NULL
-      attr(x, "labels")       <- NULL
-      attr(x, "format.spss")  <- NULL
-      attr(x, "display_width")<- NULL
-      if ("labelled" %in% class(x)) {
-        class(x) <- setdiff(class(x), "labelled")
-      }
+      attr(x, "label")         <- NULL
+      attr(x, "labels")        <- NULL
+      attr(x, "format.spss")   <- NULL
+      attr(x, "display_width") <- NULL
+      # クラスから haven_labelled と vctrs_vctr を除去
+      class(x) <- setdiff(class(x), c("haven_labelled", "vctrs_vctr"))
     }
-    x
-  }) |> as.data.frame()
+    df[[nm]] <- x
+  }
   
-  # 4. papeRの変数ラベルだけを付与
-  papeR::labels(df) <- labelsdf$varlabel
-  
-  return(list(
-    df   = df,       # factorはそのまま、その他はラベル属性除去済み
-    meta = labelsdf  # 変数ラベルの一覧（papeR用）
-  ))
+  return(df)  # クラスに "ldf" が残った data.frame
 }
 # ---関数終わり-------------------------------------------------------------
 
+# ------------------------------------------------------------------------------
+#' @title read_spss_and_paper
+#' 
+# ------------------------------------------------------------------------------
 read_spss_and_papeR <- function(path_sav) {
   # 1. SPSS読み込み（haven）
   if (endsWith(path_sav, ".sav")) {
@@ -66,7 +47,6 @@ read_spss_and_papeR <- function(path_sav) {
     stop("Unsupported file format. Please provide a .sav, .dta, or .csv file.")
   }
 
-  
   res <- convert_lbl_to_paper(df_raw)
   return(res)
 
@@ -154,3 +134,47 @@ variable_summary <- function(df) {
   return(var_summary)
 }
 
+# -----------------------------------------------------------------------------
+#' @title mutate_papeR
+#' @description
+#' papeRのラベルを維持したまま、dplyr::mutateを行う関数。mutateの後で、
+#' 共通の列についてpapeRのラベルを復元する。
+#' @param .data データフレーム（papeRのラベルが付与されていることが前提）
+#' @param ... dplyr::mutateに渡す引数
+#' @return mutate後のデータフレーム（papeRのラベルが復元されている）
+#' -----------------------------------------------------------------------------
+mutate_papeR <- function(.data, ...) {
+  # 事前にラベルを退避
+  labs_before <- labels(.data)
+  
+  out <- dplyr::mutate(.data, ...)
+  
+  # 共通の列についてラベルを戻す
+  common <- intersect(names(out), names(labs_before))
+  if (length(common) > 0) {
+    labels(out, which = common) <- labs_before[common]
+  }
+  out
+}
+# ----関数ここまで--------------------------------------------------------------
+
+left_join_ldf <- function(df1, df2, by){
+  # 1. papeRラベル + ldf/lv クラス付与
+  ldf1 <- papeR::as.ldf(df1)
+  ldf2 <- papeR::as.ldf(df2)
+  
+  # 2. left_join実行
+  df_joined <- dplyr::left_join(df1, df2, by = by)
+  
+  # 3. ldfの統合
+  lab_all <- c(ldf1, ldf2)
+  # 万一、同じ名前のラベルが複数あれば、後勝ち or 前勝ちをルール化
+  lab_all <- lab_all[!duplicated(names(lab_all), fromLast = TRUE)]
+  
+  # 4. 共通の列についてラベルを戻す 
+  vars_in_both <- intersect(names(df_joined), names(lab_all))
+  labels(df_joined, which = vars_in_both) <- unname(lab_all[vars_in_both])
+  
+  
+  return(df_joined)  # クラスに "ldf" が残った data.frame
+}

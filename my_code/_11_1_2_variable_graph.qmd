@@ -28,8 +28,7 @@ source("_tool_paper.R")
 # ステップ1: 元データの読み込み
 # キーテーブルの読み込み
 endes_keys <- read_spss_and_papeR(
-  file.path(gdrive_dir, "output", "endes_keys.rds")
-  )[["df"]] %>%
+  file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
   dplyr::mutate(year = as.numeric(year)) %>%
   dplyr::select(year, state, group_treated) %>% 
   dplyr::distinct(state, year, .keep_all = TRUE)
@@ -37,15 +36,12 @@ endes_keys <- read_spss_and_papeR(
 # summary_by_stateを読み込み
 summary_by_state<- readRDS(
   file.path(save_path, "summary_vars_by_state_year.rds")
-) %>%
-  rename(value = mean_value)
+) 
 
 # summary_by_trtGroupを読み込み
 summary_by_group <- readRDS(
   file.path(save_path, "summary_vars_by_trtGroup_year.rds")
-) %>%
-  dplyr::rename(value = mean_value)
-
+) 
 
 ```
 
@@ -62,7 +58,7 @@ spike_year <- 2011
 # 並べ替えルール用のテーブルを作る
 state_order <- endes_keys %>%
   filter(year == spike_year) %>%
-  mutate(
+  dplyr::mutate(
     group_treated = factor(
       group_treated,
       levels = c("treat2_grp", "treat1_grp", "control_grp")
@@ -73,23 +69,23 @@ state_order <- endes_keys %>%
 
 # summary_by_stateを読み込み
 panel_long <- summary_by_state %>%
-  mutate(year = as.numeric(year)) %>%
-  select(state, year, variable, value)
+  dplyr::mutate(year = as.numeric(year)) %>%
+  dplyr::select(state, year, variable, value)
 
 # 変数ごとに年対年の変化率を計算
 panel_change <- panel_long %>%
-  group_by(state, variable) %>%
-  arrange(year) %>%
-  mutate(pct_change = (value - lag(value)) / lag(value) * 100) %>%
-  filter(!is.na(pct_change),
+  dplyr::group_by(state, variable) %>%
+  dplyr::arrange(year) %>%
+  dplyr::mutate(pct_change = (value - lag(value)) / lag(value) * 100) %>%
+  dplyr::filter(!is.na(pct_change),
          !is.infinite(pct_change))
 
 # データ準備
 heatmap_data <- panel_change %>%
-  filter(year == spike_year) %>%
+  dplyr::filter(year == spike_year) %>%
   left_join(endes_keys %>% filter(year == spike_year), 
             by = c("state", "year")) %>%
-  mutate(
+  dplyr::mutate(
     group_treated = factor(
       group_treated,
       levels = c("control_grp", "treat1_grp", "treat2_grp")
@@ -106,15 +102,15 @@ grp_cols <- c(
 
 # 州のlevels順に対応したグループを取得
 state_group_map <- endes_keys %>%
-  filter(year == spike_year) %>%
-  select(state, group_treated) %>%
+  dplyr::filter(year == spike_year) %>%
+  dplyr::select(state, group_treated) %>%
   distinct()
 
 # levels順に色を並べる
 y_cols <- state_group_map %>%
-  mutate(state = factor(state, levels = levels(heatmap_data$state))) %>%
-  arrange(state) %>%
-  pull(group_treated) %>%
+  dplyr::mutate(state = factor(state, levels = levels(heatmap_data$state))) %>%
+  dplyr::arrange(state) %>%
+  dplyr::pull(group_treated) %>%
   {grp_cols[.]}
 
 # ヒートマップの作成
