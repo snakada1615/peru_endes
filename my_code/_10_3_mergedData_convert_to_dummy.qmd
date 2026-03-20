@@ -14,7 +14,6 @@ rm(list = ls(all = TRUE))
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 # source("_tool_SaveLabel.R")  # survey用関数群
-source("_tool_paper.R")  # labelled → papeRのラベル形式に変換する関数)
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
