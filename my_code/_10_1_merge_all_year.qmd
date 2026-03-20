@@ -43,7 +43,7 @@ library(survey)       # for survey design
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
-source("_tool_paper.R")  # 安全なラベル管理
+source("_tool_labels.R")  # 安全なラベル管理
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2006","2007", "2008", "2009", "2010", "2011",
@@ -59,12 +59,17 @@ gdrive_enaho_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.e
 
 
 # データベース一覧
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 
-endes_list <- read_spss_and_papeR(
-  file.path(gdrive_dir, "output","endes_data_list.rds"))
+# 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
+# export_labels_to_excel(
+#   df = endes_list,
+#   dataset_name = "endes_list",
+#   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+# )
 
-# 変数ラベル一覧
-# endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rds"))
+# ラベル属性の除去
+endes_list <- strip_all_labels(endes_list)
 
 # ******************************************************************************
 # ユーティリティ関数群
@@ -92,14 +97,16 @@ for (yr in yearlist) {
     normalizePath() %>%
     trimws()
   
-  year_data <- read_spss_and_papeR(file.path(root_folder, "data_merged.rds")) %>%
+  year_data <- readRDS(file.path(root_folder, "data_merged.rds"))
+  # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
+  # export_labels_to_excel(
+  #   df = year_data,
+  #   dataset_name = "year_data",
+  #   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+  # )
+  
+  year_data <- strip_all_labels(year_data) %>%
     dplyr::filter(!is.na(hhid))
-  
-  # if (yr == "2010") {
-  #   labels_memory_org <- save_labels_to_memory(year_data)
-  # }
-  
-  # year_data <- remove_labels(year_data)
   
   print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
   
@@ -123,13 +130,13 @@ endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
 # 2005/2006のデータが特殊なため、キーを正規化してマージする
 # 正規化済みキーを新しい列として作成
 all_data_merged <- all_data_merged %>%
-  mutate_papeR(
+  mutate(
     hhid_trim = str_trim(hhid),
     year_trim = str_trim(year)
   )
 
 endes_keys <- endes_keys %>%
-  mutate_papeR(
+  mutate(
     hhid_trim = str_trim(hhid),
     year_trim = str_trim(year)
   )
@@ -144,28 +151,35 @@ all_data_merged <- all_data_merged %>%
   dplyr::select(-c(hhid_trim, year_trim)) %>%
   dplyr::select(-ends_with(".y")) %>%
   dplyr::rename_with(~str_remove(., "\\.x$"), ends_with(".x")) %>%
-  mutate_papeR(v024 = as.numeric(v024))
+  mutate(v024 = as.numeric(v024))
 
 # ******************************************************************************
 # 食品摂取量データの統合（キー：department*urban*income）
 # ******************************************************************************
 # 食品群消費データの読み込み
 
-df_food_org <- read_spss_and_papeR(
-    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")
-  ) %>% 
-  dplyr::select(-ends_with("_se")) %>%
-  dplyr::select(-starts_with("se.")) %>%
-  dplyr::select(-c("area_income")) %>%
-  mutate_papeR(inc_quintile = as.numeric(as.character(inc_quintile))) %>%
-  dplyr::rename_with(
-  .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
-  .cols = starts_with("fbdg_")    # "fbdg_" で始まる列だけを対象
-  ) %>%
-  dplyr::rename_with(
+  df_food_org <- readRDS(
+    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds"))
+  # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
+  # export_labels_to_excel(
+  #   df = df_food_org,
+  #   dataset_name = "df_food_org",
+  #   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+  # )
+  
+  df_food_org <- strip_all_labels(df_food_org) %>%
+    dplyr::select(-ends_with("_se")) %>%
+    dplyr::select(-starts_with("se.")) %>%
+    dplyr::select(-c("area_income")) %>%
+    mutate(inc_quintile = as.numeric(as.character(inc_quintile))) %>%
+    dplyr::rename_with(
     .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
-    .cols = starts_with("fg_")    # "fg_" で始まる列だけを対象
-  ) 
+    .cols = starts_with("fbdg_")    # "fbdg_" で始まる列だけを対象
+    ) %>%
+    dplyr::rename_with(
+      .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
+      .cols = starts_with("fg_")    # "fg_" で始まる列だけを対象
+    ) 
 
 # ******************************************************************************
 # 食品消費データ結合
@@ -178,14 +192,14 @@ drop_lv_numeric <- function(x) {
 
 # 食品摂取量データの結合
 all_data_merged2 <- all_data_merged %>%
-  mutate_papeR(
+  mutate(
     v024             = as.numeric(v024),
     dm_rural         = as.numeric(dm_rural),
     dm_wealth_class  = as.numeric(dm_wealth_class)
   )
 
 df_food_org2 <- df_food_org %>%
-  mutate_papeR(
+  mutate(
     department   = as.numeric(department),
     inc_quintile = as.numeric(inc_quintile)
   )
@@ -223,25 +237,14 @@ all_data_merged <- all_data_merged %>%
   dplyr::filter(!is.na(nt_ch_stunt)) %>%
   
   # 介入群グループ化
-  mutate_papeR(
+  mutate(
     treatment_group = case_when(
       treatment_start == "2010" ~ 1,  # 早期介入
       treatment_start == "2012" ~ 2,  # 後期介入
       TRUE ~ 0                        # コントロール
     )
   ) %>%
-  # ここ直すこと
-  # set_variable_labels(
-  #   treatment_group = "treatment group (0=control, 1=early, 2=late)"
-  # ) %>%
-  # set_value_labels(
-  #   treatment_group = c(
-  #     "control" = 0,
-  #     "treat_early(2010)" = 1,
-  #     "treat_late(2012)" = 2
-  #   )
-  # ) %>%
-  mutate_papeR(
+  mutate(
     analysis_grp = case_when(
       treatment_group == 0 & year < 2010  ~ "control_pre(<2010)",
       treatment_group == 0 & year >= 2010  ~ "control_post(>=2010)",
@@ -251,7 +254,7 @@ all_data_merged <- all_data_merged %>%
       treatment_group == 2 & year >= 2012  ~ "treat_post"
     )
   ) %>%
-  mutate_papeR(
+  mutate(
     analysis_grp = factor(analysis_grp, 
                           levels =c("control_pre(<2010)", "treat_pre",
                                     "control_post(>=2010)", "treat_post"))  
@@ -259,7 +262,7 @@ all_data_merged <- all_data_merged %>%
 
 # 不要な属性をクリンナップ
 all_data_merged <- all_data_merged %>%
-  convert_lbl_to_paper()
+  strip_all_labels()
   
 # ================================================================================
 # 2. sampling weightの年次補正
@@ -272,7 +275,7 @@ year_totals <- all_data_merged %>%
 
 # Survey designオブジェクトの作成前に変数を変換
 all_data_merged <- all_data_merged %>%
-  mutate_papeR(
+  mutate(
     v021 = as.numeric(v021),                # Primary Sampling Unit
     v022 = as.character(haven::as_factor(v022)) #haven_labelledをfactorに変換してからcharacter
   )
@@ -281,7 +284,7 @@ all_data_merged <- all_data_merged %>%
 all_data_merged <- all_data_merged %>%
   dplyr::select(-any_of(c("total_v005"))) %>% # 存在する場合のみ削除
   dplyr::left_join(year_totals, by = "year") %>%
-  mutate_papeR(
+  mutate(
     # 元のDHSウェイト
     dhs_weight = v005 / 1e6,
     # 年次正規化係数：全期間対象の標本サイズ比 (例：年の全体ウェイト比)
@@ -299,41 +302,9 @@ all_data_merged <- all_data_merged %>%
 
 # 1. 元のhaven_labelledデータから変換
 all_data_merged <- all_data_merged %>%
-  mutate_papeR(across(where(is.labelled), labelled::to_factor)) %>%
+  mutate(across(where(is.labelled), labelled::to_factor)) %>%
   dplyr::filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
-# ラベルをpapeRで変換
-# all_data_merged <- convert_lbl_to_paper(all_data_merged)
-
-# ラベル不足分を追記
-# blanc_var <- c("age_months", "analysis_grp", "caseid", "child_alive", 
-#                "group_treated", "hhid", "juntos_non_participation", 
-#                "juntos_participation", "living_with_mother", "ms_age", 
-#                "nt_ch_waz", "rc_tobc_any", "rc_tobc_anysmkless", 
-#                "rc_tobc_osmkless", "rc_tobc_snuffm", "rc_tobv_betel", 
-#                "rh_anc_neotet", "sampling_weight_norm", 
-#                "sampling_weight_trimmed", "state", "treated_status", 
-#                "year_treated", "v021", "year"
-#                )
-# fill_label <- c("child age in month", 
-#                 "treated status (control-pre/post and treatment-pre/pos)", 
-#                 "Case Identification", "is child alive?", 
-#                 "hh category by treatment assignment (control, treat1, treat2))", 
-#                 "household id", "participate in juntos program: no", 
-#                 "participate in juntos program: yes", "child living with mother", 
-#                 "Age at first marriage", "weight for age", 
-#                 "Uses any type of tobacco - smoke or smokeless", 
-#                 "Uses any type of smokeless tobacco", 
-#                 "Uses other type of smokeless tobacco", 
-#                 "Uses snuff smokeless tobacco by nose", 
-#                 "Uses betel quid with tobacco", 
-#                 "Protected against neonatal tetanus", 
-#                 "normalized sampling weight", 
-#                 "normalized sampling weight (trimmed extreme)", "name of state", 
-#                 "treated status for staggered did", 
-#                 "year of treatment implementation", "Primary sampling unit", 
-#                 "year of treatment implementation"
-#                 )
 
 new_labels <- c(
   v024 = "department code",
@@ -366,7 +337,7 @@ new_labels <- c(
   treatment_group = "treatment group (0=control, 1=early, 2=late)"
 )
 
-papeR::labels(all_data_merged, which = names(new_labels)) <- unname(new_labels)
+# ここ☝papeR::labels(all_data_merged, which = names(new_labels)) <- unname(new_labels)
 
 
 
