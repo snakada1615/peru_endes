@@ -45,6 +45,11 @@ library(survey)       # for survey design
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_labels.R")  # 安全なラベル管理
 
+# 厳密に値ラベルが実際に存在する変数を判定する関数
+has_val_labels <- function(x) {
+  !is.null(attr(x, "labels")) && length(attr(x, "labels")) > 0
+}
+
 # 対象とする年のリスト
 yearlist <- c("2005", "2006","2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016")
@@ -59,13 +64,14 @@ gdrive_enaho_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.e
 
 
 # データベース一覧
-endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) %>%
+      mutate(across(where(has_val_labels), haven::as_factor))
 
 # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
 # export_labels_to_excel(
 #   df = endes_list,
 #   dataset_name = "endes_list",
-#   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx")
 # )
 
 # ラベル属性の除去
@@ -97,12 +103,14 @@ for (yr in yearlist) {
     normalizePath() %>%
     trimws()
   
-  year_data <- readRDS(file.path(root_folder, "data_merged.rds"))
+  year_data <- readRDS(file.path(root_folder, "data_merged.rds")) %>%
+    mutate(across(where(has_val_labels), haven::as_factor))
+  
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   # export_labels_to_excel(
   #   df = year_data,
   #   dataset_name = "year_data",
-  #   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx")
   # )
   
   year_data <- strip_all_labels(year_data) %>%
@@ -159,12 +167,14 @@ all_data_merged <- all_data_merged %>%
 # 食品群消費データの読み込み
 
   df_food_org <- readRDS(
-    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds"))
+    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")) %>%
+      mutate(across(where(has_val_labels), haven::as_factor))
+
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   # export_labels_to_excel(
   #   df = df_food_org,
   #   dataset_name = "df_food_org",
-  #   path = file.path(gdrive_dir, "output","data_dictionary.xlsx")
+  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx")
   # )
   
   df_food_org <- strip_all_labels(df_food_org) %>%
@@ -302,7 +312,7 @@ all_data_merged <- all_data_merged %>%
 
 # 1. 元のhaven_labelledデータから変換
 all_data_merged <- all_data_merged %>%
-  mutate(across(where(is.labelled), labelled::to_factor)) %>%
+  mutate(across(where(has_val_labels), labelled::to_factor)) %>%
   dplyr::filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 

@@ -6,6 +6,29 @@ library(readxl)
 library(labelled)
 
 
+### 関数名一覧 ##############
+#' @title make_label_dict
+#' @description
+#' データフレームから、変数名、変数ラベル、値ラベルを抽出して、dataset-varname-varlabel-value-valuelabel 形式のデータフレームを作成する関数。
+#' @title merge_label_dicts
+#' @description
+#' 既存のラベル辞書と新規のラベル辞書をマージする関数。上書きポリシーを指定して、どちらのラベルを優先するかを制御できます。
+#' @title export_labels_to_excel
+#' @description
+#' データフレームから抽出したラベル辞書を、指定されたExcelファイルの label_extract シートに書き出す関数。既存のシートがある場合は、上書きポリシーに従ってマージします。
+#' @title strip_all_labels
+#' @description
+#' データフレームから、変数ラベル、値ラベル、ユーザー定義の欠損値をすべて削除する関数。haven_labelled 形式のラベルも対応。
+#' @title strip_value_labels_only
+#' @description
+#' データフレームから、値ラベルとユーザー定義の欠損値を削除し、変数ラベルは保持する関数。haven_labelled 形式のラベルも対応。
+#' @title apply_labels_from_excel
+#' @description
+#' 指定されたExcelファイルの label_extract シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
+#' @title apply_labels_from_label_final
+#' @description
+#' 指定されたExcelファイルの label_final シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。label_final シートは、dataset 列がない前提で、var_name と var_label のみを含む形式であることを想定しています。
+#' ----------------------------------------------------------------------------
 
 # df から dataset-varname-varlabel-value-valuelabel 形式の辞書を作る（SPSSラベル対応版）
 #########################################################################
@@ -484,9 +507,11 @@ apply_labels_from_label_final <- function(df,
       keep <- !is.na(new_vals)
       if (!any(keep)) next
       
-      new_vals  <- new_vals[keep]
-      new_labs  <- sub$value_label[keep]
-      names(new_labs) <- as.character(new_vals)
+      new_vals  <- new_vals[keep]           # numeric vector
+      new_labs  <- sub$value_label[keep]    # character vector（ラベル文字列）
+      # val_labels は c(ラベル名 = コード値) の形式が期待される
+      # → setNames(コード値ベクタ, ラベル文字列) で作る
+      new_labs <- setNames(new_vals, new_labs)
       
       old_labs <- labelled::val_labels(df[[v]])
       

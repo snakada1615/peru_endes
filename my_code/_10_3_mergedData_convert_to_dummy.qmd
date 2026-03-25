@@ -7,12 +7,12 @@ format: html
 # 1. 必要データの読み込み
 ```{r}
 library(dplyr)
-library("papeR")
 
 rm(list = ls(all = TRUE))
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source("_tool_df_structure.R")
 # source("_tool_SaveLabel.R")  # survey用関数群
 
 # DHSデータのルートフォルダを指定
@@ -35,14 +35,19 @@ library(dplyr)
 library(stringr)
 
 df_vars <- df_vars %>% 
+  mutate(
+    yes_value = as.character(yes_value),
+    no_value  = as.character(no_value)
+  ) %>%
   left_join(df_factors_rename, by = "variable") %>%
   dplyr::mutate(
     dplyr::across(
       dplyr::ends_with(".y"),
-      ~ dplyr::coalesce(
-        .,
-        get(stringr::str_replace(dplyr::cur_column(), "\\.y$", ".x"))
-      )
+        # .y が NA の場合は .x を使用(coalesce)
+        ~ dplyr::coalesce(
+          .,
+          get(stringr::str_replace(dplyr::cur_column(), "\\.y$", ".x"))
+        )
     )
   ) %>%
   # .x を削除
