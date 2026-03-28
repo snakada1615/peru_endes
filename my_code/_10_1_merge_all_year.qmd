@@ -71,7 +71,8 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) %>%
 # export_labels_to_excel(
 #   df = endes_list,
 #   dataset_name = "endes_list",
-#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx")
+#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+#   sheet_name = "label_raw_extract"
 # )
 
 # ラベル属性の除去
@@ -110,7 +111,8 @@ for (yr in yearlist) {
   # export_labels_to_excel(
   #   df = year_data,
   #   dataset_name = "year_data",
-  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx")
+  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+  #   sheet_name = "label_raw_extract"
   # )
   
   year_data <- strip_all_labels(year_data) %>%
@@ -174,7 +176,8 @@ all_data_merged <- all_data_merged %>%
   # export_labels_to_excel(
   #   df = df_food_org,
   #   dataset_name = "df_food_org",
-  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx")
+  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+  #   sheet_name = "label_raw_extract"
   # )
   
   df_food_org <- strip_all_labels(df_food_org) %>%
@@ -315,6 +318,15 @@ all_data_merged <- all_data_merged %>%
   mutate(across(where(has_val_labels), labelled::to_factor)) %>%
   dplyr::filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
+# 2. factor変数をダミー化
+var_names <- names(all_data_merged)
+var_names <- var_names[var_names != c("year", "hhid")]
+all_data_merged_dummy <- all_data_merged %>%
+  fastDummies::dummy_cols(
+    select_columns = var_names,
+    remove_first_dummy = TRUE, 
+    remove_selected_columns = TRUE
+    )
 
 new_labels <- c(
   v024 = "department code",
@@ -354,16 +366,16 @@ new_labels <- c(
 # -----------------------------------------------------------------------------
 
 # ファイルをRDSで保存
-saveRDS(all_data_merged, file = file.path(gdrive_dir, "output", 
-        "all_data_merged_temp1.rds"))
+saveRDS(all_data_merged_dummy, file = file.path(gdrive_dir, "output", 
+        "all_data_merged_dummy.rds"))
 
 print("データ結合処理完了")
 
 print("結合結果（NAの分布）")
-colnames <- names(all_data_merged)
+colnames <- names(all_data_merged_dummy)
 colnames <- colnames[grepl("^[a-zA-Z]{2}_", colnames)] 
-row_num <- nrow(all_data_merged)
-na_summary_year <- all_data_merged %>%
+row_num <- nrow(all_data_merged_dummy)
+na_summary_year <- all_data_merged_dummy %>%
   dplyr::group_by(year) %>%
   dplyr::summarise(across(all_of(colnames), ~ round(sum(100*is.na(.x))/row_num, 1))) 
 

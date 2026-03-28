@@ -181,6 +181,121 @@ mutate_dummy_all <- function(df, vars, meta, drop_original = FALSE) {
   return(df)
 }
 
+
+mutate_dummy_all2 <- function(df, vars, meta, drop_original = FALSE) {
+
+  # --- 事前チェック: df の列名に NA/"" がないか ---
+  nms <- names(df)
+  bad_nms <- is.na(nms) | nms == ""
+  if (any(bad_nms)) {
+    warning("df に NA または空文字の列名が ", sum(bad_nms),
+            "個あります。仮名を付与します。")
+    nms[bad_nms] <- paste0("V_auto_", seq_len(sum(bad_nms)))
+    names(df) <- make.unique(nms)
+  }
+
+  for (v in vars) {
+
+    # --- meta から該当行を取得 ---
+    info <- meta[meta$variable == v, ]
+
+    # meta に該当行がない場合はスキップ
+    if (nrow(info) == 0) {
+      message("SKIP: meta に変数 '", v, "' が見つかりません")
+      next
+    }
+    # 複数行ある場合は最初の1行を使用
+    if (nrow(info) > 1) {
+      warning("meta に変数 '", v, "' が複数行あります。最初の行を使用します。")
+      info <- info[1, ]
+    }
+
+    x <- df[[v]]
+
+    # --- (1) Yes/No 系で実データが1種類しかない factor → 列を削除してスキップ ---
+    if (isTRUE(info$is_factor)) {
+      u <- unique(x[!is.na(x)])
+      if (length(u) <= 1) {
+        message("DROP: '", v, "' は Yes/No 型だがユニーク値が ", length(u), " 個のため削除")
+        df[[v]] <- NULL
+        next
+      }
+    }
+
+    # factor でない場合はスキップ
+    if (!is.factor(x)) next
+
+    # --- (2) バイナリ変数の処理 ---
+    if (isTRUE(info$is_binary)) {
+
+      yes_level <- info$yes_value
+      no_level  <- info$no_value
+      new_name  <- v
+      label_base <- info$var_label_base
+
+      # フォールバック: label_base が NA の場合
+      if (is.na(label_base) || label_base == "") {
+        label_base <- v
+      }
+
+      # フォールバック: yes_level / no_level が NA の場合
+      if (is.na(yes_level) || is.na(no_level)) {
+        warning("'", v, "' の Yes_value/No_value が NA です。スキップします。")
+        next
+      }
+
+      new_label <- paste0(label_base, " (", yes_level, " vs ", no_level, ")")
+
+      # ダミー変数を作成（NA は NA のまま）
+      df[[new_name]] <- ifelse(x == yes_level, 1L,
+                               ifelse(x == no_level, 0L, NA_integer_))
+
+      # 変数ラベルを付与
+      papeR::labels(df, which = new_name) <- new_label
+
+    } else {
+      # --- (3) 多レベル factor 変数の処理 ---
+      lvls <- levels(x)
+      label_base <- info$var_label_base
+      if (is.na(label_base) || label_base == "") {
+        label_base <- v
+      }
+
+      for (lev in lvls) {
+        new_name <- paste0(v, ":", lev, "_yes")
+
+        # new_name が有効か確認
+        if (is.na(new_name) || new_name == "") {
+          warning("多レベル変数 '", v, "' のレベル '", lev, "' でダミー名が不正です。スキップ。")
+          next
+        }
+        
+        # スペースや特殊文字をアンダースコアに置換)
+        new_name <- gsub("Don't", "Dont", new_name)  # 特例: "Don't" を "Dont" に
+        new_name <- make.names(new_name)  # Rの変数名として有効な形式に変換
+        new_name <- gsub("\\.+", ".", new_name)  # 1個以上の . を 1つに縮約
+        new_name <- gsub("\\.$", "", new_name)  # 末尾の . を削除
+        new_name <- gsub("\\.", "_", new_name)  # 残りの . を _ に置換
+
+        
+        df[[new_name]] <- ifelse(x == lev, 1L,
+                                 ifelse(is.na(x), NA_integer_, 0L))
+
+        new_label <- paste0(label_base, ": ", lev)
+        papeR::labels(df, which = new_name) <- new_label
+      }
+    }
+    
+    
+    # 元のカテゴリ変数を削除（3値以上の場合のみ）
+    if (drop_original && !isTRUE(info$is_binary)) df[[v]] <- NULL
+
+  }
+
+  return(df)
+}
+
+
 ```
 
 
