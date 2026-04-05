@@ -68,12 +68,14 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) %>%
       mutate(across(where(has_val_labels), haven::as_factor))
 
 # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
-# export_labels_to_excel(
-#   df = endes_list,
-#   dataset_name = "endes_list",
-#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-#   sheet_name = "label_raw_extract"
-# )
+cat("endes_listの型確認:\n")
+table(sapply(endes_list, function(x) is.factor(x)))
+export_labels_to_excel(
+  df = endes_list,
+  dataset_name = "endes_list",
+  path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+  sheet_name = "label_raw_extract"
+)
 
 # ラベル属性の除去
 endes_list <- strip_all_labels(endes_list)
@@ -108,12 +110,17 @@ for (yr in yearlist) {
     mutate(across(where(has_val_labels), haven::as_factor))
   
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
-  # export_labels_to_excel(
-  #   df = year_data,
-  #   dataset_name = "year_data",
-  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
-  #   sheet_name = "label_raw_extract"
-  # )
+  cat("year_dataの型確認1:\n")
+  cat(table(sapply(year_data, function(x) is.factor(x))))
+  cat("\n")
+  cat("year_dataの型確認2:\n")
+  
+  export_labels_to_excel(
+    df = year_data,
+    dataset_name = "year_data",
+    path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+    sheet_name = "label_raw_extract"
+  )
   
   year_data <- strip_all_labels(year_data) %>%
     dplyr::filter(!is.na(hhid))
@@ -173,12 +180,14 @@ all_data_merged <- all_data_merged %>%
       mutate(across(where(has_val_labels), haven::as_factor))
 
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
-  # export_labels_to_excel(
-  #   df = df_food_org,
-  #   dataset_name = "df_food_org",
-  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
-  #   sheet_name = "label_raw_extract"
-  # )
+  cat("食品摂取量データの型確認:\n")
+  table(sapply(df_food_org, function(x) is.factor(x)))
+  export_labels_to_excel(
+    df = df_food_org,
+    dataset_name = "df_food_org",
+    path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+    sheet_name = "label_raw_extract"
+  )
   
   df_food_org <- strip_all_labels(df_food_org) %>%
     dplyr::select(-ends_with("_se")) %>%
@@ -319,12 +328,12 @@ all_data_merged <- all_data_merged %>%
   dplyr::filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
 # 2. factor変数をダミー化
-var_names <- names(all_data_merged)
-var_names <- var_names[var_names != c("year", "hhid")]
+var_names <- names(all_data_merged)[sapply(all_data_merged, function(x) is.factor(x))]
+var_names <- var_names[! var_names %in% c("year", "hhid")]
 all_data_merged_dummy <- all_data_merged %>%
   fastDummies::dummy_cols(
     select_columns = var_names,
-    remove_first_dummy = TRUE, 
+    remove_first_dummy = FALSE, 
     remove_selected_columns = TRUE
     )
 
@@ -369,6 +378,9 @@ new_labels <- c(
 saveRDS(all_data_merged_dummy, file = file.path(gdrive_dir, "output", 
         "all_data_merged_dummy.rds"))
 
+# ダミー化した変数一覧をExcelに保存
+# write_xlsx(var_names, "dummied_var", path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"))
+
 print("データ結合処理完了")
 
 print("結合結果（NAの分布）")
@@ -384,7 +396,7 @@ m <- t(m)  # 転置
 write.xlsx(as.data.frame(m), 
            file = file.path(gdrive_dir, "output", "all_data_merged_na_summary.xlsx"),
            rowNames = TRUE)
-print(m)
+# print(m)
 
 
 ```

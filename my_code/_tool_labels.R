@@ -36,9 +36,7 @@ library(labelled)
 #' @description
 #' データフレームから、変数名、変数ラベル、値
 #' ラベルを抽出して、以下の形式のデータフレームを作成する関数。
-#' | dataset | var_name | var_label | value | value_label |
-#' |---------|----------|-----------|-------|-------------|
-#' | ...     | ...      | ...       | ...   | ...         |
+#' dataset | var_name | var_label | value | value_label | is_logical | is_character | is_numeric | is_factor | factor_levels | yes_value | no_value
 #' @param df データフレーム
 #' @param dataset_name データセット名（文字列）
 #' @param vars 変数名のベクトル（NULLの場合は全変
@@ -55,21 +53,91 @@ library(labelled)
 make_label_dict <- function(df, dataset_name, vars = NULL) {
   if (is.null(vars)) vars <- names(df)
   
+  # バイナリ変数のyes/noレベルを判定するヘルパー関数------
+  #' @title yesno_level
+  #' @description
+  #' バイナリ変数のレベル名から、Yes/Noのどちらに該当するかを判定する関数。
+  #' @param v バイナリ変数のレベル名のベクトル（長さ2）
+  #' @return yes_var: Yes側のレベル名、no_var: No側のレベル名を含むリスト
+  #------------------------------------
+  yesno_level <- function(v){
+    # Yes/No 変数のレベル名の候補を定義
+    yes_vars <- c("Yes", "yes", "Sí", "si")  # Yes 側のレベル名の候補
+    no_vars <- c("No", "no")  # No 側のレベル名の候補
+    
+    res <- list(
+      yes_var = NA_character_,
+      no_var = NA_character_
+    )
+    
+    if (!is.vector(v) | length(v) != 2) {
+      stop("Input must be a vector of length 2.")
+    }
+    
+    for (x in v) {
+      if (x %in% yes_vars) {
+        res$yes_var <- x
+      } else if (x %in% no_vars) {
+        res$no_var <- x
+      }
+    }
+    return(res)
+  }
+  #------------------------------------
+  #' ラベルがすべて NA かをチェックするヘルパー関数
+  #' @param x チェックするラベル（変数ラベルや値ラベル）
+  #' @param label_name ラベルの名前（エラーメッセージ用）
+  #' @return x をそのまま返す（すべて NA でない場合）。すべて NA の場合はエラーをスロー。
+  #' 
+  #------------------------------------
+  validate_labels <- function(x, label_name = deparse(substitute(x))) {
+    # すべて NA か？
+    if (all(is.na(unlist(x, use.names = FALSE)))) {
+      stop(sprintf("ラベル '%s' が全て NA です。処理を中止します。", label_name))
+    }
+    # すべて NA でない場合はパラメータをそのまま返す
+    invisible(x)
+  }
+  # ---------------------------------------
+  
   # 変数ラベル: var_label(df) は named list なので、unlist して named chr に
   vlab <- labelled::var_label(df, unlist = TRUE)  # named character ベクトル
-  
+
+  # すべての値が NA の場合、値ラベルの抽出をスキップする
+  validate_labels(vlab, "変数ラベル")
+
   var_part <- tibble(
     dataset    = dataset_name,
     var_name   = vars,
     var_label  = unname(vlab[vars]),
     value      = NA_character_,
-    value_label = NA_character_
+    value_label = NA_character_,
+    is_logical   = purrr::map_lgl(vars, ~ is.logical(df[[.x]])),
+    is_character = purrr::map_lgl(vars, ~ is.character(df[[.x]])),
+    is_numeric   = purrr::map_lgl(vars, ~ is.numeric(df[[.x]])),
+    is_factor    = purrr::map_lgl(vars, ~ is.factor(df[[.x]])),
+    factor_levels = purrr::map_int(vars, ~ {
+      x <- df[[.x]]
+      if (is.factor(x)) length(na.omit(unique(x))) else NA_integer_
+    }),
+    yes_value    = NA_character_,
+    no_value     = NA_character_
   )
   
   # 値ラベル: val_labels() は haven_labelled に対して named vector を返す
   value_part <- purrr::map_dfr(vars, function(v) {
     x <- df[[v]]
     lab_vals <- labelled::val_labels(x)
+    
+    # デバッグ用（確認後に削除）-------------------------------------
+    message(sprintf(
+      "[%s] class=%s, val_labels=%s",
+      v,
+      paste(class(x), collapse = "/"),
+      ifelse(is.null(lab_vals), "NULL", paste(length(lab_vals), "件"))
+    ))    
+    # ---------------------------------------------------------------
+    
     if (is.null(lab_vals) || length(lab_vals) == 0) return(NULL)
     
     tibble(
@@ -77,9 +145,43 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
       var_name    = v,
       var_label   = unname(vlab[[v]] %||% NA_character_),
       value       = as.character(unname(lab_vals)),
-      value_label = names(lab_vals)
+      value_label = names(lab_vals),
+      is_logical  = is.logical(x),
+      is_character = is.character(x),
+      is_numeric = is.numeric(x),
+      is_factor = is.factor(x),
+      factor_levels = if (is.factor(x)) length(na.omit(unique(x))) else NA_integer_,
+      yes_value = if (is.factor(x) && length(na.omit(unique(x))) == 2) 
+        yesno_level(levels(x))$yes_var else NA_character_,
+      no_value = if (is.factor(x) && length(na.omit(unique(x))) == 2)
+        yesno_level(levels(x))$no_var else NA_character_
     )
   })
+  
+  # value_part が NULL の場合に備える　-------------------------------------
+  if (!is.null(value_part) && nrow(value_part) > 0) {
+    
+    # 列が存在する場合のみ処理する
+    if ("value_label" %in% names(value_part)) {
+      # 空文字を NA に変換
+      value_part$value_label[value_part$value_label == ""] <- NA_character_
+      
+      # すべて NA か？（値ラベルの抽出をスキップするかどうか）
+      if (all(is.na(value_part$value_label))) {
+        warning("値ラベルがすべて NA です。")
+      }
+    }
+    
+    if ("is_factor" %in% names(value_part)) {
+      if (all(value_part$is_factor == FALSE | is.na(value_part$is_factor))) {
+        warning("Factorが一つも存在しません。")
+      }
+    }
+  } else {
+    # value_part がそもそも空（値ラベルが一つもない）ケースに対するメッセージを出すならここ
+    warning("値ラベルを持つ変数が一つもありません。")
+  }
+  # ----------------------------------------------------------------------------
   
   bind_rows(var_part, value_part) %>%
     arrange(dataset, var_name, value)
@@ -121,7 +223,21 @@ merge_label_dicts <- function(old, new, overwrite_policy = c("prefer_new", "pref
       var_label_old   = as.character(var_label_old),
       var_label_new   = as.character(var_label_new),
       value_label_old = as.character(value_label_old),
-      value_label_new = as.character(value_label_new)
+      value_label_new = as.character(value_label_new),
+      is_logical_old  = as.logical(is_logical_old),
+      is_logical_new  = as.logical(is_logical_new),
+      is_character_old = as.logical(is_character_old),
+      is_character_new = as.logical(is_character_new),
+      is_numeric_old = as.logical(is_numeric_old),
+      is_numeric_new = as.logical(is_numeric_new),
+      is_factor_old = as.logical(is_factor_old),
+      is_factor_new = as.logical(is_factor_new),
+      factor_levels_old = as.numeric(factor_levels_old),
+      factor_levels_new = as.numeric(factor_levels_new),
+      yes_value_old = as.character(yes_value_old),
+      yes_value_new = as.character(yes_value_new),
+      no_value_old = as.character(no_value_old),
+      no_value_new = as.character(no_value_new)
     )
     
   if (overwrite_policy == "prefer_new") {
@@ -131,7 +247,14 @@ merge_label_dicts <- function(old, new, overwrite_policy = c("prefer_new", "pref
         var_name,
         value,
         var_label   = coalesce(var_label_new, var_label_old),
-        value_label = coalesce(value_label_new, value_label_old)
+        value_label = coalesce(value_label_new, value_label_old),
+        is_logical  = coalesce(is_logical_new, is_logical_old),
+        is_character = coalesce(is_character_new, is_character_old),
+        is_numeric = coalesce(is_numeric_new, is_numeric_old),
+        is_factor = coalesce(is_factor_new, is_factor_old),
+        factor_levels = coalesce(factor_levels_new, factor_levels_old),
+        yes_value = coalesce(yes_value_new, yes_value_old),
+        no_value = coalesce(no_value_new, no_value_old)
       )
   } else {
     out <- full %>%
@@ -140,7 +263,14 @@ merge_label_dicts <- function(old, new, overwrite_policy = c("prefer_new", "pref
         var_name,
         value,
         var_label   = coalesce(var_label_old, var_label_new),
-        value_label = coalesce(value_label_old, value_label_new)
+        value_label = coalesce(value_label_old, value_label_new),
+        is_logical  = coalesce(is_logical_old, is_logical_new),
+        is_character = coalesce(is_character_old, is_character_new),
+        is_numeric = coalesce(is_numeric_old, is_numeric_new),
+        is_factor = coalesce(is_factor_old, is_factor_new),
+        factor_levels = coalesce(factor_levels_old, factor_levels_new),
+        yes_value = coalesce(yes_value_old, yes_value_new),
+        no_value = coalesce(no_value_old, no_value_new)
       )
   }
   
@@ -206,7 +336,7 @@ export_labels_to_excel <- function(df,
   overwrite_policy <- match.arg(overwrite_policy)
   
   # 新規辞書を作成
-  dict_new <- make_label_dict(df, dataset_name, vars)
+    dict_new <- make_label_dict(df, dataset_name, vars)
   
   # 既存 Excel ファイルがある場合
   if (file.exists(path)) {
@@ -414,8 +544,11 @@ apply_labels_from_excel <- function(df,
 ###############################################################################
 #' @title apply_labels_from_label_final
 #' @description
-#' 指定された Excel ファイルの label_final シートから、データフレ
-#' ームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。label_final シートは、dataset 列がない前提で、var_name, var_label, value, value_label の列を持つ形式である必要があります。
+#' 指定された Excel ファイルの label_final シートから、データフレームに
+#' 変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、
+#' 既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
+#' label_final シートは、dataset 列がない前提で、var_name, 
+#' var_label, value, value_label の列を持つ形式である必要があります。
 #' @param df データフレーム
 #' @param path Excel ファイルのパス
 #' @param sheet_name 読み込むシート名（デフォルトは
@@ -527,4 +660,3 @@ apply_labels_from_label_final <- function(df,
   df
 }
 # -----関数ここまで------------------------------------------------------------
-
