@@ -39,6 +39,8 @@ library(here)       # to get R project path
 library(fs)         # for file path manipulation
 library(openxlsx) 　# for exporting to excel
 library(survey)       # for survey design
+library(sjmisc)  # add_rowsのために追加
+library(data.table)
 
 
 # 各種の関数セット読み込み
@@ -64,18 +66,17 @@ gdrive_enaho_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.e
 
 
 # データベース一覧
-endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) %>%
-      mutate(across(where(has_val_labels), haven::as_factor))
+endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) 
 
 # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
-cat("endes_listの型確認:\n")
-table(sapply(endes_list, function(x) is.factor(x)))
-export_labels_to_excel(
-  df = endes_list,
-  dataset_name = "endes_list",
-  path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-  sheet_name = "label_raw_extract"
-)
+# cat("endes_listの型確認:\n")
+# table(sapply(endes_list, function(x) is.factor(x)))
+# export_labels_to_excel(
+#   df = endes_list,
+#   dataset_name = "endes_list",
+#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+#   sheet_name = "label_raw_extract"
+# )
 
 # ラベル属性の除去
 endes_list <- strip_all_labels(endes_list)
@@ -85,15 +86,6 @@ endes_list <- strip_all_labels(endes_list)
 # ******************************************************************************
 source("_tool_safe_join.R")  # left_join_safe関数の読み込み
 
-
-```
-
-## 2. データ処理
-
-```{r}
-
-library(sjmisc)  # add_rowsのために追加
-library(data.table)
 
 data_list <- list()
 
@@ -106,9 +98,16 @@ for (yr in yearlist) {
     normalizePath() %>%
     trimws()
   
-  year_data <- readRDS(file.path(root_folder, "data_merged.rds")) %>%
-    mutate(across(where(has_val_labels), haven::as_factor))
+  year_data <- readRDS(file.path(root_folder, "data_merged.rds")) 
+
+  # 1. まず labelled 列を特定（読み込み直後）
+  labelled_cols <- names(year_data)[sapply(year_data, inherits, what = "labelled")]
+
   
+  # export_labels_to_excel の直後
+  cat("★ strip前:\n")
+  str(year_data$dm_wealth_class)
+
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   cat("year_dataの型確認1:\n")
   cat(table(sapply(year_data, function(x) is.factor(x))))
@@ -122,8 +121,25 @@ for (yr in yearlist) {
     sheet_name = "label_raw_extract"
   )
   
-  year_data <- strip_all_labels(year_data) %>%
-    dplyr::filter(!is.na(hhid))
+  # # 2. 値ラベルと変数ラベルを削除
+  # year_data <- year_data %>%
+  #   haven::zap_labels() %>%
+  #   haven::zap_label()
+
+  # 3. さきほど控えた labelled 列を強制 numeric に
+  year_data[labelled_cols] <- lapply(year_data[labelled_cols], function(x) {
+    x <- unclass(x)         # class属性を完全に除去
+    attributes(x) <- NULL   # labels, label など全属性を削除
+    as.numeric(x)           # 純粋な numeric に変換
+  })
+  
+  # 構造チェック
+  cat("yr =", yr, "\n")
+  cat("year_data が存在するか: ", exists("year_data"), "\n")
+  cat("dm_wealth_class があるか: ", "dm_wealth_class" %in% names(year_data), "\n")
+  cat("year_dataの構造確認:\n")
+  print(str(year_data$dm_wealth_class))
+
   
   print(paste("Processing year:", yr, "with", nrow(year_data), "records"))
   
@@ -132,13 +148,18 @@ for (yr in yearlist) {
 
 # ******************************************************************************
 # 全ての年次データの結合
+# ******************************************************************************
 all_data_merged <- rbindlist(data_list, fill = TRUE, ignore.attr = TRUE) %>% as_tibble()
+
+# 構造チェック
+str(all_data_merged$dm_wealth_class)
 
 print(paste("Total records:", nrow(all_data_merged)))
 
 # 重複チェック
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # ******************************************************************************
+
 
 # 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
@@ -170,14 +191,58 @@ all_data_merged <- all_data_merged %>%
   dplyr::rename_with(~str_remove(., "\\.x$"), ends_with(".x")) %>%
   mutate(v024 = as.numeric(v024))
 
+
+
+```
+
+## 2. データ処理
+
+```{r}
+# ******************************************************************************
+#' @title ダミー変数化のための関数定義
+#' @description
+#' - labelledクラスの変数を対象に、val_labels属性を利用して
+#'  ダミー変数を生成する関数
+#' @param df データフレーム
+#' @param reference_drop ダミー化の際に最初のレベルを除くかどうか（多重共線性対策）
+#' @return ダミー変数化されたデータフレーム
+#'  作成日：2024/06/10
+#'  作成者：仲田俊一
+#' ------------------------------------------------------------------------------  
+dummify_labelled <- function(df, reference_drop = FALSE) {
+  # val_labels がある変数を特定
+  cat_vars <- names(df)[purrr::map_lgl(names(df), ~ {
+    !is.null(labelled::val_labels(df[[.x]]))
+  })]
+  
+  for (v in cat_vars) {
+    x      <- df[[v]]
+    labs   <- labelled::val_labels(x)   # named vector: name=ラベル, value=コード値
+    
+    # reference_drop = TRUE なら最初のレベルを除く（多重共線性対策）
+    levels_to_dummy <- if (reference_drop) labs[-1] else labs
+    
+    for (i in seq_along(levels_to_dummy)) {
+      code      <- unname(levels_to_dummy[i])
+      lbl       <- names(levels_to_dummy)[i]
+      new_col   <- paste0(v, "__", lbl)          # 例: q1__Yes
+      df[[new_col]] <- as.integer(as.numeric(x) == code)
+    }
+    
+    df[[v]] <- NULL   # 元の変数を削除（必要に応じて残す）
+  }
+  
+  df
+}
+#' --------関数ここまで-------------------------------------------------------------  
+
 # ******************************************************************************
 # 食品摂取量データの統合（キー：department*urban*income）
 # ******************************************************************************
 # 食品群消費データの読み込み
 
   df_food_org <- readRDS(
-    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds")) %>%
-      mutate(across(where(has_val_labels), haven::as_factor))
+    file.path(gdrive_enaho_dir, "food_consumption_by_area_income.rds"))
 
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   cat("食品摂取量データの型確認:\n")
@@ -206,49 +271,15 @@ all_data_merged <- all_data_merged %>%
 # ******************************************************************************
 # 食品消費データ結合
 # ******************************************************************************
-# lv を完全に外して素の numeric にする関数
-drop_lv_numeric <- function(x) {
-  x2 <- unclass(x)              # lv など全クラスを外す
-  as.numeric(x2)                # 純粋な numeric に
-}
-
-# 食品摂取量データの結合
-all_data_merged2 <- all_data_merged %>%
-  mutate(
-    v024             = as.numeric(v024),
-    dm_rural         = as.numeric(dm_rural),
-    dm_wealth_class  = as.numeric(dm_wealth_class)
-  )
-
-df_food_org2 <- df_food_org %>%
-  mutate(
-    department   = as.numeric(department),
-    inc_quintile = as.numeric(inc_quintile)
-  )
-
-# join 直前ステップ：キー列の lv を完全に剥がす
-all_data_merged3 <- all_data_merged2 %>%
-  dplyr::mutate(
-    v024            = drop_lv_numeric(v024),
-    dm_rural        = drop_lv_numeric(dm_rural),
-    dm_wealth_class = drop_lv_numeric(dm_wealth_class)
-  )
-
-df_food_org3 <- df_food_org2 %>%
-  dplyr::mutate(
-    department   = drop_lv_numeric(department),
-    dm_rural        = drop_lv_numeric(dm_rural),
-    inc_quintile = drop_lv_numeric(inc_quintile)
-  )
 
 # 型確認（ここで両方とも numeric だけになっているかチェック）
-str(all_data_merged3[, c("v024", "dm_rural", "dm_wealth_class")])
-str(df_food_org3[, c("department", "inc_quintile")])
+str(all_data_merged[, c("v024", "dm_rural", "dm_wealth_class")])
+str(df_food_org[, c("department", "inc_quintile")])
 
 # numeric 同士で join
-all_data_merged <- all_data_merged3 %>%
+all_data_merged <- all_data_merged %>%
   dplyr::left_join(
-    df_food_org3,
+    df_food_org,
     by = c("v024" = "department",
            "dm_rural",
            "dm_wealth_class" = "inc_quintile")
@@ -321,6 +352,7 @@ all_data_merged <- all_data_merged %>%
     )
   ) %>%
   dplyr::select(-dhs_weight, -year_norm, -total_v005, -treatment_start)  # 中間変数は削除
+
 
 # 1. 元のhaven_labelledデータから変換
 all_data_merged <- all_data_merged %>%
