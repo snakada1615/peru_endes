@@ -24,12 +24,11 @@ library(rlang)
 
 # 全ての変数ラベルをリストに保存
 save_all_labels <- function(data) {
-  labs <- haven::var_label(data)   # named list: 変数名 → ラベル
-  # NULL は落とす（不要ならこの行は外してもよい）
-  labs[ vapply(labs, is.null, logical(1)) ] <- NULL
+  labs <- lapply(data, function(x) attr(x, "label", exact = TRUE))
+  # NULL は落とす
+  labs[vapply(labs, is.null, logical(1))] <- NULL
   labs
 }
-
 # 全ての変数ラベルをリストから復元
 restore_all_labels <- function(data, labels) {
   if (length(labels) == 0) return(data)
@@ -44,7 +43,7 @@ restore_all_labels <- function(data, labels) {
 # 指定列だけの変数ラベルを保存
 save_labels <- function(data, columns = NULL) {
   if (is.null(columns)) columns <- names(data)
-  labs <- haven::var_label(data)
+  labs <- lapply(data, function(x) attr(x, "label", exact = TRUE))
   labs[intersect(names(labs), columns)]
 }
 
@@ -111,7 +110,7 @@ with_labels_and_clean <- function(data, remove_factor = TRUE) {
 
 save_labels_to_memory <- function(data, exist_label_only = TRUE) {
   # 変数ラベル（haven::var_label は named list を返す）
-  var_labels <- haven::var_label(data)
+  var_labels <- lapply(data, function(x) attr(x, "label", exact = TRUE))
   
   # 値ラベル（attr "labels"）
   val_labels <- lapply(data, function(x) attr(x, "labels", exact = TRUE))
@@ -748,7 +747,7 @@ apply_labels_from_excel <- function(df,
   
   # 1) 変数ラベル
   if (nrow(var_info) > 0) {
-    existing_vlab_list <- haven::var_label(df)
+    existing_vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
     existing_vlab <- vapply(existing_vlab_list,
                             function(x) if (is.null(x)) NA_character_ else as.character(x),
                             FUN.VALUE = character(1))
@@ -858,7 +857,7 @@ apply_labels_from_label_final <- function(df,
   
   # 1) 変数ラベル
   if (nrow(var_info) > 0) {
-    existing_vlab_list <- haven::var_label(df)
+    existing_vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
     existing_vlab <- vapply(existing_vlab_list,
                             function(x) if (is.null(x)) NA_character_ else as.character(x),
                             FUN.VALUE = character(1))
