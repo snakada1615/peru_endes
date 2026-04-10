@@ -203,7 +203,7 @@ calculate_child_count_fixed2 <- function(HRdata) {
       hv102 == 1               # 0=No, 1=Yes（元のラベル定義どおり）
     ) %>%
     group_by(hhid, caseid) %>%
-    summarise(dm_children_under12 = n(), .groups = "drop")
+    dplyr::summarise(dm_children_under12 = n(), .groups = "drop")
   
   # 4. すべての世帯に結合し、存在しない世帯は 0
   all_households <- HRdata %>%
@@ -483,7 +483,7 @@ keep_youngest_child_caseid <- function(HRdata) {
   #      ここでは機械的に定義する）
   youngest_by_caseid <- child_long %>%
     group_by(hhid, caseid) %>%
-    summarise(
+    dplyr::summarise(
       min_child_age = min(hv105, na.rm = TRUE),
       .groups = "drop"
     )
@@ -875,7 +875,8 @@ goAnalysis <- function(year) {
   # 調理燃料マッチング確認
   cat("調理燃料マッチング確認:\n")
   print(table(IRdata$dm_cooking_fuel))
-  matched_count <- IRdata %>% summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
+  matched_count <- IRdata %>% dplyr::summarise(
+    n_matched = sum(!is.na(dm_cooking_fuel)))
   print(matched_count)
   
 

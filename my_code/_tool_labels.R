@@ -22,21 +22,35 @@ library(rlang)
 # 1. 全変数ラベルを保存 / 復元（variable label）
 # =========================================================
 
-# 全ての変数ラベルをリストに保存
+# 全ての変数ラベルをリストに保存（list: 変数名 → ラベル文字列 or NULL）
 save_all_labels <- function(data) {
   labs <- lapply(data, function(x) attr(x, "label", exact = TRUE))
-  # NULL は落とす
-  labs[vapply(labs, is.null, logical(1))] <- NULL
   labs
 }
 # 全ての変数ラベルをリストから復元
 restore_all_labels <- function(data, labels) {
   if (length(labels) == 0) return(data)
+  
   for (col in names(labels)) {
-    if (col %in% names(data)) {
-      haven::var_label(data[[col]]) <- labels[[col]]
+    if (!col %in% names(data)) next
+    
+    x        <- data[[col]]
+    old_labs <- attr(x, "labels", exact = TRUE)  # 既存の値ラベル（あれば）
+    lab      <- labels[[col]]
+    
+    if (is.null(lab) || is.na(lab) || lab == "") {
+      # ラベルが無い場合はそのまま
+      data[[col]] <- x
+    } else {
+      # 変数ラベル + 既存の値ラベルをまとめて付与
+      data[[col]] <- haven::labelled(
+        x      = x,
+        labels = old_labs,
+        label  = lab
+      )
     }
   }
+  
   data
 }
 
@@ -46,17 +60,31 @@ save_labels <- function(data, columns = NULL) {
   labs <- lapply(data, function(x) attr(x, "label", exact = TRUE))
   labs[intersect(names(labs), columns)]
 }
-
+# 指定列だけの変数ラベルを復元
 # 指定列だけの変数ラベルを復元
 restore_labels_col <- function(data, labels, columns = NULL) {
   if (is.null(columns)) {
     columns <- names(labels)
   }
+  
   for (col in columns) {
-    if (col %in% names(data) && !is.null(labels[[col]])) {
-      haven::var_label(data[[col]]) <- labels[[col]]
+    if (!col %in% names(data) || is.null(labels[[col]])) next
+    
+    x        <- data[[col]]
+    old_labs <- attr(x, "labels", exact = TRUE)  # 既存の値ラベル
+    lab      <- labels[[col]]
+    
+    if (is.null(lab) || is.na(lab) || lab == "") {
+      data[[col]] <- x
+    } else {
+      data[[col]] <- haven::labelled(
+        x      = x,
+        labels = old_labs,
+        label  = lab
+      )
     }
   }
+  
   data
 }
 
@@ -236,33 +264,48 @@ remove_labels <- function(data, remove_factor = TRUE) {
 # =========================================================
 # 6. ラベルの復元（haven ベース）
 # =========================================================
-
 restore_labels <- function(data, labels_memory) {
-  if (!all(c("var_labels", "val_labels") %in% names(labels_memory))) {
-    stop("labels_memory must contain 'var_labels' and 'val_labels'")
-  }
+  stopifnot(all(c("var_labels", "val_labels") %in% names(labels_memory)))
   
   var_labels  <- labels_memory$var_labels
   val_labels  <- labels_memory$val_labels
   factor_info <- labels_memory$factor_info
   
-  # 変数ラベル
-  for (var in names(var_labels)) {
-    if (var %in% names(data)) {
-      haven::var_label(data[[var]]) <- var_labels[[var]]
+  for (var in names(data)) {
+    x <- data[[var]]
+    
+    # 既存のラベルを取得
+    old_var_label <- attr(x, "label",  exact = TRUE)
+    old_val_labels <- attr(x, "labels", exact = TRUE)
+    
+    # メモリ側
+    new_var_label <- var_labels[[var]]
+    new_val_labels <- val_labels[[var]]
+    
+    # 採用する変数ラベル
+    final_var_label <- if (!is.null(new_var_label) && !is.na(new_var_label) && new_var_label != "") {
+      new_var_label
+    } else {
+      old_var_label
     }
-  }
-  
-  # 値ラベル（haven::labelled を想定）
-  for (var in names(val_labels)) {
-    if (var %in% names(data) && !is.null(val_labels[[var]])) {
-      labs <- val_labels[[var]]   # named numeric: 値 → ラベル名 or その逆にしてもよい
-      attr(data[[var]], "labels") <- labs
-      # 必要なら haven_labelled クラスを付与
-      if (!inherits(data[[var]], "haven_labelled")) {
-        class(data[[var]]) <- c("haven_labelled", class(data[[var]]))
-      }
+    
+    # 採用する値ラベル
+    final_val_labels <- if (!is.null(new_val_labels) && length(new_val_labels) > 0) {
+      new_val_labels
+    } else {
+      old_val_labels
     }
+    
+    # いずれかのラベルがあれば haven::labelled でまとめて付け直す
+    if (!is.null(final_var_label) || (!is.null(final_val_labels) && length(final_val_labels) > 0)) {
+      x <- haven::labelled(
+        x      = x,
+        labels = final_val_labels,
+        label  = final_var_label
+      )
+    }
+    
+    data[[var]] <- x
   }
   
   # factor の復元
@@ -279,7 +322,6 @@ restore_labels <- function(data, labels_memory) {
     }
   }
   
-  # ラベル欠損の警告（任意）
   missing_var_labels <- setdiff(names(data), names(var_labels))
   if (length(missing_var_labels) > 0) {
     warning("The following variables are missing variable labels:")
@@ -288,7 +330,6 @@ restore_labels <- function(data, labels_memory) {
   
   data
 }
-
 # ---------------------------------------------------------------------------
 library(dplyr)
 library(purrr)
@@ -369,8 +410,8 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     invisible(x)
   }
   
-  # haven::var_label は named list を返す
-  vlab_list <- haven::var_label(df)
+  # 変数ラベルを抽出
+  vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
   vlab_chr  <- vapply(vlab_list, function(x) if (is.null(x)) NA_character_ else as.character(x),
                       FUN.VALUE = character(1))
   
@@ -727,80 +768,85 @@ apply_labels_from_excel <- function(df,
   overwrite_policy <- match.arg(overwrite_policy)
   
   dict <- readxl::read_excel(path, sheet = sheet_name) %>%
-    mutate(
-      dataset    = as.character(dataset),
-      var_name   = as.character(var_name),
-      var_label  = as.character(var_label),
-      value      = as.character(value),
+    dplyr::mutate(
+      dataset     = as.character(dataset),
+      var_name    = as.character(var_name),
+      var_label   = as.character(var_label),
+      value       = as.character(value),
       value_label = as.character(value_label)
     ) %>%
-    filter(dataset == dataset_name)
+    dplyr::filter(dataset == dataset_name)
   
   var_info <- dict %>%
-    filter(is.na(value) | value %in% c("NA", "")) %>%
-    select(var_name, var_label) %>%
-    distinct()
+    dplyr::filter(is.na(value) | value %in% c("NA", "")) %>%
+    dplyr::select(var_name, var_label) %>%
+    dplyr::distinct()
   
   value_info <- dict %>%
-    filter(!(is.na(value) | value %in% c("NA", ""))) %>%
-    select(var_name, value, value_label)
+    dplyr::filter(!(is.na(value) | value %in% c("NA", ""))) %>%
+    dplyr::select(var_name, value, value_label)
   
-  # 1) 変数ラベル
-  if (nrow(var_info) > 0) {
-    existing_vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
-    existing_vlab <- vapply(existing_vlab_list,
-                            function(x) if (is.null(x)) NA_character_ else as.character(x),
-                            FUN.VALUE = character(1))
+  for (v in intersect(unique(dict$var_name), names(df))) {
+    x <- df[[v]]
     
-    for (i in seq_len(nrow(var_info))) {
-      v   <- var_info$var_name[i]
-      lab <- var_info$var_label[i]
-      
-      if (!v %in% names(df) || is.na(lab) || lab == "") next
-      
-      if (overwrite_policy == "prefer_excel") {
-        haven::var_label(df[[v]]) <- lab
-      } else {
-        if (is.na(existing_vlab[[v]]) || existing_vlab[[v]] == "") {
-          haven::var_label(df[[v]]) <- lab
-        }
-      }
-    }
-  }
-  
-  # 2) 値ラベル
-  if (nrow(value_info) > 0) {
-    for (v in unique(value_info$var_name)) {
-      if (!v %in% names(df)) next
-      
-      sub <- value_info %>% filter(var_name == v)
-      x <- df[[v]]
-      
+    # 既存の変数ラベル
+    old_var_label <- attr(x, "label", exact = TRUE)
+    
+    # Excel側の変数ラベル
+    new_var_label <- var_info %>%
+      dplyr::filter(var_name == v) %>%
+      dplyr::pull(var_label) %>%
+      .[1]
+    
+    # 採用する変数ラベル
+    final_var_label <- dplyr::case_when(
+      overwrite_policy == "prefer_excel" &&
+        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      (is.null(old_var_label) || is.na(old_var_label) || old_var_label == "") &&
+        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      TRUE ~ old_var_label
+    )
+    
+    # Excel側の値ラベル
+    sub <- value_info %>% dplyr::filter(var_name == v)
+    
+    if (nrow(sub) > 0) {
       new_vals_num <- suppressWarnings(as.numeric(sub$value))
       if (any(is.na(new_vals_num) & !is.na(sub$value))) {
-        new_vals <- sub$value             # 文字列コード
+        new_vals <- sub$value
       } else {
-        new_vals <- new_vals_num          # 数値コード
+        new_vals <- new_vals_num
       }
       
-      new_labs <- sub$value_label
-      names(new_labs) <- new_vals        # names: コード, 値: ラベル文字列でもよいが、here: names=コード
-      
-      old_labs <- attr(x, "labels", exact = TRUE)
-      
-      if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
-        attr(df[[v]], "labels") <- new_labs
-        if (!inherits(df[[v]], "haven_labelled")) {
-          class(df[[v]]) <- c("haven_labelled", class(df[[v]]))
-        }
-      } else {
-        add_codes <- setdiff(names(new_labs), names(old_labs))
-        merged <- c(old_labs, new_labs[add_codes])
-        attr(df[[v]], "labels") <- merged
-        if (!inherits(df[[v]], "haven_labelled")) {
-          class(df[[v]]) <- c("haven_labelled", class(df[[v]]))
-        }
-      }
+      keep <- !is.na(new_vals) & !is.na(sub$value_label) & sub$value_label != ""
+      new_labs <- stats::setNames(new_vals[keep], sub$value_label[keep])
+    } else {
+      new_labs <- NULL
+    }
+    
+    # 既存の値ラベル
+    old_labs <- attr(x, "labels", exact = TRUE)
+    
+    # 採用する値ラベル
+    final_labs <- if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
+      new_labs
+    } else if (is.null(new_labs) || length(new_labs) == 0) {
+      old_labs
+    } else {
+      add_labs <- new_labs[setdiff(names(new_labs), names(old_labs))]
+      c(old_labs, add_labs)
+    }
+    
+    # haven::labelled() でまとめて再構築
+    if (!is.null(final_labs) && length(final_labs) > 0) {
+      df[[v]] <- haven::labelled(
+        x = x,
+        labels = final_labs,
+        label = final_var_label
+      )
+    } else if (!is.null(final_var_label) && !is.na(final_var_label) && final_var_label != "") {
+      attr(x, "label") <- final_var_label
+      df[[v]] <- x
     }
   }
   
@@ -855,71 +901,70 @@ apply_labels_from_label_final <- function(df,
     dplyr::filter(!(is.na(value) | value %in% c("NA", ""))) %>%
     dplyr::select(var_name, value, value_label)
   
-  # 1) 変数ラベル
-  if (nrow(var_info) > 0) {
-    existing_vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
-    existing_vlab <- vapply(existing_vlab_list,
-                            function(x) if (is.null(x)) NA_character_ else as.character(x),
-                            FUN.VALUE = character(1))
+  for (v in intersect(unique(dict$var_name), names(df))) {
+    x <- df[[v]]
     
-    for (i in seq_len(nrow(var_info))) {
-      v   <- var_info$var_name[i]
-      lab <- var_info$var_label[i]
-      
-      if (!v %in% names(df) || is.na(lab) || lab == "") next
-      
-      if (overwrite_policy == "prefer_excel") {
-        haven::var_label(df[[v]]) <- lab
-      } else {
-        if (is.na(existing_vlab[[v]]) || existing_vlab[[v]] == "") {
-          haven::var_label(df[[v]]) <- lab
-        }
-      }
-    }
-  }
-  
-  # 2) 値ラベル
-  if (nrow(value_info) > 0) {
-    for (v in unique(value_info$var_name)) {
-      if (!v %in% names(df)) next
-      
-      x <- df[[v]]
-      if (is.logical(x)) next        # logical はスキップ
-      
-      if (is.factor(x)) {
-        x <- as.character(x)
-        df[[v]] <- x
-      }
-      
-      sub <- value_info %>% dplyr::filter(var_name == v)
-      
+    # 既存の変数ラベル
+    old_var_label <- attr(x, "label", exact = TRUE)
+    
+    # Excel側の変数ラベル
+    new_var_label <- var_info %>%
+      dplyr::filter(var_name == v) %>%
+      dplyr::pull(var_label) %>%
+      .[1]
+    
+    # 採用する変数ラベル
+    final_var_label <- dplyr::case_when(
+      overwrite_policy == "prefer_excel" &&
+        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      (is.null(old_var_label) || is.na(old_var_label) || old_var_label == "") &&
+        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      TRUE ~ old_var_label
+    )
+    
+    # Excel側の値ラベル
+    sub <- value_info %>% dplyr::filter(var_name == v)
+    
+    if (nrow(sub) > 0) {
       if (is.numeric(x) || is.integer(x)) {
         new_vals <- suppressWarnings(as.numeric(sub$value))
       } else {
         new_vals <- as.character(sub$value)
       }
       
-      keep <- !is.na(new_vals)
-      if (!any(keep)) next
-      
-      new_vals <- new_vals[keep]
+      keep <- !is.na(new_vals) & !is.na(sub$value_label) & sub$value_label != ""
+      new_vals  <- new_vals[keep]
       new_labs_chr <- sub$value_label[keep]
       
-      new_labs <- setNames(new_vals, new_labs_chr)
-      
-      old_labs <- attr(df[[v]], "labels", exact = TRUE)
-      
-      if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
-        attr(df[[v]], "labels") <- new_labs
-      } else {
-        add_codes <- setdiff(names(new_labs), names(old_labs))
-        merged <- c(old_labs, new_labs[add_codes])
-        attr(df[[v]], "labels") <- merged
-      }
-      
-      if (!inherits(df[[v]], "haven_labelled")) {
-        class(df[[v]]) <- c("haven_labelled", class(df[[v]]))
-      }
+      # names = ラベル文字列, 値 = コード
+      new_labs <- stats::setNames(new_vals, new_labs_chr)
+    } else {
+      new_labs <- NULL
+    }
+    
+    # 既存の値ラベル
+    old_labs <- attr(x, "labels", exact = TRUE)
+    
+    # 採用する値ラベル
+    final_labs <- if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
+      new_labs
+    } else if (is.null(new_labs) || length(new_labs) == 0) {
+      old_labs
+    } else {
+      add_labs <- new_labs[setdiff(names(new_labs), names(old_labs))]
+      c(old_labs, add_labs)
+    }
+    
+    # haven::labelled() でまとめて再構築
+    if (!is.null(final_labs) && length(final_labs) > 0) {
+      df[[v]] <- haven::labelled(
+        x      = x,
+        labels = final_labs,
+        label  = final_var_label
+      )
+    } else if (!is.null(final_var_label) && !is.na(final_var_label) && final_var_label != "") {
+      attr(x, "label") <- final_var_label
+      df[[v]] <- x
     }
   }
   

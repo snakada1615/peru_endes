@@ -211,7 +211,7 @@ calculate_child_count <- function(df_RECH1) {
   child_count <- children_with_mother %>%
     filter(!is.na(mother_caseid)) %>%
     group_by(mother_caseid) %>%
-    summarise(dm_children_under12 = n(), .groups = "drop") %>%
+    dplyr::summarise(dm_children_under12 = n(), .groups = "drop") %>%
     rename(caseid = mother_caseid)
   
   cat("子供がいる母親の数:", nrow(child_count), "\n")
@@ -735,7 +735,8 @@ goAnalysis <- function(year) {
   # 調理燃料マッチング確認
   cat("調理燃料マッチング確認:\n")
   print(table(IRdata$dm_cooking_fuel))
-  matched_count <- IRdata %>% summarise(n_matched = sum(!is.na(dm_cooking_fuel)))
+  matched_count <- IRdata %>% dplyr::summarise(
+    n_matched = sum(!is.na(dm_cooking_fuel)))
   print(matched_count)
   
 
