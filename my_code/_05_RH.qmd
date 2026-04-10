@@ -40,7 +40,7 @@ library(survey)       # for survey design
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_safe_join.R")  # 安全な結合関数
-source("_tool_SaveLabel.R")  # 変数ラベル保存関数
+source("_tool_labels.R")  # 変数ラベル保存関数
 
 # 対象とする年のリスト
 yearlist <- c("2005", "2006", "2007", "2008", "2009", "2010", "2011",

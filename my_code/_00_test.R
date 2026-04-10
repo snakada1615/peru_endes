@@ -15,12 +15,8 @@ format: html
 #'  作成日：2026-01-09
 #'  ------------------------------------------------------------------------
 
-```
-
 
 # 1. データ読み込み
-
-```{r}
 library(survey)
 library(srvyr)
 library(ggplot2)
@@ -38,7 +34,7 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 # 必要な関数読み込み
-source("_tool_SaveLabel.R")
+source("_tool_Labels.R")
 source("_tool_safe_join.R")
 
 # ステップ1: 元データの読み込み

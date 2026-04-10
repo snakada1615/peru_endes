@@ -49,7 +49,7 @@ library(vctrs)
 
 # 各種の関数セット読み込み
 source(here("myTools.R"))  # プロジェクトルートから読み込む（quarto限定の処理）
-source(here("my_code", "_tool_SaveLabel.R"))
+source(here("my_code", "_tool_labels.R"))
 source(here("my_code", "_tool_safe_join.R"))
 
 # 対象とする年のリスト

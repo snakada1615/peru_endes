@@ -2,6 +2,22 @@ library(dplyr)
 library(haven)   # ← haven に統一
 library(rlang)
 
+
+#' 関数一覧
+#' save_all_labels(data) : データフレーム全体の変数ラベルをリストに保存
+#' restore_all_labels(data, labels) : データフレーム全体の変変数ラベルをリストから復元
+#' save_labels(data, columns = NULL) : 指定列の変数ラベルをリストに保存
+#' restore_labels_col(data, labels, columns = NULL) : 指定列の変
+#' restore_labels_col(data, labels, columns = NULL) : 指定列の変数ラベルをリストから復元
+#' with_labels(data) : データフレーム全体の変数ラベル
+#' restore_from_backup(data) : with_labels で保存した変数ラベルを復元
+#' with_labels_and_clean(data, remove_factor = TRUE) : 変数ラベル
+#' remove_labels(data, remove_factor = TRUE) : haven ベースで変数ラベルと値ラベルを除去
+#' restore_labels(data, labels_memory) : save_labels_to_memory で保存したラベル情報をデータフレームに復元
+#' save_labels_to_memory(data, exist_label_only = TRUE) : 変数ラベル情報（変数ラベル + 値ラベル + factor情報）をリストに保存
+#' merge_labels_memory(...) : 複数の save_labels_to_memory の結果をマージして1つのラベル情報にまとめる
+#' ------------------------------------------------------------
+
 # =========================================================
 # 1. 全変数ラベルを保存 / 復元（variable label）
 # =========================================================

@@ -28,7 +28,6 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 source("myTools.R")
-source("my_code/_tool_SaveLabel.R")
 source("my_code/_tool_labels.R")
 source("my_code/_tool_df_structure.R")
 
