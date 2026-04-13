@@ -100,14 +100,6 @@ for (yr in yearlist) {
   
   year_data <- readRDS(file.path(root_folder, "data_merged.rds")) 
 
-  # 1. まず labelled 列を特定（読み込み直後）
-  labelled_cols <- names(year_data)[sapply(year_data, inherits, what = "labelled")]
-
-  
-  # export_labels_to_excel の直後
-  cat("★ strip前:\n")
-  str(year_data$dm_wealth_class)
-
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   cat("year_dataの型確認1:\n")
   cat(table(sapply(year_data, function(x) is.factor(x))))
@@ -121,18 +113,11 @@ for (yr in yearlist) {
     sheet_name = "label_raw_extract"
   )
   
-  # # 2. 値ラベルと変数ラベルを削除
-  # year_data <- year_data %>%
-  #   haven::zap_labels() %>%
-  #   haven::zap_label()
+  # 値ラベルと変数ラベルを削除
+  year_data <- year_data %>%
+    haven::zap_labels() %>%
+    haven::zap_label()
 
-  # 3. さきほど控えた labelled 列を強制 numeric に
-  year_data[labelled_cols] <- lapply(year_data[labelled_cols], function(x) {
-    x <- unclass(x)         # class属性を完全に除去
-    attributes(x) <- NULL   # labels, label など全属性を削除
-    as.numeric(x)           # 純粋な numeric に変換
-  })
-  
   # 構造チェック
   cat("yr =", yr, "\n")
   cat("year_data が存在するか: ", exists("year_data"), "\n")
@@ -210,26 +195,30 @@ all_data_merged <- all_data_merged %>%
 #'  作成者：仲田俊一
 #' ------------------------------------------------------------------------------  
 dummify_labelled <- function(df, reference_drop = FALSE) {
-  # val_labels がある変数を特定
   cat_vars <- names(df)[purrr::map_lgl(names(df), ~ {
     !is.null(labelled::val_labels(df[[.x]]))
   })]
   
   for (v in cat_vars) {
     x      <- df[[v]]
-    labs   <- labelled::val_labels(x)   # named vector: name=ラベル, value=コード値
+    labs   <- labelled::val_labels(x)
     
-    # reference_drop = TRUE なら最初のレベルを除く（多重共線性対策）
     levels_to_dummy <- if (reference_drop) labs[-1] else labs
     
     for (i in seq_along(levels_to_dummy)) {
-      code      <- unname(levels_to_dummy[i])
-      lbl       <- names(levels_to_dummy)[i]
-      new_col   <- paste0(v, "__", lbl)          # 例: q1__Yes
+      code  <- unname(levels_to_dummy[i])
+      lbl   <- names(levels_to_dummy)[i]
+      
+      # ラベル文字列のサニタイズ：英数字・アンダースコア以外を _ に置換
+      lbl_clean <- gsub("[^[:alnum:]_]", "_", lbl)
+      lbl_clean <- gsub("_{2,}", "_", lbl_clean)   # 連続 _ を縮約
+      lbl_clean <- gsub("^_|_$", "", lbl_clean)    # 前後の _ を除去
+      
+      new_col <- paste0(v, "__", lbl_clean)
       df[[new_col]] <- as.integer(as.numeric(x) == code)
     }
     
-    df[[v]] <- NULL   # 元の変数を削除（必要に応じて残す）
+    df[[v]] <- NULL
   }
   
   df
@@ -272,9 +261,9 @@ dummify_labelled <- function(df, reference_drop = FALSE) {
 # 食品消費データ結合
 # ******************************************************************************
 
-# 型確認（ここで両方とも numeric だけになっているかチェック）
-str(all_data_merged[, c("v024", "dm_rural", "dm_wealth_class")])
-str(df_food_org[, c("department", "inc_quintile")])
+# # 型確認（ここで両方とも numeric だけになっているかチェック）
+# str(all_data_merged[, c("v024", "dm_rural", "dm_wealth_class")])
+# str(df_food_org[, c("department", "inc_quintile")])
 
 # numeric 同士で join
 all_data_merged <- all_data_merged %>%
@@ -329,8 +318,10 @@ year_totals <- all_data_merged %>%
 # Survey designオブジェクトの作成前に変数を変換
 all_data_merged <- all_data_merged %>%
   mutate(
-    v021 = as.numeric(v021),                # Primary Sampling Unit
-    v022 = as.character(haven::as_factor(v022)) #haven_labelledをfactorに変換してからcharacter
+    v021 = as.numeric(v021),
+    # Primary Sampling Unit
+    v022 = as.character(haven::as_factor(v022))
+    #haven_labelledをfactorに変換してからcharacter
   )
 
 # 正規化済みサンプリングウェイトの作成
@@ -354,20 +345,21 @@ all_data_merged <- all_data_merged %>%
   dplyr::select(-dhs_weight, -year_norm, -total_v005, -treatment_start)  # 中間変数は削除
 
 
-# 1. 元のhaven_labelledデータから変換
+# 1. v021, v022, sampling_weight_trimmedのいずれかがNAの行を削除
 all_data_merged <- all_data_merged %>%
-  mutate(across(where(has_val_labels), labelled::to_factor)) %>%
   dplyr::filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
 
+# 2
+all_data_merged <- all_data_merged %>%
+  apply_labels_from_label_final(
+    path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+    sheet_name = "label_raw_extract"
+  )
+
 # 2. factor変数をダミー化
-var_names <- names(all_data_merged)[sapply(all_data_merged, function(x) is.factor(x))]
-var_names <- var_names[! var_names %in% c("year", "hhid")]
-all_data_merged_dummy <- all_data_merged %>%
-  fastDummies::dummy_cols(
-    select_columns = var_names,
-    remove_first_dummy = FALSE, 
-    remove_selected_columns = TRUE
-    )
+all_data_merged_dummy <- dummify_labelled(
+  all_data_merged, reference_drop = FALSE)
+
 
 new_labels <- c(
   v024 = "department code",
@@ -400,8 +392,34 @@ new_labels <- c(
   treatment_group = "treatment group (0=control, 1=early, 2=late)"
 )
 
-# ここ☝papeR::labels(all_data_merged, which = names(new_labels)) <- unname(new_labels)
+df_new_label <- data.frame(
+  var_name    = character(),
+  value       = character(),
+  var_label   = character(),
+  value_label = character(),
+  stringsAsFactors = FALSE
+)
 
+for (var in names(new_labels)) {
+  var_label <- new_labels[[var]]
+  
+  df_new_label <- rbind(
+    df_new_label,
+    data.frame(
+      var_name    = var,
+      value       = NA_character_,   # 後で "" に正規化される
+      var_label   = var_label,
+      value_label = NA_character_,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+update_label_dict_in_excel(
+  df = df_new_label,
+  path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+  sheet_name = "label_raw_extract"
+)
 
 
 # -----------------------------------------------------------------------------
