@@ -180,50 +180,9 @@ all_data_merged <- all_data_merged %>%
 
 ```
 
-## 2. データ処理
+## 2. 食品摂取量データの統合（キー：department*urban*income）
 
 ```{r}
-# ******************************************************************************
-#' @title ダミー変数化のための関数定義
-#' @description
-#' - labelledクラスの変数を対象に、val_labels属性を利用して
-#'  ダミー変数を生成する関数
-#' @param df データフレーム
-#' @param reference_drop ダミー化の際に最初のレベルを除くかどうか（多重共線性対策）
-#' @return ダミー変数化されたデータフレーム
-#'  作成日：2024/06/10
-#'  作成者：仲田俊一
-#' ------------------------------------------------------------------------------  
-dummify_labelled <- function(df, reference_drop = FALSE) {
-  cat_vars <- names(df)[purrr::map_lgl(names(df), ~ {
-    !is.null(labelled::val_labels(df[[.x]]))
-  })]
-  
-  for (v in cat_vars) {
-    x      <- df[[v]]
-    labs   <- labelled::val_labels(x)
-    
-    levels_to_dummy <- if (reference_drop) labs[-1] else labs
-    
-    for (i in seq_along(levels_to_dummy)) {
-      code  <- unname(levels_to_dummy[i])
-      lbl   <- names(levels_to_dummy)[i]
-      
-      # ラベル文字列のサニタイズ：英数字・アンダースコア以外を _ に置換
-      lbl_clean <- gsub("[^[:alnum:]_]", "_", lbl)
-      lbl_clean <- gsub("_{2,}", "_", lbl_clean)   # 連続 _ を縮約
-      lbl_clean <- gsub("^_|_$", "", lbl_clean)    # 前後の _ を除去
-      
-      new_col <- paste0(v, "__", lbl_clean)
-      df[[new_col]] <- as.integer(as.numeric(x) == code)
-    }
-    
-    df[[v]] <- NULL
-  }
-  
-  df
-}
-#' --------関数ここまで-------------------------------------------------------------  
 
 # ******************************************************************************
 # 食品摂取量データの統合（キー：department*urban*income）
@@ -305,7 +264,11 @@ all_data_merged <- all_data_merged %>%
 # 不要な属性をクリンナップ
 all_data_merged <- all_data_merged %>%
   strip_all_labels()
-  
+
+```
+
+# 3. sampling weightの年次補正
+```{r}
 # ================================================================================
 # 2. sampling weightの年次補正
 # ================================================================================
@@ -356,11 +319,62 @@ all_data_merged <- all_data_merged %>%
     sheet_name = "label_raw_extract"
   )
 
+```
+
+
+# 4. ダミー変数化
+```{r}
+# ******************************************************************************
+#' @title ダミー変数化のための関数定義
+#' @description
+#' - labelledクラスの変数を対象に、val_labels属性を利用して
+#'  ダミー変数を生成する関数
+#' @param df データフレーム
+#' @param reference_drop ダミー化の際に最初のレベルを除くかどうか（多重共線性対策）
+#' @return ダミー変数化されたデータフレーム
+#'  作成日：2024/06/10
+#'  作成者：仲田俊一
+#' ------------------------------------------------------------------------------  
+dummify_labelled <- function(df, reference_drop = FALSE) {
+  cat_vars <- names(df)[purrr::map_lgl(names(df), ~ {
+    !is.null(labelled::val_labels(df[[.x]]))
+  })]
+  
+  for (v in cat_vars) {
+    x      <- df[[v]]
+    labs   <- labelled::val_labels(x)
+    
+    levels_to_dummy <- if (reference_drop) labs[-1] else labs
+    
+    for (i in seq_along(levels_to_dummy)) {
+      code  <- unname(levels_to_dummy[i])
+      lbl   <- names(levels_to_dummy)[i]
+      
+      # ラベル文字列のサニタイズ：英数字・アンダースコア以外を _ に置換
+      lbl_clean <- gsub("[^[:alnum:]_]", "_", lbl)
+      lbl_clean <- gsub("_{2,}", "_", lbl_clean)   # 連続 _ を縮約
+      lbl_clean <- gsub("^_|_$", "", lbl_clean)    # 前後の _ を除去
+      
+      new_col <- paste0(v, "__", lbl_clean)
+      df[[new_col]] <- as.integer(as.numeric(x) == code)
+    }
+    
+    df[[v]] <- NULL
+  }
+  
+  df
+}
+#' --------関数ここまで-------------------------------------------------------------  
+
 # 2. factor変数をダミー化
 all_data_merged_dummy <- dummify_labelled(
   all_data_merged, reference_drop = FALSE)
 
+```
 
+
+# 5. データ辞書の更新（新規変数の追加）
+```{r}
 new_labels <- c(
   v024 = "department code",
   dm_rural = "rural/urban residence",
@@ -393,10 +407,18 @@ new_labels <- c(
 )
 
 df_new_label <- data.frame(
-  var_name    = character(),
-  value       = character(),
-  var_label   = character(),
-  value_label = character(),
+  dataset       = "default",
+  var_name      = character(),
+  value         = character(),
+  var_label     = character(),
+  value_label   = character(),
+  is_logical    = logical(),
+  is_character  = logical(),
+  is_numeric    = logical(),
+  is_factor     = logical(),
+  factor_levels = numeric(),
+  yes_value     = character(),
+  no_value      = character(),
   stringsAsFactors = FALSE
 )
 
@@ -406,10 +428,18 @@ for (var in names(new_labels)) {
   df_new_label <- rbind(
     df_new_label,
     data.frame(
-      var_name    = var,
-      value       = NA_character_,   # 後で "" に正規化される
-      var_label   = var_label,
-      value_label = NA_character_,
+      dataset       = "default",
+      var_name      = var,
+      value         = NA_character_,   # → "" に正規化
+      var_label     = var_label,
+      value_label   = NA_character_,
+      is_logical    = NA,
+      is_character  = NA,
+      is_numeric    = NA,
+      is_factor     = NA,
+      factor_levels = NA_real_,
+      yes_value     = NA_character_,
+      no_value      = NA_character_,
       stringsAsFactors = FALSE
     )
   )
@@ -424,6 +454,11 @@ update_label_dict_in_excel(
 
 # -----------------------------------------------------------------------------
 
+```
+
+
+# 6. データ保存とNA分布の確認 
+```{r}
 # ファイルをRDSで保存
 saveRDS(all_data_merged_dummy, file = file.path(gdrive_dir, "output", 
         "all_data_merged_dummy.rds"))
