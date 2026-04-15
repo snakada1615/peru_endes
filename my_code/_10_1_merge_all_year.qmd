@@ -357,6 +357,11 @@ dummify_labelled <- function(df, reference_drop = FALSE) {
       
       new_col <- paste0(v, "__", lbl_clean)
       df[[new_col]] <- as.integer(as.numeric(x) == code)
+      
+      var_lab <- labelled::var_label(x)
+      if (is.null(var_lab)) var_lab <- v
+      labelled::var_label(df[[new_col]]) <- paste0(var_lab, " (", lbl, ")")
+      
     }
     
     df[[v]] <- NULL
@@ -369,6 +374,13 @@ dummify_labelled <- function(df, reference_drop = FALSE) {
 # 2. factor変数をダミー化
 all_data_merged_dummy <- dummify_labelled(
   all_data_merged, reference_drop = FALSE)
+
+export_labels_to_excel(
+  df = all_data_merged_dummy,
+  dataset_name = "all_data_merged_dummy",
+  path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+  sheet_name = "label_raw_extract"
+)
 
 ```
 
@@ -407,7 +419,7 @@ new_labels <- c(
 )
 
 df_new_label <- data.frame(
-  dataset       = "default",
+  dataset       = character(),
   var_name      = character(),
   value         = character(),
   var_label     = character(),

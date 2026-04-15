@@ -18,36 +18,19 @@ library(readxl)
 #' merge_labels_memory(...) : 複数のラベル情報リストをマージして、変数ラベル、値ラベル、factor情報を統合
 #' remove_labels(data, remove_factor) : データフレームから変数ラベル、値ラベル、ユーザー定義の欠損値を削除（必要に応じて factor を character に変換）
 #' restore_labels(data, labels_memory) : データフレームに変数ラベル、値ラベル、factor情報を復元
-#' 
+#' update_label_dict_in_excel：Excel ファイルの label_extract シートに、dataset-varname-varlabel-value-valuelabel 形式のラベル辞書を更新・マージする関数。上書きポリシーを指定して、既存のラベルと新規のラベルのどちらを優先するかを制御できます。
 #' ------------------------------------------------------------
 ######### part 2: ラベル辞書の作成・マージ・Excel 書き出し・Excel からの適用 ############
 
 #' 関数一覧2 ------------------------------------------------------------
-#' @title make_label_dict
-#' @description
-#' データフレームから、変数名、変数ラベル、値ラベルを抽出して、dataset-varname-varlabel-value-valuelabel 形式のデータフレームを作成する関数。
-#' @title merge_label_dicts
-#' @description
-#' 既存のラベル辞書と新規のラベル辞書をマージする関数。上書きポリシーを指定して、どちらのラベルを優先するかを制御できます。
-#' @title export_labels_to_excel
-#' @description
-#' データフレームから抽出したラベル辞書を、指定されたExcelファイルの label_extract シートに書き出す関数。既存のシートがある場合は、上書きポリシーに従ってマージします。
-#' @title strip_all_labels
-#' @description
-#' データフレームから、変数ラベル、値ラベル、ユーザー定義の欠損値をすべて削除する関数。haven_labelled 形式のラベルも対応。
-#' @title strip_value_labels_only
-#' @description
-#' データフレームから、値ラベルとユーザー定義の欠損値を削除し、変数ラベルは保持する関数。haven_labelled 形式のラベルも対応。
-#' @title apply_labels_from_excel
-#' @description
-#' 指定されたExcelファイルの label_extract シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
-#' @title apply_labels_from_label_final
-#' @description
-#' 指定されたExcelファイルの label_final シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。label_final シートは、dataset 列がない前提で、var_name と var_label のみを含む形式であることを想定しています。
-#' @title apply_labels_from_label_final
-#' @description
-#' 指定されたExcelファイルの label_final シートから、データフレ
-#' ームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。label_final シートは、dataset 列がない前提で、var_name と var_label のみを含む形式であることを想定しています。
+#' make_label_dict：データフレームから、変数名、変数ラベル、値ラベルを抽出して、dataset-varname-varlabel-value-valuelabel 形式のデータフレームを作成する関数。
+#' merge_label_dicts：既存のラベル辞書と新規のラベル辞書をマージする関数。上書きポリシーを指定して、どちらのラベルを優先するかを制御できます。
+#' export_labels_to_excel：データフレームから抽出したラベル辞書を、指定されたExcelファイルの label_extract シートに書き出す関数。既存のシートがある場合は、上書きポリシーに従ってマージします。
+#' strip_all_labels：データフレームから、変数ラベル、値ラベル、ユーザー定義の欠損値をすべて削除する関数。haven_labelled 形式のラベルも対応。
+#' strip_value_labels_only：データフレームから、値ラベルとユーザー定義の欠損値を削除し、変数ラベルは保持する関数。haven_labelled 形式のラベルも対応。
+#' apply_labels_from_excel：指定されたExcelファイルの label_extract シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
+#' apply_labels_from_label_final：指定されたExcelファイルの label_final シートから、データフレームに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、既存のラベルとExcelのラベルのどちらを優先するかを制御できます。label_final シートは、dataset 列がない前提で、var_name と var_label のみを含む形式であることを想定しています。
+#' update_labels_dict_in_excel：Excel ファイルの label_extract シートに、dataset-varname-varlabel-value-valuelabel 形式のラベル辞書を更新・マージする関数。上書きポリシーを指定して、既存のラベルと新規のラベルのどちらを優先するかを制御できます。
 #' ----------------------------------------------------------------------------
 #' 
 
@@ -455,7 +438,7 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     is_factor    = purrr::map_lgl(vars, ~ is.factor(df[[.x]])),
     factor_levels = purrr::map_int(vars, ~ {
       x <- df[[.x]]
-      if (is.factor(x)) length(na.omit(unique(x))) else NA_integer_
+      length(unique(na.omit(x)))
     }),
     yes_value    = NA_character_,
     no_value     = NA_character_
@@ -470,7 +453,7 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     tibble(
       dataset      = dataset_name,
       var_name     = v,
-      var_label    = vlab_chr[[v]] %||% NA_character_,
+      var_label    = unname(vlab_chr[v]),
       value        = as.character(unname(lab_vals)),
       value_label  = names(lab_vals),
       is_logical   = is.logical(x),
