@@ -31,7 +31,7 @@ debug_mode = TRUE  # デバッグモード
 library(tidyverse)  # most variable creation here uses tidyverse 
 library(tidyselect) # used to select variables in FP_EVENTS.R
 library(haven)      # used for Haven labeled DHS variables
-library(labelled)   # used for Haven labeled variable creation
+# library(labelled)   # used for Haven labeled variable creation
 library(expss)      # for creating tables with Haven labeled data
 library(rJava)      # required for xlsx package
 library(naniar)     # to use replace_with_na function
@@ -73,7 +73,6 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 # table(sapply(endes_list, function(x) is.factor(x)))
 # export_labels_to_excel(
 #   df = endes_list,
-#   dataset_name = "endes_list",
 #   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
 #   sheet_name = "label_raw_extract"
 # )
@@ -108,7 +107,6 @@ for (yr in yearlist) {
   
   export_labels_to_excel(
     df = year_data,
-    dataset_name = "year_data",
     path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
     sheet_name = "label_raw_extract"
   )
@@ -197,7 +195,6 @@ all_data_merged <- all_data_merged %>%
   table(sapply(df_food_org, function(x) is.factor(x)))
   export_labels_to_excel(
     df = df_food_org,
-    dataset_name = "df_food_org",
     path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
     sheet_name = "label_raw_extract"
   )
@@ -327,8 +324,8 @@ all_data_merged <- all_data_merged %>%
 # ******************************************************************************
 #' @title ダミー変数化のための関数定義
 #' @description
-#' - labelledクラスの変数を対象に、val_labels属性を利用して
-#'  ダミー変数を生成する関数
+#' - haven_labelled クラスの変数を対象に、labels 属性を利用して
+#'   ダミー変数を生成する関数
 #' @param df データフレーム
 #' @param reference_drop ダミー化の際に最初のレベルを除くかどうか（多重共線性対策）
 #' @return ダミー変数化されたデータフレーム
@@ -336,51 +333,54 @@ all_data_merged <- all_data_merged %>%
 #'  作成者：仲田俊一
 #' ------------------------------------------------------------------------------  
 dummify_labelled <- function(df, reference_drop = FALSE) {
-  cat_vars <- names(df)[purrr::map_lgl(names(df), ~ {
-    !is.null(labelled::val_labels(df[[.x]]))
+  target_cols <- names(df)
+  target_cols <- target_cols[grepl("^[a-zA-Z]{2}_", target_cols)]
+
+  cat_vars <- target_cols[purrr::map_lgl(target_cols, ~ {
+    x <- df[[.x]]
+    haven::is.labelled(x) && !is.null(attr(x, "labels"))
   })]
-  
+
   for (v in cat_vars) {
-    x      <- df[[v]]
-    labs   <- labelled::val_labels(x)
-    
+    x <- df[[v]]
+    labs <- attr(x, "labels")
+
+    if (is.null(labs) || length(labs) == 0) next
+
     levels_to_dummy <- if (reference_drop) labs[-1] else labs
-    
-    for (i in seq_along(levels_to_dummy)) {
-      code  <- unname(levels_to_dummy[i])
-      lbl   <- names(levels_to_dummy)[i]
-      
-      # ラベル文字列のサニタイズ：英数字・アンダースコア以外を _ に置換
-      lbl_clean <- gsub("[^[:alnum:]_]", "_", lbl)
-      lbl_clean <- gsub("_{2,}", "_", lbl_clean)   # 連続 _ を縮約
-      lbl_clean <- gsub("^_|_$", "", lbl_clean)    # 前後の _ を除去
-      
-      new_col <- paste0(v, "__", lbl_clean)
-      df[[new_col]] <- as.integer(as.numeric(x) == code)
-      
-      var_lab <- labelled::var_label(x)
-      if (is.null(var_lab)) var_lab <- v
-      labelled::var_label(df[[new_col]]) <- paste0(var_lab, " (", lbl, ")")
-      
+
+    if (length(levels_to_dummy) == 0) {
+      df[[v]] <- NULL
+      next
     }
-    
+
+    for (i in seq_along(levels_to_dummy)) {
+      code <- unname(levels_to_dummy[i])
+      lbl  <- names(levels_to_dummy)[i]
+
+      lbl_clean <- gsub("[^[:alnum:]_]", "_", lbl)
+      lbl_clean <- gsub("_{2,}", "_", lbl_clean)
+      lbl_clean <- gsub("^_|_$", "", lbl_clean)
+
+      new_col <- paste0(v, "__", lbl_clean)
+      df[[new_col]] <- as.integer(unclass(x) == code)
+
+      var_lab <- attr(x, "label")
+      if (is.null(var_lab) || length(var_lab) == 0) var_lab <- v
+      attr(df[[new_col]], "label") <- paste0(var_lab, " (", lbl, ")")
+    }
+
     df[[v]] <- NULL
   }
-  
+
   df
 }
-#' --------関数ここまで-------------------------------------------------------------  
+#' --------関数ここまで-------------------------------------------------------------
 
 # 2. factor変数をダミー化
 all_data_merged_dummy <- dummify_labelled(
   all_data_merged, reference_drop = FALSE)
 
-export_labels_to_excel(
-  df = all_data_merged_dummy,
-  dataset_name = "all_data_merged_dummy",
-  path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-  sheet_name = "label_raw_extract"
-)
 
 ```
 
@@ -418,49 +418,17 @@ new_labels <- c(
   treatment_group = "treatment group (0=control, 1=early, 2=late)"
 )
 
-df_new_label <- data.frame(
-  dataset       = character(),
-  var_name      = character(),
-  value         = character(),
-  var_label     = character(),
-  value_label   = character(),
-  is_logical    = logical(),
-  is_character  = logical(),
-  is_numeric    = logical(),
-  is_factor     = logical(),
-  factor_levels = numeric(),
-  yes_value     = character(),
-  no_value      = character(),
-  stringsAsFactors = FALSE
-)
-
-for (var in names(new_labels)) {
-  var_label <- new_labels[[var]]
-  
-  df_new_label <- rbind(
-    df_new_label,
-    data.frame(
-      dataset       = "default",
-      var_name      = var,
-      value         = NA_character_,   # → "" に正規化
-      var_label     = var_label,
-      value_label   = NA_character_,
-      is_logical    = NA,
-      is_character  = NA,
-      is_numeric    = NA,
-      is_factor     = NA,
-      factor_levels = NA_real_,
-      yes_value     = NA_character_,
-      no_value      = NA_character_,
-      stringsAsFactors = FALSE
-    )
-  )
+# 例：df に対して new_labels の名前と一致する列だけラベルを付与
+for (nm in names(new_labels)) {
+  if (nm %in% names(all_data_merged_dummy)) {
+    attr(all_data_merged_dummy[[nm]], "label") <- new_labels[[nm]]
+  }
 }
 
-update_label_dict_in_excel(
-  df = df_new_label,
+export_labels_to_excel(
+  df = all_data_merged_dummy,
   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-  sheet_name = "label_raw_extract"
+  sheet_name = "label_raw_extract_dummify"
 )
 
 

@@ -148,25 +148,14 @@ with_labels_and_clean <- function(data, remove_factor = TRUE) {
   data
 }
 
-# =========================================================
-# 3. ラベル情報（変数ラベル + 値ラベル + factor情報）を保存
-# =========================================================
-
 save_labels_to_memory <- function(data, exist_label_only = TRUE) {
-  # 変数ラベル（haven::var_label は named list を返す）
   var_labels <- lapply(data, function(x) attr(x, "label", exact = TRUE))
-  
-  # 値ラベル（attr "labels"）
   val_labels <- lapply(data, function(x) attr(x, "labels", exact = TRUE))
   
-  # factor 情報
   factor_info <- lapply(names(data), function(nm) {
     x <- data[[nm]]
     if (is.factor(x)) {
-      list(
-        levels  = levels(x),
-        ordered = is.ordered(x)
-      )
+      list(levels = levels(x), ordered = is.ordered(x))
     } else {
       NULL
     }
@@ -185,15 +174,11 @@ save_labels_to_memory <- function(data, exist_label_only = TRUE) {
   }
   
   list(
-    var_labels = var_labels,
-    val_labels = val_labels,
+    var_labels  = var_labels,
+    val_labels  = val_labels,
     factor_info = factor_info
   )
 }
-
-# =========================================================
-# 4. 複数データセットのラベル情報をマージ
-# =========================================================
 
 merge_labels_memory <- function(...) {
   labs_list <- list(...)
@@ -202,7 +187,6 @@ merge_labels_memory <- function(...) {
     return(list(var_labels = NULL, val_labels = NULL, factor_info = NULL))
   }
   
-  # var_labels
   all_vars <- unique(unlist(lapply(labs_list, function(x) names(x$var_labels))))
   merged_var <- setNames(vector("list", length(all_vars)), all_vars)
   for (v in all_vars) {
@@ -215,7 +199,6 @@ merge_labels_memory <- function(...) {
     }
   }
   
-  # val_labels
   all_val_vars <- unique(unlist(lapply(labs_list, function(x) names(x$val_labels))))
   merged_val <- setNames(vector("list", length(all_val_vars)), all_val_vars)
   for (v in all_val_vars) {
@@ -228,7 +211,6 @@ merge_labels_memory <- function(...) {
     }
   }
   
-  # factor_info
   all_factor_vars <- unique(unlist(lapply(labs_list, function(x) names(x$factor_info))))
   merged_factor <- setNames(vector("list", length(all_factor_vars)), all_factor_vars)
   for (v in all_factor_vars) {
@@ -248,31 +230,14 @@ merge_labels_memory <- function(...) {
   )
 }
 
-# =========================================================
-# 5. ラベルの除去（haven ベース）
-# =========================================================
-#' データフレームから、変数ラベル、値ラベル、ユーザー定義の欠損値を削除する関数。haven_labelled 形式のラベルも対応。
-#' @param data データフレーム
-#' @param remove_factor TRUE の場合、factor クラスを character に変換して削除。FALSE の場合は factor クラスは維持したままラベルのみ削除。
-#' @return ラベルが削除されたデータフレーム
-#' @details
-#' - haven::zap_labels() で値ラベルを、haven::zap_label() で変数ラベルを削除します。
-#' - SPSS 由来の余計な属性（format.spss, display_width）があれば削除します。
-#' - クラスから haven_labelled, labelled, vctrs_vctr を削除します。
-#' - remove_factor = TRUE の場合は、factor と ordered クラスも削除して character に変換します。FALSE の場合は factor クラスは維持しますが、ラベルは削除されます。
-#' - これにより、ラベル関連の属性とクラスが完全に除去されたクリーンなデータフレームが得られます。
-#' ------------------------------------------------------------------------
 remove_labels <- function(data, remove_factor = TRUE) {
   data[] <- lapply(data, function(x) {
-    # haven のラベル関連を削除
     x <- haven::zap_labels(x)
     x <- haven::zap_label(x)
     
-    # SPSS 由来の余計な属性があれば削除
     attr(x, "format.spss")   <- NULL
     attr(x, "display_width") <- NULL
     
-    # クラスから haven_labelled, labelled, vctrs_vctr を削除
     cl <- class(x)
     cl <- setdiff(cl, c("haven_labelled", "labelled", "vctrs_vctr"))
     
@@ -286,22 +251,7 @@ remove_labels <- function(data, remove_factor = TRUE) {
   })
   data
 }
-#' ------関数ここまで--------------------------------------------------
 
-# =========================================================
-# 6. ラベルの復元（haven ベース）
-# =========================================================
-#' データフレームに変数ラベル、値ラベル、factor情報を復元する関数。haven_labelled 形式のラベルも対応。
-#' @param data データフレーム
-#' @param labels_memory save_labels_to_memory() で保存したラベル情報のリスト
-#' @return ラベルが復元されたデータフレーム
-#' @details
-#' - labels_memory には var_labels（変数ラベルのリスト）、val_labels（値ラベルのリスト）、factor_info（factor の levels と ordered 情報のリスト）が含まれている必要があります。
-#' - 変数ごとに、labels_memory の情報を優先して変数ラベルと値ラベルを復元します。labels_memory に該当するラベルがない場合は、既存のラベルを維持します。
-#' - いずれかのラベルが復元される場合は haven::labelled クラスを付与してまとめて復元します。
-#' - factor_info があれば、factor の levels と ordered 情報も復元します。
-#' - labels_memory に存在しない変数が data にある場合は、警告を出力します。
-#' ------------------------------------------------------------------------
 restore_labels <- function(data, labels_memory) {
   stopifnot(all(c("var_labels", "val_labels") %in% names(labels_memory)))
   
@@ -312,29 +262,24 @@ restore_labels <- function(data, labels_memory) {
   for (var in names(data)) {
     x <- data[[var]]
     
-    # 既存のラベルを取得
-    old_var_label <- attr(x, "label",  exact = TRUE)
+    old_var_label  <- attr(x, "label", exact = TRUE)
     old_val_labels <- attr(x, "labels", exact = TRUE)
     
-    # メモリ側
-    new_var_label <- var_labels[[var]]
+    new_var_label  <- var_labels[[var]]
     new_val_labels <- val_labels[[var]]
     
-    # 採用する変数ラベル
     final_var_label <- if (!is.null(new_var_label) && !is.na(new_var_label) && new_var_label != "") {
       new_var_label
     } else {
       old_var_label
     }
     
-    # 採用する値ラベル
     final_val_labels <- if (!is.null(new_val_labels) && length(new_val_labels) > 0) {
       new_val_labels
     } else {
       old_val_labels
     }
     
-    # いずれかのラベルがあれば haven::labelled でまとめて付け直す
     if (!is.null(final_var_label) || (!is.null(final_val_labels) && length(final_val_labels) > 0)) {
       x <- haven::labelled(
         x      = x,
@@ -346,7 +291,6 @@ restore_labels <- function(data, labels_memory) {
     data[[var]] <- x
   }
   
-  # factor の復元
   if (!is.null(factor_info)) {
     for (var in names(factor_info)) {
       if (var %in% names(data)) {
@@ -368,38 +312,15 @@ restore_labels <- function(data, labels_memory) {
   
   data
 }
-# ---------------------------------------------------------------------------
 
-######### part 2: ラベル辞書の作成・マージ・Excel 書き出し・Excel からの適用 ############
-
-# df から dataset-varname-varlabel-value-valuelabel 形式の辞書を作る（SPSSラベル対応版）
-#########################################################################
-#' @title make_label_dict
-#' @description
-#' データフレームから、変数名、変数ラベル、値
-#' ラベルを抽出して、以下の形式のデータフレームを作成する関数。
-#' dataset | var_name | var_label | value | value_label | is_logical | is_character | is_numeric | is_factor | factor_levels | yes_value | no_value
-#' @param df データフレーム
-#' @param dataset_name データセット名（文字列）
-#' @param vars 変数名のベクトル（NULLの場合は全変
-#' 数を対象）
-#' @return dataset-varname-varlabel-value-valuelabel 形式のデータフ
-#' ーム
-#' @details
-#' - SPSSのラベル（haven_labelled）に対応するため、変
-#' 数ラベルは var_label() から、値ラベルは val_labels() から抽出します。
-#' - 変数ラベルは変数ごとに1行、値ラベルは変数ごとに値の数だけ行が追加されます。
-#' - 既存の辞書とマージする際の上書きポリシーは、merge_label_dicts() 関数で制御します。
-#' ------------------------------------------------------------------------
-#########################################################################
-make_label_dict <- function(df, dataset_name, vars = NULL) {
+make_label_dict <- function(df, vars = NULL) {
   if (is.null(vars)) vars <- names(df)
   
-  yesno_level <- function(v){
+  yesno_level <- function(v) {
     yes_vars <- c("Yes", "yes", "Sí", "si")
     no_vars  <- c("No", "no")
     res <- list(yes_var = NA_character_, no_var = NA_character_)
-    if (!is.vector(v) | length(v) != 2) {
+    if (!is.vector(v) || length(v) != 2) {
       stop("Input must be a vector of length 2.")
     }
     for (x in v) {
@@ -419,29 +340,27 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     invisible(x)
   }
   
-  # 変数ラベルを抽出
   vlab_list <- lapply(df, function(x) attr(x, "label", exact = TRUE))
-  vlab_chr  <- vapply(vlab_list, function(x) if (is.null(x)) NA_character_ else as.character(x),
-                      FUN.VALUE = character(1))
+  vlab_chr  <- vapply(
+    vlab_list,
+    function(x) if (is.null(x)) NA_character_ else as.character(x),
+    FUN.VALUE = character(1)
+  )
   
   validate_labels(vlab_chr, "変数ラベル")
   
   var_part <- tibble(
-    dataset      = dataset_name,
-    var_name     = vars,
-    var_label    = unname(vlab_chr[vars]),
-    value        = NA_character_,
-    value_label  = NA_character_,
-    is_logical   = purrr::map_lgl(vars, ~ is.logical(df[[.x]])),
-    is_character = purrr::map_lgl(vars, ~ is.character(df[[.x]])),
-    is_numeric   = purrr::map_lgl(vars, ~ is.numeric(df[[.x]])),
-    is_factor    = purrr::map_lgl(vars, ~ is.factor(df[[.x]])),
-    factor_levels = purrr::map_int(vars, ~ {
-      x <- df[[.x]]
-      length(unique(na.omit(x)))
-    }),
-    yes_value    = NA_character_,
-    no_value     = NA_character_
+    var_name      = vars,
+    var_label     = unname(vlab_chr[vars]),
+    value         = NA_character_,
+    value_label   = NA_character_,
+    is_logical    = purrr::map_lgl(vars, ~ is.logical(df[[.x]])),
+    is_character  = purrr::map_lgl(vars, ~ is.character(df[[.x]])),
+    is_numeric    = purrr::map_lgl(vars, ~ is.numeric(df[[.x]])),
+    is_factor     = purrr::map_lgl(vars, ~ is.factor(df[[.x]])),
+    factor_levels = purrr::map_int(vars, ~ length(unique(na.omit(df[[.x]])))),
+    yes_value     = NA_character_,
+    no_value      = NA_character_
   )
   
   value_part <- purrr::map_dfr(vars, function(v) {
@@ -451,20 +370,17 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     if (is.null(lab_vals) || length(lab_vals) == 0) return(NULL)
     
     tibble(
-      dataset      = dataset_name,
-      var_name     = v,
-      var_label    = unname(vlab_chr[v]),
-      value        = as.character(unname(lab_vals)),
-      value_label  = names(lab_vals),
-      is_logical   = is.logical(x),
-      is_character = is.character(x),
-      is_numeric   = is.numeric(x),
-      is_factor    = is.factor(x),
+      var_name      = v,
+      var_label     = unname(vlab_chr[v]),
+      value         = as.character(unname(lab_vals)),
+      value_label   = names(lab_vals),
+      is_logical    = is.logical(x),
+      is_character  = is.character(x),
+      is_numeric    = is.numeric(x),
+      is_factor     = is.factor(x),
       factor_levels = if (is.factor(x)) length(na.omit(unique(x))) else NA_integer_,
-      yes_value    = if (is.factor(x) && length(na.omit(unique(x))) == 2)
-        yesno_level(levels(x))$yes_var else NA_character_,
-      no_value     = if (is.factor(x) && length(na.omit(unique(x))) == 2)
-        yesno_level(levels(x))$no_var else NA_character_
+      yes_value     = if (is.factor(x) && length(na.omit(unique(x))) == 2) yesno_level(levels(x))$yes_var else NA_character_,
+      no_value      = if (is.factor(x) && length(na.omit(unique(x))) == 2) yesno_level(levels(x))$no_var else NA_character_
     )
   })
   
@@ -484,174 +400,93 @@ make_label_dict <- function(df, dataset_name, vars = NULL) {
     warning("値ラベルを持つ変数が一つもありません。")
   }
   
-  bind_rows(var_part, value_part) %>%
-    arrange(dataset, var_name, value)
+  bind_rows(var_part, value_part) %>% arrange(var_name, value)
 }
-# ------関数ここまで------------------------------------------------------------
 
-# 既存辞書と新規辞書をマージ（上書きポリシー付き）
-#########################################################################
-#' @title merge_label_dicts
-#' @description
-#' 既存のラベル辞書と新規のラベル辞書を
-#' マージする関数。上書きポリシーを指定して、どちらのラベルを優先するかを制御できます。
-#' @param old 既存のラベル辞書（データフレーム
-#' dataset-var_name-var_label-value-value_label 形式）
-#' @param new 新規のラベル辞書（同上）
-#' @param overwrite_policy 上書きポリシー（"prefer_new" また
-#' は "prefer_old"）
-#' @return マージされたラベル辞書（同上）
-#' @details
-#' - 上書きポリシー "prefer_new" は、新規辞書
-#' のラベルを優先し、既存辞書のラベルは新規にない場合のみ使用します。
-#' - 上書きポリシー "prefer_old" は、既存辞
-#' 書のラベルを優先し、新規辞書のラベルは既存にない場合のみ使用します。
-#' - マージは dataset, var_name, value の組み合わせで行い
-#' ます。両方の辞書に同じ組み合わせがある場合は、上書きポリシーに従ってラベルを選択します。
-#' ------------------------------------------------------------------------
 merge_label_dicts <- function(old, new, overwrite_policy = c("prefer_new", "prefer_old")) {
   overwrite_policy <- match.arg(overwrite_policy)
   
-  key_cols <- c("dataset", "var_name", "value")
+  key_cols <- c("var_name", "value")
   
-  full <- full_join(old, new,
-                    by = key_cols,
-                    suffix = c("_old", "_new"))
-
-  # ★ 型をそろえる：必ず character にしてから coalesce
+  full <- full_join(old, new, by = key_cols, suffix = c("_old", "_new"))
+  
   full <- full %>%
     dplyr::mutate(
-      var_label_old   = as.character(var_label_old),
-      var_label_new   = as.character(var_label_new),
-      value_label_old = as.character(value_label_old),
-      value_label_new = as.character(value_label_new),
-      is_logical_old  = as.logical(is_logical_old),
-      is_logical_new  = as.logical(is_logical_new),
-      is_character_old = as.logical(is_character_old),
-      is_character_new = as.logical(is_character_new),
-      is_numeric_old = as.logical(is_numeric_old),
-      is_numeric_new = as.logical(is_numeric_new),
-      is_factor_old = as.logical(is_factor_old),
-      is_factor_new = as.logical(is_factor_new),
+      var_label_old     = as.character(var_label_old),
+      var_label_new     = as.character(var_label_new),
+      value_label_old   = as.character(value_label_old),
+      value_label_new   = as.character(value_label_new),
+      is_logical_old    = as.logical(is_logical_old),
+      is_logical_new    = as.logical(is_logical_new),
+      is_character_old  = as.logical(is_character_old),
+      is_character_new  = as.logical(is_character_new),
+      is_numeric_old    = as.logical(is_numeric_old),
+      is_numeric_new    = as.logical(is_numeric_new),
+      is_factor_old     = as.logical(is_factor_old),
+      is_factor_new     = as.logical(is_factor_new),
       factor_levels_old = as.numeric(factor_levels_old),
       factor_levels_new = as.numeric(factor_levels_new),
-      yes_value_old = as.character(yes_value_old),
-      yes_value_new = as.character(yes_value_new),
-      no_value_old = as.character(no_value_old),
-      no_value_new = as.character(no_value_new)
+      yes_value_old     = as.character(yes_value_old),
+      yes_value_new     = as.character(yes_value_new),
+      no_value_old      = as.character(no_value_old),
+      no_value_new      = as.character(no_value_new)
     )
-    
+  
   if (overwrite_policy == "prefer_new") {
     out <- full %>%
       transmute(
-        dataset,
         var_name,
         value,
-        var_label   = coalesce(var_label_new, var_label_old),
-        value_label = coalesce(value_label_new, value_label_old),
-        is_logical  = coalesce(is_logical_new, is_logical_old),
-        is_character = coalesce(is_character_new, is_character_old),
-        is_numeric = coalesce(is_numeric_new, is_numeric_old),
-        is_factor = coalesce(is_factor_new, is_factor_old),
+        var_label     = coalesce(var_label_new, var_label_old),
+        value_label   = coalesce(value_label_new, value_label_old),
+        is_logical    = coalesce(is_logical_new, is_logical_old),
+        is_character  = coalesce(is_character_new, is_character_old),
+        is_numeric    = coalesce(is_numeric_new, is_numeric_old),
+        is_factor     = coalesce(is_factor_new, is_factor_old),
         factor_levels = coalesce(factor_levels_new, factor_levels_old),
-        yes_value = coalesce(yes_value_new, yes_value_old),
-        no_value = coalesce(no_value_new, no_value_old)
+        yes_value     = coalesce(yes_value_new, yes_value_old),
+        no_value      = coalesce(no_value_new, no_value_old)
       )
   } else {
     out <- full %>%
       transmute(
-        dataset,
         var_name,
         value,
-        var_label   = coalesce(var_label_old, var_label_new),
-        value_label = coalesce(value_label_old, value_label_new),
-        is_logical  = coalesce(is_logical_old, is_logical_new),
-        is_character = coalesce(is_character_old, is_character_new),
-        is_numeric = coalesce(is_numeric_old, is_numeric_new),
-        is_factor = coalesce(is_factor_old, is_factor_new),
+        var_label     = coalesce(var_label_old, var_label_new),
+        value_label   = coalesce(value_label_old, value_label_new),
+        is_logical    = coalesce(is_logical_old, is_logical_new),
+        is_character  = coalesce(is_character_old, is_character_new),
+        is_numeric    = coalesce(is_numeric_old, is_numeric_new),
+        is_factor     = coalesce(is_factor_old, is_factor_new),
         factor_levels = coalesce(factor_levels_old, factor_levels_new),
-        yes_value = coalesce(yes_value_old, yes_value_new),
-        no_value = coalesce(no_value_old, no_value_new)
+        yes_value     = coalesce(yes_value_old, yes_value_new),
+        no_value      = coalesce(no_value_old, no_value_new)
       )
   }
   
-  out %>%
-    arrange(dataset, var_name, value)
+  out %>% arrange(var_name, value)
 }
-# ----関数ここまで------------------------------------------------------------
 
-# Excel の label_extract シートにラベル辞書を書き出す
-#######################################################################
-#' @title export_labels_to_excel
-#' @description
-#' データフレームから抽出したラベル辞書を、指定された
-#' Excel ファイルの label_extract シートに書き出す関数。既存のシートがある場合は、上書きポリシーに従ってマージします。
-#' @param df データフレーム
-#' @param dataset_name データセット名（文字列）
-#' @param path Excel ファイルのパス
-#' @param sheet_name 書き出すシート名（デフォルトは
-#' "label_extract"）
-#' @param vars 変数名のベクトル（NULLの場合は全変
-#' 数を対象）
-#' @param overwrite_policy 上書きポリシー（"prefer_new" また
-#' は "prefer_old"）
-#' @return 書き出されたラベル辞書のデータフレーム
-#' @details
-#' - 既存の Excel ファイルが存在する場合、指定されたシート
-#' があるかを確認します。シートがある場合は、既存の辞書を読み込み、新規の辞書とマージします。シートがない場合は、新規の辞書をそのまま使用します。
-#' - 既存の他のシートは保持され、label_extract シート
-#' のみが上書きまたは追加されます。
-#' - Excel ファイルが存在しない場合は、新規にファイルを作
-#' 成し、label_extract シートに新規の辞書を書き出します。
-#' ------------------------------------------------------------------------
-#' # 基本的な使い方（全変数を抽出、既存データがあれば新規優先で上書き）
-# export_labels_to_excel(
-#   df = endes2012_raw,
-#   dataset_name = "ENDES12",
-#   path = "metadata/data_dictionary.xlsx"
-# )
-# 
-# # 一部の変数だけ更新（既存ラベルを優先）
-# export_labels_to_excel(
-#   df = endes2012_raw,
-#   dataset_name = "ENDES12",
-#   path = "metadata/data_dictionary.xlsx",
-#   vars = c("state", "sex", "wealth_quint"),
-#   overwrite_policy = "prefer_old"
-# )
-# 
-# # 別のデータセットを同じExcelファイルに追加
-# export_labels_to_excel(
-#   df = endes2015_raw,
-#   dataset_name = "ENDES15",
-#   path = "metadata/data_dictionary.xlsx"
-# )
-#' 
 export_labels_to_excel <- function(df,
-                                   dataset_name,
                                    path,
                                    sheet_name = "label_raw_extract",
                                    vars = NULL,
                                    overwrite_policy = c("prefer_new", "prefer_old")) {
   overwrite_policy <- match.arg(overwrite_policy)
   
-  # 新規辞書を作成
-    dict_new <- make_label_dict(df, dataset_name, vars)
+  dict_new <- make_label_dict(df, vars)
   
-  # 既存 Excel ファイルがある場合
   if (file.exists(path)) {
-    # 既存シートを読み込み（エラー時は新規作成）
     existing_sheets <- excel_sheets(path)
     
     if (sheet_name %in% existing_sheets) {
       old <- read_excel(path, sheet = sheet_name)
+      if ("dataset" %in% names(old)) old <- dplyr::select(old, -dataset)
       dict_out <- merge_label_dicts(old, dict_new, overwrite_policy)
     } else {
-      # シートが存在しない場合は新規作成
       dict_out <- dict_new
     }
     
-    # 既存の他シートを保持しつつ、label_extract シートを上書き
     all_sheets <- lapply(existing_sheets, function(s) {
       if (s == sheet_name) {
         dict_out
@@ -661,51 +496,28 @@ export_labels_to_excel <- function(df,
     })
     names(all_sheets) <- existing_sheets
     
-    # label_extract が新規の場合は追加
     if (!sheet_name %in% existing_sheets) {
       all_sheets[[sheet_name]] <- dict_out
     }
     
     write_xlsx(all_sheets, path)
-    
   } else {
-    # ファイル自体が存在しない場合は新規作成
     dict_out <- dict_new
     write_xlsx(setNames(list(dict_out), sheet_name), path)
   }
   
   invisible(dict_out)
 }
-# ----関数ここまで------------------------------------------------------------
 
-# DHSデータのラベルを削除する関数セット
-########################################################################
-#' @title strip_all_labels
-#' @description
-#' データフレームから、変数ラベル、値ラベル、ユー
-#' ザー定義の欠損値をすべて削除する関数。haven_labelled 形式のラベルも対応。
-#' @param df データフレーム
-#' @param user_na_to_na ユーザー定義の欠損値
-#' をNAに変換するかどうか（デフォルトは TRUE）。TRUE の場合、ユーザー定義の欠損値は NA に置き換えられます。FALSE の場合、ユーザー定義の欠損値はそのまま残ります。
-#' @return ラベルが削除されたデータフレーム
-#' @details
-#' - labelled::remove_labels() 関数を使用して、変数ラベル、値ラベル、ユーザー定義の欠損値をまとめて削除します。user_na_to_na 引数で、ユーザー定義の欠損値を NA に変換するかどうかを制御できます。
-#' - この関数は、DHSデータのような haven_labelled
-#' 形式のデータフレームに対して、ラベルを完全に削除するために使用されます。必要に応じて、ユーザー定義の欠損値を NA に変換するオプションも提供しています。
-#' -----------------------------------------------------------------------
-# 1. 変数ラベル・値ラベル・ユーザー欠損をすべて削除
 strip_all_labels <- function(df, user_na_to_na = TRUE) {
   df[] <- lapply(df, function(x) {
-    # 値ラベル・変数ラベル・ユーザーNAを haven で削除
     x <- haven::zap_labels(x)
     x <- haven::zap_label(x)
     if (user_na_to_na) {
       x <- haven::zap_missing(x)
     }
-    # SPSS 由来の属性も念のため削除
     attr(x, "format.spss")   <- NULL
     attr(x, "display_width") <- NULL
-    # クラスから haven_labelled 等を外す
     cl <- class(x)
     cl <- setdiff(cl, c("haven_labelled", "labelled", "vctrs_vctr"))
     class(x) <- cl
@@ -713,27 +525,10 @@ strip_all_labels <- function(df, user_na_to_na = TRUE) {
   })
   df
 }
-# ------関数ここまで------------------------------------------------------------
-########################################################################
-#' @title strip_value_labels_only
-#' @description
-#' データフレームから、値ラベルとユーザー定義の欠
-#' 損値を削除し、変数ラベルは保持する関数。haven_labelled 形式のラベルも対応。
-#' @param df データフレーム
-#' @param user_na_to_na ユーザー定義の欠損値
-#' をNAに変換するかどうか（デフォルトは TRUE）。TRUE の場合、ユーザー定義の欠損値は NA に置き換えられます。FALSE の場合、ユーザー定義の欠損値はそのまま残ります。
-#' @return 値ラベルとユーザー定義の欠損値が
-#' 削除されたデータフレーム（変数ラベルは保持）
-#' @details
-#' - labelled::remove_val_labels() 関数を使用して、値ラベル
-#' を削除し、labelled::remove_user_na() 関数を使用して、ユーザー定義の欠損値を削除します。user_na_to_na 引数で、ユーザー定義の欠損値を NA に変換するかどうかを制御できます。
-#' - この関数は、変数ラベルを保持しつつ、値
-#' ラベルとユーザー定義の欠損値を削除したい場合に使用されます。DHSデータのような haven_labelled 形式のデータフレームに対して、必要なラベルだけを削除するために便利です。
-#' -----------------------------------------------------------------------
-# 2. 「変数ラベルだけ残して、値ラベルとユーザー欠損だけ削除」版
+
 strip_value_labels_only <- function(df, user_na_to_na = TRUE) {
   df[] <- lapply(df, function(x) {
-    x <- haven::zap_labels(x)   # 値ラベルだけ削除
+    x <- haven::zap_labels(x)
     if (user_na_to_na) {
       x <- haven::zap_missing(x)
     }
@@ -742,51 +537,24 @@ strip_value_labels_only <- function(df, user_na_to_na = TRUE) {
   df
 }
 
-# -----関数ここまで------------------------------------------------------------
-
-# Excel (label_extract) からラベルを df に適用
-#######################################################################
-#' @title apply_labels_from_excel
-#' @description
-#' 指定された Excel ファイルの label_extract シートから、データフレ
-#' ムに変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、
-#' 既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
-#' @param df データフレーム
-#' @param dataset_name データセット名（文字列）
-#' @param path Excel ファイルのパス
-#' @param sheet_name 読み込むシート名（デフォルトは
-#' "label_extract"）
-#' @param overwrite_policy 上書きポリシー（"prefer_excel" また
-#' は "prefer_df"）
-#' @return ラベルが適用されたデータフレーム
-#' @details
-#' - Excel ファイルの label_extract シートから、指定されたデータセット名
-#' に対応する行をフィルタリングして、変数ラベルと値ラベルの情報を抽出します。
-#' - 変数ラベルは、value が NA の行から抽出され
-#' ます。値ラベルは、value が NA でない行から抽出されます。
-#' - 上書きポリシー "prefer_excel" は、Excel のラ
-#' ベルを優先して、データフレームの既存のラベルを上書きします。上書きポリシー "prefer_df" は、データフレームの既存のラベルを優先し、Excel のラベルは既存にない場合のみ適用します。
-#' - 変数ラベルと値ラベルの適用は、データ
-#' フレームの変数名と Excel の var_name を照合して行います。Excel に存在しない変数や、データフレームに存在しない変数は無視されます。
-#' ------------------------------------------------------------------------
 apply_labels_from_excel <- function(df,
-                                    dataset_name,
                                     path,
                                     sheet_name = "label_extract",
                                     overwrite_policy = c("prefer_excel", "prefer_df")) {
   overwrite_policy <- match.arg(overwrite_policy)
   
-  dict <- readxl::read_excel(path, sheet = sheet_name) %>%
+  dict <- readxl::read_excel(path, sheet = sheet_name)
+  if ("dataset" %in% names(dict)) dict <- dplyr::select(dict, -dataset)
+  
+  dict <- dict %>%
     dplyr::mutate(
-      dataset     = as.character(dataset),
-      var_name    = as.character(var_name),
-      var_label   = as.character(var_label),
-      value       = as.character(value),
-      value_label = as.character(value_label),
+      var_name     = as.character(var_name),
+      var_label    = as.character(var_label),
+      value        = as.character(value),
+      value_label  = as.character(value_label),
       is_character = as.logical(is_character),
-      is_numeric = as.logical(is_numeric)
-    ) %>%
-    dplyr::filter(dataset == dataset_name)
+      is_numeric   = as.logical(is_numeric)
+    )
   
   var_info <- dict %>%
     dplyr::filter(is.na(value) | value %in% c("NA", "")) %>%
@@ -799,14 +567,10 @@ apply_labels_from_excel <- function(df,
   
   for (v in intersect(unique(dict$var_name), names(df))) {
     x <- df[[v]]
-    
-    # ---------- 型情報の取得 ----------
     vtype <- var_info %>% dplyr::filter(var_name == v) %>% dplyr::slice(1)
     force_char    <- isTRUE(vtype$is_character)
     force_numeric <- isTRUE(vtype$is_numeric)
     
-    # ---------- x を目標型に変換 ----------
-    # haven_labelled の場合は一旦 unclass して基底ベクトルを取り出す
     x_base <- if (inherits(x, "haven_labelled")) haven::zap_labels(x) else x
     
     if (force_char && !is.character(x_base)) {
@@ -815,7 +579,6 @@ apply_labels_from_excel <- function(df,
       x_base <- suppressWarnings(as.numeric(x_base))
     }
     
-    # ---------- 変数ラベル ----------
     old_var_label <- attr(x, "label", exact = TRUE)
     
     new_var_label <- var_info %>%
@@ -824,30 +587,21 @@ apply_labels_from_excel <- function(df,
       .[1]
     
     final_var_label <- dplyr::case_when(
-      overwrite_policy == "prefer_excel" &&
-        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
-      (is.null(old_var_label) || is.na(old_var_label) || old_var_label == "") &&
-        !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      overwrite_policy == "prefer_excel" && !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
+      (is.null(old_var_label) || is.na(old_var_label) || old_var_label == "") && !is.na(new_var_label) && new_var_label != "" ~ new_var_label,
       TRUE ~ old_var_label
     )
     
-    # ---------- 値ラベル ----------
     sub <- value_info %>% dplyr::filter(var_name == v)
     
     if (nrow(sub) > 0) {
-      # ★ 型情報を優先し、なければ x_base の実型で判断
       if (force_char) {
         new_vals <- as.character(sub$value)
       } else if (force_numeric) {
         new_vals <- suppressWarnings(as.numeric(sub$value))
       } else {
-        # 従来ロジック：数値変換できれば numeric、できなければ character
         new_vals_num <- suppressWarnings(as.numeric(sub$value))
-        new_vals <- if (any(is.na(new_vals_num) & !is.na(sub$value))) {
-          as.character(sub$value)
-        } else {
-          new_vals_num
-        }
+        new_vals <- if (any(is.na(new_vals_num) & !is.na(sub$value))) as.character(sub$value) else new_vals_num
       }
       
       keep     <- !is.na(new_vals) & !is.na(sub$value_label) & sub$value_label != ""
@@ -858,7 +612,6 @@ apply_labels_from_excel <- function(df,
     
     old_labs <- attr(x, "labels", exact = TRUE)
     
-    # ★ old_labs の値部分も x_base の型に揃える（型不一致防止）
     if (!is.null(old_labs) && length(old_labs) > 0) {
       if (is.character(x_base)) {
         old_labs <- stats::setNames(as.character(old_labs), names(old_labs))
@@ -868,8 +621,7 @@ apply_labels_from_excel <- function(df,
       }
     }
     
-    final_labs <- if (overwrite_policy == "prefer_excel" ||
-                      is.null(old_labs) || length(old_labs) == 0) {
+    final_labs <- if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
       new_labs
     } else if (is.null(new_labs) || length(new_labs) == 0) {
       old_labs
@@ -878,55 +630,19 @@ apply_labels_from_excel <- function(df,
       c(old_labs, add_labs)
     }
     
-    # ---------- haven::labelled() で再構築 ----------
     if (!is.null(final_labs) && length(final_labs) > 0) {
-      df[[v]] <- haven::labelled(
-        x      = x_base,
-        labels = final_labs,
-        label  = final_var_label
-      )
-    } else if (!is.null(final_var_label) &&
-               !is.na(final_var_label) && final_var_label != "") {
+      df[[v]] <- haven::labelled(x = x_base, labels = final_labs, label = final_var_label)
+    } else if (!is.null(final_var_label) && !is.na(final_var_label) && final_var_label != "") {
       attr(x_base, "label") <- final_var_label
       df[[v]] <- x_base
     } else {
-      df[[v]] <- x_base   # 型変換だけ反映
+      df[[v]] <- x_base
     }
   }
   
   df
 }
-# -----関数ここまで------------------------------------------------------------
 
-###############################################################################
-#' @title apply_labels_from_label_final
-#' @description
-#' 指定された Excel ファイルの label_final シートから、データフレームに
-#' 変数ラベルと値ラベルを適用する関数。上書きポリシーを指定して、
-#' 既存のラベルとExcelのラベルのどちらを優先するかを制御できます。
-#' label_final シートは、dataset 列がない前提で、var_name, 
-#' var_label, value, value_label の列を持つ形式である必要があります。
-#' @param df データフレーム
-#' @param path Excel ファイルのパス
-#' @param sheet_name 読み込むシート名（デフォルトは
-#' "label_final"）
-#' @param overwrite_policy 上書きポリシー（"prefer_excel" また
-#' は "prefer_df"）
-#' @return ラベルが適用されたデータフレーム
-#' @details
-#' - Excel ファイルの label_final シートから、変数ラベルと値
-#' ラベルの情報を抽出します。label_final シートは、dataset 列がない前提で、
-#' var_name, var_label, value, value_label の列を持つ形式である必要があります。
-#' - 変数ラベルは、value が NA / "NA" / 空
-#' の行から抽出されます。値ラベルは、value が NA でない行から抽出されます。
-#' - 上書きポリシー "prefer_excel" は、Excel のラ
-#' ベルを優先して、データフレームの既存のラベルを上書きします。上書きポリシー
-#'  "prefer_df" は、データフレームの既存のラベルを優先し、Excel のラベルは
-#'  既存にない場合のみ適用します。
-#' - 変数ラベルと値ラベルの適用は、データ
-#' フレームの変数名と Excel の var_name を照合して行います。Excel に存在しない
-#' 変数や、データフレームに存在しない変数は無視されます。
-#' ------------------------------------------------------------------------
 apply_labels_from_label_final <- function(df,
                                           path,
                                           sheet_name = "label_final",
@@ -935,13 +651,13 @@ apply_labels_from_label_final <- function(df,
   
   dict <- readxl::read_excel(path, sheet = sheet_name) %>%
     dplyr::mutate(
-      var_name    = as.character(var_name),
-      var_label   = as.character(var_label),
-      value       = as.character(value),
-      value_label = as.character(value_label),
+      var_name     = as.character(var_name),
+      var_label    = as.character(var_label),
+      value        = as.character(value),
+      value_label  = as.character(value_label),
       is_character = as.logical(if ("is_character" %in% names(.)) is_character else NA),
       is_character = as.logical(is_character),
-      is_numeric = as.logical(is_numeric)
+      is_numeric   = as.logical(if ("is_numeric" %in% names(.)) is_numeric else NA)
     )
   
   var_info <- dict %>%
@@ -956,12 +672,10 @@ apply_labels_from_label_final <- function(df,
   for (v in intersect(unique(dict$var_name), names(df))) {
     x <- df[[v]]
     
-    # ---------- 型情報の取得 ----------
     vtype <- var_info %>% dplyr::filter(var_name == v) %>% dplyr::slice(1)
     force_char    <- isTRUE(vtype$is_character)
     force_numeric <- isTRUE(vtype$is_numeric)
     
-    # ---------- x を目標型に変換 ----------
     x_base <- if (inherits(x, "haven_labelled")) haven::zap_labels(x) else x
     
     if (force_char && !is.character(x_base)) {
@@ -970,7 +684,6 @@ apply_labels_from_label_final <- function(df,
       x_base <- suppressWarnings(as.numeric(x_base))
     }
     
-    # ---------- 変数ラベル ----------
     old_var_label <- attr(x, "label", exact = TRUE)
     old_var_label <- if (is.null(old_var_label)) NA_character_ else as.character(old_var_label)
     
@@ -980,18 +693,14 @@ apply_labels_from_label_final <- function(df,
       .[1]
     
     final_var_label <- dplyr::case_when(
-      overwrite_policy == "prefer_excel" &
-        !is.na(new_var_label) & new_var_label != "" ~ new_var_label,
-      (is.na(old_var_label) | old_var_label == "") &
-        !is.na(new_var_label) & new_var_label != "" ~ new_var_label,
+      overwrite_policy == "prefer_excel" & !is.na(new_var_label) & new_var_label != "" ~ new_var_label,
+      (is.na(old_var_label) | old_var_label == "") & !is.na(new_var_label) & new_var_label != "" ~ new_var_label,
       TRUE ~ old_var_label
     )
     
-    # ---------- 値ラベル ----------
     sub <- value_info %>% dplyr::filter(var_name == v)
     
     if (nrow(sub) > 0) {
-      # ★ 型情報を優先し、なければ x_base の実型で判断
       if (force_char) {
         new_vals <- as.character(sub$value)
       } else if (force_numeric) {
@@ -1002,15 +711,14 @@ apply_labels_from_label_final <- function(df,
         new_vals <- as.character(sub$value)
       }
       
-      keep          <- !is.na(new_vals) & !is.na(sub$value_label) & sub$value_label != ""
-      new_labs      <- stats::setNames(new_vals[keep], sub$value_label[keep])
+      keep     <- !is.na(new_vals) & !is.na(sub$value_label) & sub$value_label != ""
+      new_labs <- stats::setNames(new_vals[keep], sub$value_label[keep])
     } else {
       new_labs <- NULL
     }
     
     old_labs <- attr(x, "labels", exact = TRUE)
     
-    # ★ old_labs の値部分も x_base の型に揃える
     if (!is.null(old_labs) && length(old_labs) > 0) {
       if (is.character(x_base)) {
         old_labs <- stats::setNames(as.character(old_labs), names(old_labs))
@@ -1020,8 +728,7 @@ apply_labels_from_label_final <- function(df,
       }
     }
     
-    final_labs <- if (overwrite_policy == "prefer_excel" ||
-                      is.null(old_labs) || length(old_labs) == 0) {
+    final_labs <- if (overwrite_policy == "prefer_excel" || is.null(old_labs) || length(old_labs) == 0) {
       new_labs
     } else if (is.null(new_labs) || length(new_labs) == 0) {
       old_labs
@@ -1030,15 +737,9 @@ apply_labels_from_label_final <- function(df,
       c(old_labs, add_labs)
     }
     
-    # ---------- haven::labelled() で再構築 ----------
     if (!is.null(final_labs) && length(final_labs) > 0) {
-      df[[v]] <- haven::labelled(
-        x      = x_base,
-        labels = final_labs,
-        label  = final_var_label
-      )
-    } else if (!is.null(final_var_label) &&
-               !is.na(final_var_label) && final_var_label != "") {
+      df[[v]] <- haven::labelled(x = x_base, labels = final_labs, label = final_var_label)
+    } else if (!is.null(final_var_label) && !is.na(final_var_label) && final_var_label != "") {
       attr(x_base, "label") <- final_var_label
       df[[v]] <- x_base
     } else {
@@ -1048,36 +749,12 @@ apply_labels_from_label_final <- function(df,
   
   df
 }
-# -----関数ここまで------------------------------------------------------------
 
-###############################################################################
-#' @title update_label_dict_in_excel
-#' @description
-#' ラベル情報を含むデータフレームを、指定した Excel ファイルの
-#' 指定シートにマージして書き出す関数。行のキーは
-#' var_name × value とする。value は NA/空白を許容し、
-#' 内部では空文字に統一する。
-#'
-#' @param df ラベル情報を含むデータフレーム。
-#'   必須列は var_name, value, var_label, value_label。
-#'   その他の列は任意。
-#' @param path Excel ファイルのパス（デフォルト: "data_dictionary.xlsx"）
-#' @param sheet_name 書き出すシート名（デフォルト: "label_raw_extract"）
-#' @param dataset_name データセット名（デフォルト: "default"）
-#'   df に dataset 列が無い場合に補完する。
-#' @param overwrite_policy 上書きポリシー
-#'   "prefer_new" または "prefer_old"。
-#'
-#' @return 書き出されたデータフレームを invisible で返す。
-#'-------------------------------------------------------------------------------
 update_label_dict_in_excel <- function(df,
                                        path,
                                        sheet_name = "label_raw_extract",
-                                       dataset_name = "default",
                                        overwrite_policy = c("prefer_new", "prefer_old")) {
   overwrite_policy <- match.arg(overwrite_policy)
-  
-  # ---- 内部関数 -------------------------------------------------------------
   
   normalize_key_value <- function(x) {
     x <- as.character(x)
@@ -1085,57 +762,14 @@ update_label_dict_in_excel <- function(df,
     x
   }
   
-  make_typed_na <- function(x) {
-    if (inherits(x, "Date")) {
-      return(as.Date(NA))
-    }
-    if (inherits(x, "POSIXct")) {
-      return(as.POSIXct(NA))
-    }
-    if (is.integer(x)) {
-      return(NA_integer_)
-    }
-    if (is.numeric(x)) {
-      return(NA_real_)
-    }
-    if (is.logical(x)) {
-      return(NA)
-    }
-    if (is.character(x)) {
-      return(NA_character_)
-    }
-    if (is.factor(x)) {
-      return(factor(NA, levels = levels(x)))
-    }
-    NA
-  }
-  
-  make_default_value <- function(proto_col, col_name = NULL, dataset_name = "default") {
-    if (!is.null(col_name) && identical(col_name, "dataset")) {
-      return(dataset_name)
-    }
-    
-    if (inherits(proto_col, "Date")) {
-      return(as.Date(NA))
-    }
-    if (inherits(proto_col, "POSIXct")) {
-      return(as.POSIXct(NA))
-    }
-    if (is.integer(proto_col)) {
-      return(NA_integer_)
-    }
-    if (is.numeric(proto_col)) {
-      return(NA_real_)
-    }
-    if (is.logical(proto_col)) {
-      return(NA)
-    }
-    if (is.character(proto_col)) {
-      return(NA_character_)
-    }
-    if (is.factor(proto_col)) {
-      return(factor(NA, levels = levels(proto_col)))
-    }
+  make_default_value <- function(proto_col, col_name = NULL) {
+    if (inherits(proto_col, "Date")) return(as.Date(NA))
+    if (inherits(proto_col, "POSIXct")) return(as.POSIXct(NA))
+    if (is.integer(proto_col)) return(NA_integer_)
+    if (is.numeric(proto_col)) return(NA_real_)
+    if (is.logical(proto_col)) return(NA)
+    if (is.character(proto_col)) return(NA_character_)
+    if (is.factor(proto_col)) return(factor(NA, levels = levels(proto_col)))
     NA
   }
   
@@ -1145,18 +779,14 @@ update_label_dict_in_excel <- function(df,
     identical(cls_x, cls_y)
   }
   
-  add_missing_cols_from_prototype <- function(df, proto_df, dataset_name = "default") {
+  add_missing_cols_from_prototype <- function(df, proto_df) {
     miss_cols <- setdiff(names(proto_df), names(df))
-    
-    if (length(miss_cols) == 0) {
-      return(df)
-    }
+    if (length(miss_cols) == 0) return(df)
     
     for (cc in miss_cols) {
-      default_val <- make_default_value(proto_df[[cc]], cc, dataset_name)
+      default_val <- make_default_value(proto_df[[cc]], cc)
       df[[cc]] <- rep(default_val, nrow(df))
     }
-    
     df
   }
   
@@ -1165,29 +795,17 @@ update_label_dict_in_excel <- function(df,
     df[, c(ref_names, extra_cols), drop = FALSE]
   }
   
-  # ---- 1) df受入れ直後のチェック --------------------------------------------
-  
   if (!("var_name" %in% names(df)) || !("value" %in% names(df))) {
     stop("df には必須列 'var_name' と 'value' が必要です。")
   }
-  
   if (!("var_label" %in% names(df)) || !("value_label" %in% names(df))) {
     stop("df には必須列 'var_label' と 'value_label' が必要です。")
   }
   
   df <- as.data.frame(df, stringsAsFactors = FALSE)
-  
   df$var_name <- as.character(df$var_name)
   df$value <- normalize_key_value(df$value)
-  
-  if ("dataset" %in% names(df)) {
-    df$dataset <- as.character(df$dataset)
-    df$dataset[is.na(df$dataset) | df$dataset == ""] <- dataset_name
-  } else {
-    df$dataset <- dataset_name
-  }
-  
-  # ---- 2) 既存Excelの読込 ---------------------------------------------------
+  if ("dataset" %in% names(df)) df$dataset <- NULL
   
   if (file.exists(path)) {
     existing_sheets <- readxl::excel_sheets(path)
@@ -1202,31 +820,22 @@ update_label_dict_in_excel <- function(df,
       
       old$var_name <- as.character(old$var_name)
       old$value <- normalize_key_value(old$value)
+      if ("dataset" %in% names(old)) old$dataset <- NULL
       
-      if ("dataset" %in% names(old)) {
-        old$dataset <- as.character(old$dataset)
-        old$dataset[is.na(old$dataset) | old$dataset == ""] <- dataset_name
-      } else {
-        old$dataset <- dataset_name
-      }
+      df <- add_missing_cols_from_prototype(df, old)
       
-      # ---- 3) df の不足列を既存Excelの型に合わせて補完 ----------------------
-      df <- add_missing_cols_from_prototype(df, old, dataset_name = dataset_name)
-      
-      # 既存側に無くて df にだけある列も残すので、列集合を統一
       all_cols <- union(names(old), names(df))
       
       for (cc in setdiff(all_cols, names(old))) {
-        old[[cc]] <- rep(make_default_value(df[[cc]], cc, dataset_name), nrow(old))
+        old[[cc]] <- rep(make_default_value(df[[cc]], cc), nrow(old))
       }
       for (cc in setdiff(all_cols, names(df))) {
-        df[[cc]] <- rep(make_default_value(old[[cc]], cc, dataset_name), nrow(df))
+        df[[cc]] <- rep(make_default_value(old[[cc]], cc), nrow(df))
       }
       
       old <- old[, all_cols, drop = FALSE]
       df  <- df[,  all_cols, drop = FALSE]
       
-      # ---- 4) 型不一致チェック：df側の各列を既存Excel列型と比較 --------------
       common_cols <- intersect(names(df), names(old))
       common_cols <- setdiff(common_cols, c("var_name", "value"))
       
@@ -1260,7 +869,6 @@ update_label_dict_in_excel <- function(df,
       
       df_valid <- df[keep_row, , drop = FALSE]
       
-      # ---- 5) マージ: キーは var_name × value ------------------------------
       key_old <- paste(old$var_name, old$value, sep = "\r")
       key_new <- paste(df_valid$var_name, df_valid$value, sep = "\r")
       
@@ -1274,7 +882,6 @@ update_label_dict_in_excel <- function(df,
       
       dict_out <- align_col_order(dict_out, all_cols)
       
-      # ---- 6) 他シート保持で書戻し -----------------------------------------
       all_sheets <- lapply(existing_sheets, function(s) {
         if (s == sheet_name) {
           dict_out
@@ -1285,26 +892,17 @@ update_label_dict_in_excel <- function(df,
       names(all_sheets) <- existing_sheets
       
       writexl::write_xlsx(all_sheets, path)
-      
     } else {
-      # シートが無い場合は新規追加
       dict_out <- df
-      
-      all_sheets <- lapply(existing_sheets, function(s) {
-        readxl::read_excel(path, sheet = s)
-      })
+      all_sheets <- lapply(existing_sheets, function(s) readxl::read_excel(path, sheet = s))
       names(all_sheets) <- existing_sheets
       all_sheets[[sheet_name]] <- dict_out
-      
       writexl::write_xlsx(all_sheets, path)
     }
-    
   } else {
-    # ファイルが無い場合は新規作成
     dict_out <- df
     writexl::write_xlsx(stats::setNames(list(dict_out), sheet_name), path)
   }
   
   invisible(dict_out)
 }
-# -----関数ここまで------------------------------------------------------------
