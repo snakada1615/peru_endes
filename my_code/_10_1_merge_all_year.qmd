@@ -80,7 +80,7 @@ endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds"))
 # ラベル属性の除去
 endes_list <- strip_all_labels(endes_list)
 
-# ******************************************************************************
+# ******************************************w************************************
 # ユーティリティ関数群
 # ******************************************************************************
 source("_tool_safe_join.R")  # left_join_safe関数の読み込み
@@ -193,13 +193,8 @@ all_data_merged <- all_data_merged %>%
   # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
   cat("食品摂取量データの型確認:\n")
   table(sapply(df_food_org, function(x) is.factor(x)))
-  export_labels_to_excel(
-    df = df_food_org,
-    path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
-    sheet_name = "label_raw_extract"
-  )
-  
-  df_food_org <- strip_all_labels(df_food_org) %>%
+
+  df_food_org <- df_food_org %>%
     dplyr::select(-ends_with("_se")) %>%
     dplyr::select(-starts_with("se.")) %>%
     dplyr::select(-c("area_income")) %>%
@@ -212,6 +207,12 @@ all_data_merged <- all_data_merged %>%
       .fn   = ~ paste0("enaho_", .x),  # 列名ベクトル .x に prefix を付与
       .cols = starts_with("fg_")    # "fg_" で始まる列だけを対象
     ) 
+
+  # ラベル情報を保存後に削除
+  cat("食品摂取量データのラベル情報0:\n")
+  food_labels <- sapply(df_food_org, function(x) attr(x, "label")) %>% unlist()
+  cat("食品摂取量データのラベル情報1:\n")
+  df_food_org <- strip_all_labels(df_food_org)
 
 # ******************************************************************************
 # 食品消費データ結合
@@ -418,10 +419,14 @@ new_labels <- c(
   treatment_group = "treatment group (0=control, 1=early, 2=late)"
 )
 
+# 名前ラベルを結合して重複排除
+all_labels <- c(new_labels, food_labels)
+all_labels <- all_labels[!duplicated(names(all_labels))]
+
 # 例：df に対して new_labels の名前と一致する列だけラベルを付与
-for (nm in names(new_labels)) {
+for (nm in names(all_labels)) {
   if (nm %in% names(all_data_merged_dummy)) {
-    attr(all_data_merged_dummy[[nm]], "label") <- new_labels[[nm]]
+    attr(all_data_merged_dummy[[nm]], "label") <- all_labels[[nm]]
   }
 }
 
