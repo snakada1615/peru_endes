@@ -39,14 +39,15 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 # 必要な関数読み込み
-source("_tool_paper.R")
 source("_tool_safe_join.R")
+source("_tool_labels.R")  # 安全なラベル管理
 
 # ステップ1: 元データの読み込み
 df_org <- readRDS(
     file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
   ) %>%
-  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed))
+  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed)) %>%
+  strip_all_labels() # ラベルを一時的に剥がす
 
 
 # 先に year を numeric に
@@ -55,12 +56,11 @@ df_org <- df_org %>%
 
 # 分析に利用する変数名の抽出
 variable_for_analysis <- read_excel(
-  file.path(gdrive_dir, "output","labels", "label_all_data_merged_dummy_filtered.xlsx"),
-  sheet = "main") %>%
-  select(new_variable_name, set01) %>%
-  filter(set01 == TRUE) %>%
-  filter(str_detect(new_variable_name, "^[a-zA-Z]{2}_|^enaho_|^juntos_")) %>%
-  pull(new_variable_name)
+  file.path(gdrive_dir, "output","labels", "data_dictionary.xlsx"),
+  sheet = "variable_for_analysis") %>%
+  select(var_name, case01) %>%
+  filter(case01 == 1) %>%
+  pull(var_name)
 
 ```
 
@@ -162,13 +162,13 @@ for (i in seq_along(variables_list)) {
 }
 
 # 結合
-summary_by_state    <- bind_rows(results_by_state) %>% convert_lbl_to_paper() %>%
+summary_by_state    <- bind_rows(results_by_state) %>%
   rename_with(~ gsub("mean_value", "value", .x))
 # summary_by_state <- summary_by_state[["df"]]
-summary_by_trtGroup <- bind_rows(results_by_trtGroup) %>% convert_lbl_to_paper() %>%
+summary_by_trtGroup <- bind_rows(results_by_trtGroup) %>%
   rename_with(~ gsub("mean_value", "value", .x))
 # summary_by_trtGroup <- summary_by_trtGroup[["df"]]
-summary_national    <- bind_rows(results_national) %>% convert_lbl_to_paper() %>%
+summary_national    <- bind_rows(results_national) %>% 
   rename_with(~ gsub("mean_value", "value", .x))
 # summary_national <- summary_national[["df"]]
 

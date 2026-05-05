@@ -23,11 +23,11 @@ gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-t
 save_path <- file.path(gdrive_dir, "output")
 
 # 必要な関数読み込み
-source("_tool_paper.R")
+# source("../myTools.R")
 
 # ステップ1: 元データの読み込み
 # キーテーブルの読み込み
-endes_keys <- read_spss_and_papeR(
+endes_keys <- readRDS(
   file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
   dplyr::mutate(year = as.numeric(year)) %>%
   dplyr::select(year, state, group_treated) %>% 
@@ -150,8 +150,7 @@ spike_year <- 2011
 variables_spike <- summary_vars_by_trtGroup %>%
   filter(year %in% c(spike_year - 1, spike_year, spike_year + 1)) %>%
   group_by(variable, group_treated) %>%
-  rename(value = mean_value) %>%
-  summarize(
+  dplyr::summarize(
     value_before = value[year == (spike_year - 1)],
     value_spike = value[year == spike_year], 
     value_after = value[year == (spike_year + 1)],
@@ -238,8 +237,7 @@ var_set <- list(
 # summary_by_trtGroupを読み込み
 panel_graph <- readRDS(
   file.path(save_path, "summary_vars_by_trtGroup_year.rds")
-  ) %>% 
-  rename(value = mean_value)
+  ) 
 
 # プロット作成
 res_map <- purrr::map(var_set, ~ { # map関数で変数セットに対して繰り返し。実行結果はリスト化
