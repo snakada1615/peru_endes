@@ -105,11 +105,11 @@ for (yr in yearlist) {
   cat("\n")
   cat("year_dataの型確認2:\n")
   
-  export_labels_to_excel(
-    df = year_data,
-    path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
-    sheet_name = "label_raw_extract"
-  )
+  # export_labels_to_excel(
+  #   df = year_data,
+  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+  #   sheet_name = "label_all_data_merged"
+  # )
   
   # 値ラベルと変数ラベルを削除
   year_data <- year_data %>%
@@ -143,10 +143,9 @@ print(paste("Total records:", nrow(all_data_merged)))
 duplicate_check(all_data_merged, c("year", "caseid"), "all_data_merged")
 # ******************************************************************************
 
-
 # 分析用の共通変数の読み込み
 endes_keys <- read_rds(file.path(gdrive_dir, "output", "endes_keys.rds")) %>%
-  dplyr::select(-c(v026, v024, v025, v001, v002, v003))
+  dplyr::select(-c( v026, v024, v025, v001, v002, v003))
 
 # 2005/2006のデータが特殊なため、キーを正規化してマージする
 # 正規化済みキーを新しい列として作成
@@ -386,7 +385,40 @@ all_data_merged_dummy <- dummify_labelled(
 ```
 
 
-# 5. データ辞書の更新（新規変数の追加）
+# 5. 追加変数の作成(複数のダミー変数を一つにまとめる)
+```{r}
+all_data_merged_dummy <- all_data_merged_dummy %>%
+  mutate(
+    rh_del_stay_appropriate = case_when(
+      rh_del_stay__1_2_days == 1 | rh_del_stay__3_days == 1 ~ 1,
+      rh_del_stay__1_2_days == 0 & rh_del_stay__3_days == 0 ~ 0,
+      rh_del_stay__12_23_hours == 1 | 
+        rh_del_stay__6_11_hours == 1 | rh_del_stay__6_hours == 1 ~ 0,
+      TRUE ~ NA_real_
+    ),
+    dm_age_of_hh_head_younger = case_when(
+      dm_age_of_hh_head__10s == 1 ~ 1,
+      dm_age_of_hh_head__20s == 1 ~ 1,
+      dm_age_of_hh_head__30s == 1 ~ 1,
+      dm_age_of_hh_head__40s == 1 ~ 1,
+      dm_age_of_hh_head__50s == 1 ~ 0,
+      dm_age_of_hh_head__60s == 1 ~ 0,
+      dm_age_of_hh_head__70s == 1 ~ 0,
+      dm_age_of_hh_head__80 == 1 ~ 0,
+      TRUE ~ NA_real_
+    )
+  ) 
+
+attr(all_data_merged_dummy$rh_del_stay_appropriate, "label") <-
+  "appropriate length of stay after delivery (1=1-2 days or 3 days, 0=6 hours to 23 hours, NA=missing)"
+
+attr(all_data_merged_dummy$dm_age_of_hh_head_younger, "label") <-
+  "household head younger than 50s (1=10s to 40s, 0=50s and older, NA=missing)"
+
+
+```
+
+# 6. データ辞書の更新（新規変数の追加）
 ```{r}
 new_labels <- c(
   v024 = "department code",
@@ -430,10 +462,12 @@ for (nm in names(all_labels)) {
   }
 }
 
+
+
 export_labels_to_excel(
   df = all_data_merged_dummy,
   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-  sheet_name = "label_raw_extract_dummify"
+  sheet_name = "label_all_data_merged_dummify"
 )
 
 
@@ -442,7 +476,7 @@ export_labels_to_excel(
 ```
 
 
-# 6. データ保存とNA分布の確認 
+# 7. データ保存とNA分布の確認 
 ```{r}
 # ファイルをRDSで保存
 saveRDS(all_data_merged_dummy, file = file.path(gdrive_dir, "output", 

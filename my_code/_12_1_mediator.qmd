@@ -1,0 +1,470 @@
+---
+title: "_12_1_mediator"
+format: html
+---
+
+# CLECER Impact Analysis: R Code Guide (Steps 1–5)
+
+## 前提・設定
+
+```{r}
+# パッケージ
+library(tidyverse)
+library(srvyr)
+library(survey)
+library(fixest)
+library(mediation)   # Imai et al. 2010
+library(broom)
+
+# ── 共通定数 ───────────────────────────────────
+# T1_START <- 2009   # treat1 介入開始年
+# T2_START <- 2011   # treat2 介入開始年（データ上は2012から観察）
+# PRE_END_T1 <- 2008 # treat1 前処置期最終年
+# PRE_END_T2 <- 2010 # treat2 前処置期最終年
+
+# ── データ準備 ────────────────────────────────
+# data_raw : 個票データ（2007–2016、2011除外済み想定、または以下で除外）
+data <- data_raw %>%
+  filter(year != 2011) %>%
+  mutate(
+    w = v005 / 1e6,                          # DHS重み正規化
+    psu_year   = interaction(year, v021, drop = TRUE),  # 年×PSU複合ID
+    strat_year = interaction(year, v022, drop = TRUE),  # 年×strata複合ID
+    year_treated = case_when(
+      group_treated == "treat1_grp" ~ T1_START,
+      group_treated == "treat2_grp" ~ T2_START,
+      TRUE                          ~ Inf     # never-treated
+    ),
+    treat = as.integer(group_treated != "control_grp")
+  )
+```
+
+#### \> **注意点** - treat1 の前処置期は 2007–2008 の
+
+#### \> **2年間のみ**。検出力が低いため、平行トレンド検定の結果は視覚的確認と合わせて総合判断する。 -
+
+#### \> treat2 の k=0（2011年）はデータなし。Event study
+
+#### \> 図では該当箇所が欠落するが fixest は自動処理する。
+
+#### ------------------------------------------------------------------------
+
+## Step 1: 平行トレンド確認（treat1・treat2 を分けて実施）
+
+### 1-1. 視覚的確認（前処置期のみプロット）
+
+```{r}
+pre_plot_data <- data %>%
+  filter(
+    (group_treated %in% c("control_grp","treat1_grp") & year <= PRE_END_T1) |
+    (group_treated %in% c("control_grp","treat2_grp") & year <= PRE_END_T2)
+  ) %>%
+  group_by(year, group_treated) %>%
+  summarise(
+    stunt_mean = weighted.mean(nt_ch_stunt__Yes, w, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+ggplot(pre_plot_data, aes(x = year, y = stunt_mean, colour = group_treated)) +
+  geom_line() + geom_point() +
+  geom_vline(xintercept = c(T1_START - 0.5, T2_START - 0.5),
+             linetype = "dashed", colour = "grey50") +
+  labs(title = "Pre-treatment stunting trends",
+       y = "Stunting rate", x = "Year")
+```
+
+### 1-2. 回帰による傾きの差の検定（survey 設計ベース）
+
+#### treat1 vs control（前処置期：2007–2008）
+
+```{r}
+pre_t1 <- data %>%
+  filter(group_treated %in% c("control_grp","treat1_grp"),
+         year <= PRE_END_T1) %>%
+  mutate(
+    treat_d = as.integer(group_treated == "treat1_grp"),
+    year_c  = year - 2007
+  )
+
+svy_pre_t1 <- pre_t1 %>%
+  as_survey_design(ids = psu_year, strata = strat_year,
+                   weights = w, nest = TRUE)
+
+m_pre_t1 <- svyglm(
+  nt_ch_stunt__Yes ~ treat_d + year_c + treat_d:year_c,
+  design = svy_pre_t1
+)
+summary(m_pre_t1)
+# → treat_d:year_c の係数が 0 に近く p > 0.1 なら平行トレンド仮定を支持
+```
+
+#### treat2 vs control（前処置期：2007–2010）
+
+```{r}
+pre_t2 <- data %>%
+  filter(group_treated %in% c("control_grp","treat2_grp"),
+         year <= PRE_END_T2) %>%
+  mutate(
+    treat_d = as.integer(group_treated == "treat2_grp"),
+    year_c  = year - 2007
+  )
+
+svy_pre_t2 <- pre_t2 %>%
+  as_survey_design(ids = psu_year, strata = strat_year,
+                   weights = w, nest = TRUE)
+
+m_pre_t2 <- svyglm(
+  nt_ch_stunt__Yes ~ treat_d + year_c + treat_d:year_c,
+  design = svy_pre_t2
+)
+summary(m_pre_t2)
+```
+
+### 1-3. Event study 型 pre-trend 確認（fixest）
+
+```{r}
+# treat1
+es_t1 <- data %>%
+  filter(group_treated %in% c("control_grp","treat1_grp")) %>%
+  mutate(treat_d = as.integer(group_treated == "treat1_grp"))
+
+res_es_t1 <- feols(
+  nt_ch_stunt__Yes ~
+    i(year, treat_d, ref = PRE_END_T1) | v021 + year,
+  data    = es_t1,
+  weights = ~w,
+  vcov    = ~psu_year
+)
+iplot(res_es_t1, main = "Event study: treat1 vs control (stunting)")
+
+# treat2（k=0 = 2011 は自動欠落）
+es_t2 <- data %>%
+  filter(group_treated %in% c("control_grp","treat2_grp")) %>%
+  mutate(treat_d = as.integer(group_treated == "treat2_grp"))
+
+res_es_t2 <- feols(
+  nt_ch_stunt__Yes ~
+    i(year, treat_d, ref = PRE_END_T2) | v021 + year,
+  data    = es_t2,
+  weights = ~w,
+  vcov    = ~psu_year
+)
+iplot(res_es_t2, main = "Event study: treat2 vs control (stunting)")
+```
+
+# ------------------------------------------------------------------------
+
+## Step 2: 各 mediator 変数をアウトカムとした DID 推定
+
+# Luis et al. (2020)
+
+# の主要因子に対応する変数をアウトカムとして、treat1・treat2 それぞれで
+
+# DID を推定する。 \### 2-1. Mediator 変数リスト（先行研究との対応）
+
+```{r}
+mediators <- list(
+  # Luis et al. カテゴリ          変数名
+  anc_4plus    = "rh_anc_4vs__Yes",
+  skilled_del  = "rh_del_pvskill__Skilled_provider",
+  facility_del = "rh_del_place__Health_facility",
+  mat_anemia   = "nt_wm_any_anem__Yes",
+  mat_height   = "nt_wm_ht__Yes",          # 低身長（stunting の世代連鎖代理）
+  mat_obese    = "nt_wm_ovobese__Yes",
+  education    = "rc_edu_acceptable",
+  juntos       = "juntos_participation"
+)
+```
+
+### 2-2. DID 推定ループ（treat1 用）
+
+```{r}
+did_t1 <- imap(mediators, function(varname, label) {
+  d <- data %>%
+    filter(group_treated %in% c("control_grp","treat1_grp")) %>%
+    mutate(
+      treat_d = as.integer(group_treated == "treat1_grp"),
+      post    = as.integer(year >= T1_START)
+    )
+
+  tryCatch(
+    feols(
+      as.formula(paste0(varname, " ~ treat_d:post | v021 + year")),
+      data    = d,
+      weights = ~w,
+      vcov    = ~psu_year
+    ),
+    error = function(e) NULL
+  )
+})
+
+# 結果を一覧表示
+imap_dfr(did_t1, function(m, label) {
+  if (is.null(m)) return(NULL)
+  tidy(m, conf.int = TRUE) %>%
+    filter(str_detect(term, "post")) %>%
+    mutate(mediator = label, group = "treat1")
+}) %>%
+  select(group, mediator, estimate, std.error, p.value, conf.low, conf.high)
+```
+
+### 2-3. treat2 用（同構造）
+
+```{r}
+did_t2 <- imap(mediators, function(varname, label) {
+  d <- data %>%
+    filter(group_treated %in% c("control_grp","treat2_grp")) %>%
+    mutate(
+      treat_d = as.integer(group_treated == "treat2_grp"),
+      post    = as.integer(year >= T2_START)
+    )
+
+  tryCatch(
+    feols(
+      as.formula(paste0(varname, " ~ treat_d:post | v021 + year")),
+      data    = d,
+      weights = ~w,
+      vcov    = ~psu_year
+    ),
+    error = function(e) NULL
+  )
+})
+
+did_t2_res <- imap_dfr(did_t2, function(m, label) {
+  if (is.null(m)) return(NULL)
+  tidy(m, conf.int = TRUE) %>%
+    filter(str_detect(term, "post")) %>%
+    mutate(mediator = label, group = "treat2")
+}) %>%
+  select(group, mediator, estimate, std.error, p.value, conf.low, conf.high)
+```
+
+### 2-4. 結果の可視化
+
+```{r}
+all_did_res <- bind_rows(
+  imap_dfr(did_t1, function(m, label) {
+    if (is.null(m)) return(NULL)
+    tidy(m, conf.int = TRUE) %>%
+      filter(str_detect(term, "post")) %>%
+      mutate(mediator = label, group = "treat1")
+  }),
+  did_t2_res
+)
+
+ggplot(all_did_res,
+       aes(x = mediator, y = estimate, colour = group,
+           ymin = conf.low, ymax = conf.high)) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_pointrange(position = position_dodge(0.4)) +
+  coord_flip() +
+  labs(title = "DID estimates: CLECER effect on mediators",
+       y = "ATT (DID coefficient)", x = NULL)
+```
+
+------------------------------------------------------------------------
+
+## Step 3: Luis et al. 係数を用いた間接効果の試算
+
+# DID で推定された「CLECER → mediator」の効果量に、Luis et al. (2020)
+
+# の「mediator → stunting」の寄与係数を掛けて、CLECER 経由の間接的な
+
+# stunting 削減量を試算する。 \### 3-1. Luis et al. (2020)
+
+# の寄与係数を入力
+
+```{r}
+# Figure 6 より under-5 の寄与率（%）を入力
+luis_contrib <- tribble(
+  ~mediator,      ~contrib_pct,
+  "anc_4plus",         28.2 / 2,   # Maternal & newborn care を ANC と skilled_del で等分（仮定）
+  "skilled_del",       28.2 / 2,
+  "mat_anemia",        26.4,        # Maternal nutrition（BMI/height → 貧血の対立指標として代用）
+  "mat_height",        26.4,        # ※両変数で寄与を分けないなら片方のみ使う
+  "education",         20.5,
+  "juntos",             4.2,
+  "mat_obese",          0,          # Luis et al. には直接対応する係数なし → 感度分析用
+  "facility_del",       0
+)
+
+# 観測期間のコントロール群 stunting 変化量（参照値）
+# → 分析対象期間の control_grp における平均的な変化幅を事前に計算しておく
+delta_stunting_ctrl <- data %>%
+  filter(group_treated == "control_grp") %>%
+  group_by(year) %>%
+  summarise(s = weighted.mean(nt_ch_stunt__Yes, w, na.rm = TRUE)) %>%
+  summarise(delta = last(s) - first(s)) %>%
+  pull(delta)
+```
+
+### 3-2. 間接効果の計算
+
+```{r}
+# Step 2 の DID 推定値（point estimate）を結合
+indirect <- all_did_res %>%
+  left_join(luis_contrib, by = "mediator") %>%
+  filter(!is.na(contrib_pct)) %>%
+  mutate(
+    # contrib_pct は stunting 変化の何 % をその mediator が説明するかを示す
+    # indirect_effect ≒ DID_mediator × (contrib_pct/100 × Δstunting) / SD_mediator（概算）
+    # ここでは単純に「DIDの符号と有意性」×「寄与率」で定性的に整理する
+    sign     = sign(estimate),
+    sig_flag = p.value < 0.10,
+    pathway  = case_when(
+      sig_flag & sign < 0 ~ "CLECERが改善した経路（→stunting削減に貢献）",
+      sig_flag & sign > 0 ~ "CLECERが悪化させた経路",
+      TRUE                ~ "有意な変化なし"
+    )
+  )
+
+# 結果表
+indirect %>%
+  select(group, mediator, estimate, p.value, contrib_pct, pathway) %>%
+  arrange(group, pathway)
+```
+
+# \> **解釈上の注意**：Luis et al. の係数はペルー全国 2000–2016 の
+
+# \> population-level 寄与率であり、係数の単位が本分析の DID
+
+# \> 推定値とは異なる。このステップは「方向性と相対的な大きさの把握」に使い、絶対値の解釈は慎重に行う。
+
+# ------------------------------------------------------------------------
+
+## Step 4: 感度分析（Imai et al. 2010 フレームワーク）
+
+# Sequential ignorability 仮定（未観測交絡がない）への違反がどの程度
+
+# 結果を変えるかを、`mediation` パッケージの `medsens()` で確認する。
+
+# \> **制約**：`mediation` パッケージは survey
+
+# \> デザインを直接サポートしない。ここでは `weights`
+
+# \> 引数でサンプルウェイトを渡す近似を用い、標準誤差はブートストラップで得る。
+
+# \> \### 4-1. 対象 mediator の選択 Step 2 の結果で有意だった mediator を 1
+
+# \> つ選択して例示する（ここでは `rh_anc_4vs__Yes`）。
+
+```{r}
+# treat1 + control のみ使用
+med_data <- data %>%
+  filter(group_treated %in% c("control_grp","treat1_grp")) %>%
+  mutate(
+    treat_d = as.integer(group_treated == "treat1_grp"),
+    post    = as.integer(year >= T1_START),
+    D       = treat_d * post     # 処置ダミー（treat1 介入後 = 1）
+  ) %>%
+  filter(!is.na(rh_anc_4vs__Yes), !is.na(nt_ch_stunt__Yes),
+         !is.na(D), !is.na(w))
+```
+
+### 4-2. mediator モデルと outcome モデルの推定
+
+```{r}
+# mediator モデル: D → ANC4+
+fit_med <- lm(
+  rh_anc_4vs__Yes ~ D + year + factor(v024),   # v024 = region
+  data    = med_data,
+  weights = med_data$w
+)
+
+# outcome モデル: D + ANC4+ → stunting
+fit_out <- lm(
+  nt_ch_stunt__Yes ~ D + rh_anc_4vs__Yes + year + factor(v024),
+  data    = med_data,
+  weights = med_data$w
+)
+```
+
+### 4-3. 媒介効果の推定
+
+```{r}
+set.seed(123)
+med_result <- mediate(
+  model.m = fit_med,
+  model.y = fit_out,
+  treat   = "D",
+  mediator = "rh_anc_4vs__Yes",
+  boot    = TRUE,
+  sims    = 1000
+)
+summary(med_result)
+# ACME: 間接効果（D → ANC → stunting）
+# ADE : 直接効果（D → stunting、ANCを経由しない）
+# Total Effect = ACME + ADE
+```
+
+### 4-4. 感度分析（ρ への感度）
+
+```{r}
+sens_result <- medsens(
+  med_result,
+  rho.by  = 0.05,    # ρ を -1 〜 +1 で 0.05 刻み
+  effect.type = "indirect"
+)
+summary(sens_result)
+plot(sens_result,
+     main = "Sensitivity: ANC4+ pathway (treat1)",
+     xlab = expression(rho),
+     ylab = "ACME")
+# ρ* = ACME が 0 になる ρ の値。0.1 以上なら結果は比較的頑健
+```
+
+# 他の有意な mediator についても同じ手順を繰り返す。
+
+------------------------------------------------------------------------
+
+## Step 5: 経路の整理（影響あり vs なし）
+
+# Step 2–4 の結果を統合して、CLECER
+
+# が貢献した経路・しなかった経路をまとめる。
+
+```{r}
+pathway_summary <- indirect %>%
+  group_by(group, mediator, pathway, contrib_pct) %>%
+  summarise(
+    ATT_point = round(estimate, 4),
+    p_val     = round(p.value, 3),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    contrib_label = paste0(contrib_pct, "% (Luis et al.)")
+  ) %>%
+  arrange(group, pathway)
+
+# 表として出力
+print(pathway_summary, n = Inf)
+
+# 最終的な解釈フレームワーク
+# ┌─────────────────────────────────────────────────────┐
+# │  経路              │ CLECER効果 │ Luis寄与率 │ 評価  │
+# │  ANC4+             │ +sig       │ 28.2%      │ 貢献  │
+# │  Skilled delivery  │ +sig       │ 28.2%      │ 貢献  │
+# │  Maternal anemia   │ n.s.       │ 26.4%      │ 非貢献│
+# │  Education         │ n.s.       │ 20.5%      │ 非貢献│
+# │  Juntos            │ +sig       │ 4.2%       │ 貢献  │
+# └─────────────────────────────────────────────────────┘
+# ※上記は例示。実際の結果で埋める。
+```
+
+------------------------------------------------------------------------
+
+## 分析上の制約と論文での記述方針
+
+# \| 項目 \| 内容 \|
+
+# \|------------------------------------\|------------------------------------\|
+
+# \| treat1 前処置期の短さ \| 2007–2008 の 2 年分のみ。検出力不足を注記し、視覚的 pre-trend 図を必ず掲載 \|
+
+# \| treat2 の 2011 年欠損 \| k=0 不在を明示。2012 以降の係数が k=+1 以降として解釈される \|
+
+# \| `mediation` のサーベイ非対応 \| ウェイト近似を採用。標準誤差はブートストラップ。svyglm との一致を別途確認 \|
+
+# \| Luis et al. 係数の外挿 \| 全国集計値を CLECER 対象地域に適用している点を limitation として記述 \|
+
+# \| Sequential ignorability \| medsens の ρ\* 値を報告し、結果の頑健性を定量的に示す \|
