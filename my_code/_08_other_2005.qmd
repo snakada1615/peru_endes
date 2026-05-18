@@ -583,7 +583,15 @@ create_demographic_variables <- function(data) {
       
       # 資産五分位（logical → numeric変換）
       dm_wealth_class = hv270,
-      dm_weath_index = hv271/100000
+      dm_weath_index = hv271/100000,
+
+      # 家族内の人口密度（世帯人数/寝室の部屋数）
+      dm_people_per_room = ifelse(hv216 > 0, hv012 / hv216, NA_real_),
+      dm_house_crowding3 = case_when(
+        dm_people_per_room > 3 ~ 1,
+        dm_people_per_room <= 2 ~ 0,
+        TRUE ~ NA_real_
+      )
     )
 }
 # ---関数ここまで^^---------------------------------------------------------
@@ -711,6 +719,8 @@ set_all_variable_labels <- function(data) {
     dm_refrigerator       = "owns refrigerator",
     dm_female_headed      = "female headed household",
     dm_age_of_HH_head     = "Age of head of household",
+    dm_people_per_room = "Number of people per sleeping-room",
+    dm_house_crowding3 = "Household crowding (3 or more people per sleeping-room)",
     year                  = "Survey year",
     v005                  = "Sample weight",
     v022                  = "Stratum"

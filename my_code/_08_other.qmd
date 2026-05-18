@@ -80,16 +80,17 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 # 各テーブルから抽出する変数を定義
 get_variable_lists <- list(
     RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv105", "hv112", "hvidx"),
-    RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv022", "hv026"),
+    RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv012", "hv022", "hv026"),
     REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "v022", "v161"),
     RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
                  "v744a", "v744b", "v744c", "v744d", "v744e", "v633a",
                  "v633b", "v633c", "v633d", "v633e", "v633f", "v633g",
                  "v822", "v850a", "v850b"),
+    # SH26Bは2006年専用の変数
     RECH23 = c("hhid", "hv209", "hv270", "hv271","hv238", "hv244", "hv241", 
                      "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
                      "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
-                     "hv219", "hv220"),
+                     "hv216", "hv219", "hv220", "sh26b"),
     REC21 = c("caseid", "bidx", "b3", "bord", "b5", "b8", "b9", "b16"),
     child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
     child_count = c("hhid", "dm_children_under12")
@@ -399,7 +400,15 @@ create_demographic_variables <- function(data) {
       
       # 資産五分位（logical → numeric変換）
       dm_wealth_class = hv270,
-      dm_weath_index = hv271/100000
+      dm_weath_index = hv271/100000,
+      
+      # 家族内の人口密度（世帯人数/寝室の部屋数）
+      dm_people_per_room = ifelse(hv216 > 0, hv012 / hv216, NA_real_),
+      dm_house_crowding3 = case_when(
+        dm_people_per_room > 3 ~ 1,
+        dm_people_per_room <= 2 ~ 0,
+        TRUE ~ NA_real_
+      )
     )
 }
 # ---関数ここまで^^---------------------------------------------------------
@@ -528,6 +537,8 @@ set_all_variable_labels <- function(data) {
       dm_refrigerator = "owns refrigerator",
       dm_female_headed = "female headed household",
       dm_age_of_HH_head = "Age of head of household",
+      dm_people_per_room = "Number of people per sleeping-room",
+      dm_house_crowding3 = "Household crowding (3 or more people per sleeping-room)",
       year = "Survey year",
       v005 = "Sample weight",
       v022 = "Stratum"
@@ -628,7 +639,12 @@ goAnalysis <- function(year) {
   df_RE516171 <- load_endes_data(year, "RE516171.sav", var_lists$RE516171)
   df_REC0111 <- load_endes_data(year, "REC0111.sav", var_lists$REC0111)
   df_REC21 <- load_endes_data(year, "REC21.sav", var_lists$REC21)
-  
+
+  if (year == "2006") {
+    # 2006年のデータでは、HV216が存在しないため、SH26Bを代わりに使用
+    df_RECH23$hv216 <- df_RECH23$sh26b
+  }
+    
   print("caseid" %in% names(df_RECH0))
   print("caseid" %in% names(df_RECH1))
   print("caseid" %in% names(df_RECH23))
