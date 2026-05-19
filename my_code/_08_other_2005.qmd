@@ -591,7 +591,13 @@ create_demographic_variables <- function(data) {
         dm_people_per_room > 3 ~ 1,
         dm_people_per_room <= 2 ~ 0,
         TRUE ~ NA_real_
-      )
+      ),
+      
+      # 妊娠頻度
+      # dm_pregnancy_freq_high = ifelse(b11$01 < 24, 1, 0)
+      dm_pregnancy_freq_high = ifelse(b11s01 < 24, 1, 0)
+      
+
     )
 }
 # ---関数ここまで^^---------------------------------------------------------
@@ -721,6 +727,7 @@ set_all_variable_labels <- function(data) {
     dm_age_of_HH_head     = "Age of head of household",
     dm_people_per_room = "Number of people per sleeping-room",
     dm_house_crowding3 = "Household crowding (3 or more people per sleeping-room)",
+    dm_pregnancy_freq_high = "High pregnancy frequency (less than 24 months)",
     year                  = "Survey year",
     v005                  = "Sample weight",
     v022                  = "Stratum"
@@ -912,7 +919,8 @@ goAnalysis <- function(year) {
   HRdata <- read_spss(hr_file[[year]]) %>%
     rename_with(~ tolower(.x))
   IRdata <- read_spss(ir_file[[year]]) %>%
-    rename_with(~ tolower(.x))
+    rename_with(~ tolower(.x)) %>%
+    rename(b11s01 = `b11$01`)
 
   cat("HRdata レコード数:", nrow(HRdata), "\n")
   cat("IRdata レコード数:", nrow(IRdata), "\n")

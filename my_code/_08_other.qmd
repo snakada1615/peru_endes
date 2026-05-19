@@ -91,7 +91,7 @@ get_variable_lists <- list(
                      "hv245", "hv246a", "hv246b", "hv246c", "hv246d", "hv246e", 
                      "hv246f", "hv246g", "hv246h", "hv246i", "hv246j", "hv246k", 
                      "hv216", "hv219", "hv220", "sh26b"),
-    REC21 = c("caseid", "bidx", "b3", "bord", "b5", "b8", "b9", "b16"),
+    REC21 = c("caseid", "bidx", "b3", "bord", "b5", "b8", "b9", "b11", "b16"),
     child_cooking_fuel = c("caseid", "hhid", "dm_cooking_fuel", "dm_cooking_fuel_traditional"),
     child_count = c("hhid", "dm_children_under12")
   )
@@ -408,7 +408,11 @@ create_demographic_variables <- function(data) {
         dm_people_per_room > 3 ~ 1,
         dm_people_per_room <= 2 ~ 0,
         TRUE ~ NA_real_
-      )
+      ),
+      
+      # 妊娠頻度
+      dm_pregnancy_freq_high = ifelse(b11 < 24, 1, 0)
+      
     )
 }
 # ---関数ここまで^^---------------------------------------------------------
@@ -539,6 +543,7 @@ set_all_variable_labels <- function(data) {
       dm_age_of_HH_head = "Age of head of household",
       dm_people_per_room = "Number of people per sleeping-room",
       dm_house_crowding3 = "Household crowding (3 or more people per sleeping-room)",
+      dm_pregnancy_freq_high = "High pregnancy frequency (less than 24 months between births)",
       year = "Survey year",
       v005 = "Sample weight",
       v022 = "Stratum"
