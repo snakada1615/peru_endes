@@ -80,7 +80,7 @@ goAnalysis <- function(year){
                   "m3h", "m3i", "m3j", "m3k", "m3l", "m3m", "m3n",
                   "m13", "m14", "m15", "m17", "m42c", "m42d", "m42e", "m43", 
                   "m45", "m60", "m61")
-  keep_RE223132 <-c("caseid", "v208")
+  keep_RE223132 <-c("caseid", "v208", "v201")
   keep_REC42 <- c("caseid", "v467b","v467c","v467d", "v467f")
   
   # 2005年はファイル名が違うため設定
@@ -249,6 +249,15 @@ goAnalysis <- function(year){
   # 出産時のケアに関する指標
   source(here(paste0(chap,"/RH_DEL.R")), local = environment())
   # Purpose: 	Code indicators for problems accessing health care
+  
+  # 母親の出産回数4回以上を記録
+  BRdata <- BRdata %>%
+    mutate(
+      rh_pregnum_4plus = ifelse(v201 >= 4, 1, 0)
+    ) %>%
+    labelled::set_variable_labels(
+      rh_pregnum_4plus = "Mother had 4 or more pregnancies"
+      )
   
   vars_to_keep <- BRdata %>%
     select(starts_with("rh_")) %>%
