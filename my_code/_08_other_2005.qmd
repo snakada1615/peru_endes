@@ -595,8 +595,12 @@ create_demographic_variables <- function(data) {
       
       # 妊娠頻度
       # dm_pregnancy_freq_high = ifelse(b11$01 < 24, 1, 0)
-      dm_pregnancy_freq_high = ifelse(b11s01 < 24, 1, 0)
-      
+      dm_pregnancy_freq_high = ifelse(b11s01 < 24, 1, 0),
+
+      # 世帯高度
+      dm_altitude_high = ifelse(hv040 >= 2500, 1, 0),
+      dm_altitude_mid = ifelse(hv040 >= 1000 & hv040 < 2500, 1, 0),
+      dm_altitude_low = ifelse(hv040 < 1000, 1, 0)
 
     )
 }
@@ -728,6 +732,9 @@ set_all_variable_labels <- function(data) {
     dm_people_per_room = "Number of people per sleeping-room",
     dm_house_crowding3 = "Household crowding (3 or more people per sleeping-room)",
     dm_pregnancy_freq_high = "High pregnancy frequency (less than 24 months)",
+    dm_altitude_high = "Living at high altitude (2500m or above)",
+    dm_altitude_mid = "Living at mid altitude (1000m to 2499m)",
+    dm_altitude_low = "Living at low altitude (below 1000m)",
     year                  = "Survey year",
     v005                  = "Sample weight",
     v022                  = "Stratum"
