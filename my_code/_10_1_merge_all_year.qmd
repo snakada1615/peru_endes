@@ -46,6 +46,7 @@ library(data.table)
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
 source("_tool_labels.R")  # 安全なラベル管理
+source("_tool_utility.R")  # その他のユーティリティ関数")
 
 # 厳密に値ラベルが実際に存在する変数を判定する関数
 has_val_labels <- function(x) {
@@ -58,6 +59,9 @@ yearlist <- c("2005", "2006","2007", "2008", "2009", "2010", "2011",
 # yearlist <- c("2015")
 # my_year <- yearlist[8]
 
+# ラベルの保存先指定
+label_dest <- "merge_all_year"  # 例：全ての年次データの結合後のデータフレームに対して保存する場合
+
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
 
@@ -69,13 +73,15 @@ gdrive_enaho_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.e
 endes_list <- readRDS(file.path(gdrive_dir, "output","endes_data_list.rds")) 
 
 # 初回のみラベル抽出 → Excel 書き出し（前ターンの関数）
-# cat("endes_listの型確認:\n")
-# table(sapply(endes_list, function(x) is.factor(x)))
-# export_labels_to_excel(
-#   df = endes_list,
-#   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-#   sheet_name = "label_raw_extract"
-# )
+if (getYesNo("endes_listのラベルを保存しますか？")){
+  cat("endes_listの型確認:\n")
+  table(sapply(endes_list, function(x) is.factor(x)))
+  export_labels_to_excel(
+    df = endes_list,
+    path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
+    sheet_name = label_dest
+  )
+}
 
 # ラベル属性の除去
 endes_list <- strip_all_labels(endes_list)
@@ -105,11 +111,11 @@ for (yr in yearlist) {
   cat("\n")
   cat("year_dataの型確認2:\n")
   
-  # export_labels_to_excel(
-  #   df = year_data,
-  #   path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
-  #   sheet_name = "label_all_data_merged"
-  # )
+  export_labels_to_excel(
+    df = year_data,
+    path = file.path(gdrive_dir, "output", "labels","data_dictionary.xlsx"),
+    sheet_name = label_dest,
+  )
   
   # 値ラベルと変数ラベルを削除
   year_data <- year_data %>%
@@ -313,7 +319,7 @@ all_data_merged <- all_data_merged %>%
 all_data_merged <- all_data_merged %>%
   apply_labels_from_label_final(
     path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-    sheet_name = "label_raw_extract"
+    sheet_name = label_dest
   )
 
 ```
@@ -467,7 +473,7 @@ for (nm in names(all_labels)) {
 export_labels_to_excel(
   df = all_data_merged_dummy,
   path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
-  sheet_name = "label_all_data_merged_dummify"
+  sheet_name = label_dest
 )
 
 
