@@ -387,7 +387,6 @@ dummify_labelled <- function(df, reference_drop = FALSE) {
 all_data_merged_dummy <- dummify_labelled(
   all_data_merged, reference_drop = FALSE)
 
-
 ```
 
 
@@ -487,6 +486,22 @@ export_labels_to_excel(
 # ファイルをRDSで保存
 saveRDS(all_data_merged_dummy, file = file.path(gdrive_dir, "output", 
         "all_data_merged_dummy.rds"))
+
+# 全てのデータを含めたfullのデータセットも併せて保存
+all_data_merged_dummy <- all_data_merged_dummy %>% mutate(myKey = paste0(caseid, year))
+all_data_merged <- all_data_merged %>% mutate(myKey = paste0(caseid, year))
+all_data_merged_dummy_nodrop <- merge(
+  all_data_merged_dummy, 
+  all_data_merged, 
+  by = "myKey",
+  suffixes = c("", "_delete")) %>%
+  select(-ends_with("_delete")) %>%
+  select(-myKey)
+
+# ファイルをRDSで保存
+saveRDS(all_data_merged_dummy_nodrop, file = file.path(gdrive_dir, "output", 
+        "all_data_merged_dummy_nodrop.rds"))
+
 
 # ダミー化した変数一覧をExcelに保存
 # write_xlsx(var_names, "dummied_var", path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"))

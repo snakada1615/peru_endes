@@ -637,7 +637,16 @@ create_housing_variables <- function(data) {
       dm_cattle_own = as.numeric(ifelse(hv246a > 0 & hv246a < 98, 1, 0)),
       dm_goat_own = as.numeric(ifelse(hv246d > 0 & hv246d < 98, 1, 0)),
       dm_sheep_own = as.numeric(ifelse(hv246e > 0 & hv246e < 98, 1, 0)),
-      dm_poultry_own = as.numeric(ifelse(hv246g > 0 & hv246g < 98, 1, 0))
+      dm_poultry_own = as.numeric(ifelse(hv246g > 0 & hv246g < 98, 1, 0)),
+      
+      cattle_num = as.numeric(ifelse(hv246a > 0 & hv246a < 98, hv246a, 0)),
+      goat_num = as.numeric(ifelse(hv246d > 0 & hv246d < 98, hv246d, 0)),
+      sheep_num = as.numeric(ifelse(hv246e > 0 & hv246e < 98, hv246e, 0)),
+      poultry_num = as.numeric(ifelse(hv246g > 0 & hv246g < 98, hv246g, 0)),
+      pig_num = as.numeric(ifelse(hv246i > 0 & hv246i < 98, hv246i, 0)),
+      dm_livestock_unit = cattle_num + 0.1*goat_num + 0.1*sheep_num + 
+        0.014*poultry_num + 0.3*pig_num
+      
     )
 }
 # ---関数ここまで^^---------------------------------------------------------
