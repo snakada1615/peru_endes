@@ -409,11 +409,14 @@ keep_youngest_child_caseid <- function(HRdata) {
   # 2012: hv105.1, hv105.2, ...
   age_cols       <- grep("^hv105[.$]", names(HRdata), value = TRUE)
   residence_cols <- grep("^hv102[.$]", names(HRdata), value = TRUE)
+  child_sex_cols <- grep("^hv104[.$]", names(HRdata), value = TRUE)
 
   cat("年齢変数:", length(age_cols), "個,  居住変数:", length(residence_cols), "個\n")
 
-  if (length(age_cols) == 0 || length(residence_cols) == 0) {
-    stop("hv105[.$] / hv102[.$] 形式の列が見つかりません。HRdata にこれらの変数を含めてください。")
+  if (length(age_cols) == 0 || 
+      length(residence_cols) == 0 || 
+      length(child_sex_cols) == 0) {
+    stop("hv105[.$] / hv102[.$]/ hv104[.$] 形式の列が見つかりません。HRdata にこれらの変数を含めてください。")
   }
 
   # 2. labelled → numeric への変換（calculate_child_count_fixed2 と同じ思想）
@@ -437,11 +440,15 @@ keep_youngest_child_caseid <- function(HRdata) {
     cat("年齢変数（例:", age_cols[1], "）変換後の分布（先頭20）:\n")
     print(table(HR_clean[[age_cols[1]]], useNA = "always")[1:20])
   }
+  if (length(child_sex_cols) > 0) {
+    cat("性別変数（例:", child_sex_cols[1], "）変換後の分布（先頭20）:\n")
+    print(table(HR_clean[[child_sex_cols[1]]], useNA = "always")[1:20])
+  }
 
   # 3. ワイド → ロング → 再ワイド（calculate_child_count_fixed2 と同じ構造）
   #    - names_sep = "[.$]" として、"$" と "." のどちらでも区切れるようにする
   df_long <- HR_clean %>%
-    select(hhid, caseid, hv009, all_of(c(age_cols, residence_cols))) %>%
+    select(hhid, caseid, hv009, all_of(c(age_cols, residence_cols, child_sex_cols))) %>%
     pivot_longer(
       cols      = -c(hhid, caseid, hv009),
       names_to  = c("variable", "line_number"),
@@ -460,6 +467,7 @@ keep_youngest_child_caseid <- function(HRdata) {
   cat("hv105 非NA:", sum(!is.na(df_long$hv105)),
       " うち 12歳以下:", sum(df_long$hv105 <= 12, na.rm = TRUE), "\n")
   cat("hv102==1（de jure 同居）人数:", sum(df_long$hv102 == 1, na.rm = TRUE), "\n")
+  cat("hv104 非NA:", sum(!is.na(df_long$hv104)), "\n")
 
   # 4. 「同居かつ12歳以下の子供」を抽出
   child_long <- df_long %>%
@@ -502,7 +510,7 @@ keep_youngest_child_caseid <- function(HRdata) {
   # 7. 元の HRdata から「選ばれた caseid」だけを残す
   HR_out <- HRdata %>%
     semi_join(youngest_caseid_per_hh, by = c("hhid", "caseid"))
-
+  
   # 念のため、hhid が一意か確認し、重複があれば強制的に1件に絞る
   dup_hh <- HR_out %>%
     count(hhid) %>%
@@ -514,6 +522,27 @@ keep_youngest_child_caseid <- function(HRdata) {
       arrange(hhid, caseid) %>%
       distinct(hhid, .keep_all = TRUE)
   }
+  # ★ ここで child_long から対応する子ども行だけを抽出
+  rep_child <- child_long %>%
+    semi_join(youngest_caseid_per_hh, by = c("hhid", "caseid"))
+  
+  # 念のため、世帯ごとに 1 行だけに絞る（兄弟が複数いる可能性があるため）
+  rep_child <- rep_child %>%
+    arrange(hhid, caseid, hv105) %>%    # 例: 最年少を優先したい場合
+    group_by(hhid, caseid) %>%
+    slice(1L) %>%
+    ungroup() %>%
+    select(hhid, caseid, hv104, hv105) %>%
+    mutate(
+    # 児童性別
+    dm_child_female__yes = ifelse(hv104 == 2, 1, 0),
+
+    # 児童年齢
+    dm_child_age_month = hv105
+    )
+    
+  HR_out <- HR_out %>%
+    left_join(rep_child, by = c("hhid", "caseid"))  
 
   cat("処理前: 世帯数(=hhidのユニーク数) =", n_distinct(HRdata$hhid), "\n")
   cat("処理後: 世帯数(=hhidのユニーク数) =", n_distinct(HR_out$hhid), "\n")
@@ -522,6 +551,7 @@ keep_youngest_child_caseid <- function(HRdata) {
    # ★★★ 重要: age_cols と residence_cols を属性として保存 ★★★
   attr(HR_out, "age_cols") <- age_cols
   attr(HR_out, "residence_cols") <- residence_cols
+  attr(HR_out, "child_sex_cols") <- child_sex_cols
   
   return(HR_out)
 }
@@ -600,7 +630,13 @@ create_demographic_variables <- function(data) {
       # 世帯高度
       dm_altitude_high = ifelse(hv040 >= 2500, 1, 0),
       dm_altitude_mid = ifelse(hv040 >= 1000 & hv040 < 2500, 1, 0),
-      dm_altitude_low = ifelse(hv040 < 1000, 1, 0)
+      dm_altitude_low = ifelse(hv040 < 1000, 1, 0),
+
+      # # 児童性別
+      # dm_child_female__yes = ifelse(hv104 == 2, 1, 0),
+      # 
+      # # 児童年齢
+      # dm_child_age_month = hv105
 
     )
 }
@@ -744,6 +780,8 @@ set_all_variable_labels <- function(data) {
     dm_altitude_high = "Living at high altitude (2500m or above)",
     dm_altitude_mid = "Living at mid altitude (1000m to 2499m)",
     dm_altitude_low = "Living at low altitude (below 1000m)",
+    dm_child_female__yes = "child is female",
+    dm_child_age_month ="age of child in month",
     year                  = "Survey year",
     v005                  = "Sample weight",
     v022                  = "Stratum"

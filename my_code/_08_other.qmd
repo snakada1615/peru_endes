@@ -79,7 +79,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
 
 # 各テーブルから抽出する変数を定義
 get_variable_lists <- list(
-    RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv105", "hv112", "hvidx"),
+    RECH1 = c("hhid", "hv001", "hv002", "hv102", "hv104", "hv105", "hv112", "hvidx"),
     RECH0 = c("hhid", "hv001", "hv002", "hv005", "hv012", "hv022", "hv026", "hv040"),
     REC0111 = c("caseid","v001", "v002", "v003", "v005", "v008", "v022", "v161"),
     RE516171 = c("caseid", "v502", "v743a", "v743b", "v743c", "v743d",
@@ -327,11 +327,17 @@ filter_youngest_child_per_mother <- function(data) {
     arrange(age_months, bidx) %>%
     slice(1) %>%
     ungroup() %>%
+    
     # 条件5: 複数の母親がいる世帯では、最小CASEIDの母親のみ
     group_by(hhid) %>%
     arrange(caseid) %>%
     slice(1) %>%
-    ungroup()
+    ungroup() %>%
+    
+    # 追加：age_monthの変数名を変更(後で使う)
+    mutate(
+      dm_child_age_month = age_months 
+    )
 
   # 結果の確認
   cat("フィルタ後の行数:", nrow(filtered_data), "\n")
@@ -416,7 +422,10 @@ create_demographic_variables <- function(data) {
       # 世帯高度
       dm_altitude_high = ifelse(hv040 >= 2500, 1, 0),
       dm_altitude_mid = ifelse(hv040 >= 1000 & hv040 < 2500, 1, 0),
-      dm_altitude_low = ifelse(hv040 < 1000, 1, 0)
+      dm_altitude_low = ifelse(hv040 < 1000, 1, 0),
+      
+      # 児童性別
+      dm_child_female__yes = ifelse(hv104 == 2, 1, 0)
       
     )
 }
@@ -561,6 +570,8 @@ set_all_variable_labels <- function(data) {
       dm_altitude_high = "Living at high altitude (2500m or above)",
       dm_altitude_mid = "Living at mid altitude (1000m to 2499m)",
       dm_altitude_low = "Living at low altitude (below 1000m)",
+      dm_child_female__yes = "child is female",
+      dm_child_age_month ="age of child in month",
       year = "Survey year",
       v005 = "Sample weight",
       v022 = "Stratum"
