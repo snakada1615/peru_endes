@@ -538,9 +538,9 @@ keep_youngest_child_caseid <- function(HRdata) {
     dm_child_female__yes = ifelse(hv104 == 2, 1, 0),
 
     # 児童年齢
-    dm_child_age_month = hv105
+    dm_child_age_month = as.numeric(hv105)
     )
-    
+
   HR_out <- HR_out %>%
     left_join(rep_child, by = c("hhid", "caseid"))  
 

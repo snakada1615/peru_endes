@@ -161,6 +161,9 @@ all_data_merged <- all_data_merged %>%
     year_trim = str_trim(year)
   )
 
+label01 <- attributes(all_data_merged$dm_child_age_month)$labels
+
+
 endes_keys <- endes_keys %>%
   mutate(
     hhid_trim = str_trim(hhid),
@@ -170,6 +173,19 @@ endes_keys <- endes_keys %>%
 # 共通キーでマージ
 all_data_merged <- all_data_merged %>%
   left_join_safe(endes_keys, c("year_trim", "hhid_trim"), diagnose = TRUE)
+
+label02 <- attributes(all_data_merged$dm_child_age_month)$labels
+
+# 年次結合と endes_keys とのマージが全部終わったあと:★★★エラー対策
+all_data_merged <- all_data_merged %>%
+  mutate(
+    dm_child_age_month   = as.numeric(dm_child_age_month),
+    dm_child_female__yes = as.numeric(dm_child_female__yes)
+  ) %>%
+  haven::zap_labels() %>%    # 念のため再度
+  haven::zap_label()
+
+
 
 # 元のキー列（hhid, year）のみを残す
 # 正規化キー列（hhid_trim, year_trim）は削除
@@ -236,6 +252,8 @@ all_data_merged <- all_data_merged %>%
            "dm_wealth_class" = "inc_quintile")
   )
 
+label03 <- attributes(all_data_merged$dm_child_age_month)$labels
+
 all_data_merged <- all_data_merged %>% 
   # stuntingデータの欠損値除去
   dplyr::filter(!is.na(nt_ch_stunt)) %>%
@@ -267,6 +285,9 @@ all_data_merged <- all_data_merged %>%
 # 不要な属性をクリンナップ
 all_data_merged <- all_data_merged %>%
   strip_all_labels()
+
+label05 <- attributes(all_data_merged$dm_child_age_month)$labels
+
 
 ```
 
@@ -310,6 +331,8 @@ all_data_merged <- all_data_merged %>%
   ) %>%
   dplyr::select(-dhs_weight, -year_norm, -total_v005, -treatment_start)  # 中間変数は削除
 
+label04 <- attributes(all_data_merged$dm_child_age_month)$labels
+
 
 # 1. v021, v022, sampling_weight_trimmedのいずれかがNAの行を削除
 all_data_merged <- all_data_merged %>%
@@ -321,6 +344,9 @@ all_data_merged <- all_data_merged %>%
     path = file.path(gdrive_dir, "output", "labels", "data_dictionary.xlsx"),
     sheet_name = label_dest
   )
+
+label06 <- attributes(all_data_merged$dm_child_age_month)$labels
+
 
 ```
 
