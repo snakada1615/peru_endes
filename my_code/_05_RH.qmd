@@ -71,7 +71,7 @@ chap <- "Chap09_RH"
 goAnalysis <- function(year){
   
   # 母親の雇用状態を追加
-  keep_REC21 <- c("b3", "b4", "b5", "b9", "caseid", "bidx")
+  keep_REC21 <- c("b3", "b4", "b5", "b9", "b11", "caseid", "bidx")
   keep_rec0111 <- c("caseid", "v005", "v008", "v012", "v021", "v022", "v025", 
                     "v106", "v190")
   keep_rec41 <- c("caseid", "midx", "m1", "m1d", "m2a", "m2b", "m2c", "m2d", 
@@ -258,6 +258,17 @@ goAnalysis <- function(year){
     labelled::set_variable_labels(
       rh_pregnum_4plus = "Mother had 4 or more pregnancies"
       )
+  
+  # 世帯の子供の数、出生間隔が24か月未満の子供の有無を記録
+  BRdata <- BRdata %>%
+    mutate(
+      rh_num_child = v201,
+      rh_birth_interval_short = ifelse(b11 < 24, 1, 0)
+    ) %>%
+    labelled::set_variable_labels(
+      rh_num_child = "Number of children ever born",
+      rh_birth_interval_short = "Birth interval less than 24 months"
+    )
   
   vars_to_keep <- BRdata %>%
     select(starts_with("rh_")) %>%

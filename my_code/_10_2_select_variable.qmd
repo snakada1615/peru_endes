@@ -1,0 +1,36 @@
+---
+title: "_10_2_select_variable"
+format: html
+---
+
+# 1. Select variable
+```{r}
+
+rm(list = ls(all = TRUE))
+library(tidyverse)
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+df_org <- readRDS(file.path(gdrive_dir, "output", "all_data_merged_dummy.rds"))
+
+all_variables <- names(df_org)
+analysis_vars <- all_variables[grepl("^[a-zA-Z]{2}_.*_Yes$", all_variables)]
+
+analysis_vars <- c(analysis_vars, "juntos_participation", "dm_altitude_high", "dm_altitude_low", "dm_altitude_mid",
+                   "dm_house_crowding3")
+
+attr(df_org$nt_ch_haz, "label")
+
+df_label <- data_frame()
+for (var in analysis_vars) {
+  label <- attr(df_org[[var]], "label")
+  temp_df <- data_frame(variable = var, label = label)
+  df_label <- bind_rows(df_label, temp_df)
+}
+
+write_csv(df_label, file.path(gdrive_dir, "output", "analysis_vars.csv"))
+
+
+```
+

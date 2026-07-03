@@ -1,0 +1,133 @@
+---
+title: "_test"
+format: html
+---
+
+# 1. データ読み込み
+```{r}
+library(tidyverse)
+
+# オブジェクトクリア
+rm(list = ls(all = TRUE))
+
+# DHSデータのルートフォルダを指定
+gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"
+
+# 結果保存先
+save_path <- file.path(gdrive_dir, "output")
+
+# 必要な関数読み込み
+source("_tool_safe_join.R")
+source("_tool_labels.R")  # 安全なラベル管理
+
+# ステップ1: 元データの読み込み
+df_org <- readRDS(
+    file.path(gdrive_dir, "output","all_data_merged_dummy.rds")
+  ) %>%
+  filter(!is.na(v021) & !is.na(v022) & !is.na(sampling_weight_trimmed)) %>%
+  strip_all_labels() # ラベルを一時的に剥がす
+
+
+# 先に year を numeric に
+df_org <- df_org %>%
+  mutate(year = as.numeric(year))
+
+
+df_org <- df_org %>%
+  # treatment_group 1(2012年に介入を受けたグループ)を除外
+  filter(treatment_group != 1) %>%
+  
+  mutate(
+    treat2 = case_when(
+      treatment_group == 0 ~ 0,
+      treatment_group == 2 ~ 1,
+      .default = NA_real_
+    ),
+    post = case_when(
+        year < 2012 ~ 0,
+        year >= 2012 ~ 1,
+        .default = NA_real_
+    )
+  )
+
+# コントロール変数の定義
+cov <- c(
+  "rc_edu_acceptable",
+  "dm_weath_index",
+  "dm_rural__Yes",
+  "dm_livestock_unit",
+  "dm_ag_land_ha",
+  "dm_altitude_high"
+)
+
+# mediatorの定義
+mediators <- c(
+  "rh_anc_4vs__Yes",
+  "rh_del_pvskill__Skilled_provider",
+  "nt_wm_ht__Yes",
+  "nt_wm_thin__Yes",
+  "dm_house_crowding3",
+  "juntos_participation"
+)
+
+# make_mediator_formula関数の定義
+make_mediator_formula = function(outcome_var, control = cov){
+  tmp <- paste(
+    c("treat2", 
+      "post", 
+      "treat2:post",
+      cov),
+    collapse = " + "
+  )
+  return(as.formula(paste(outcome_var, "~", tmp)))
+}
+  
+# -----------------------------------------
+# ここから開始⬇️
+
+df_did_result <- data_frame()
+
+for (mediator in mediators) {
+  # DID推定のための式を作成
+  formula <- make_mediator_formula(mediator)
+
+  # DID推定の実行
+  did_func <- lm(formula, data = df_org)
+  
+  # 結果の抽出
+  res <- summary(did_func)
+  did_est <- res$coefficients["treat2:post", "Estimate"]
+  did_se  <- res$coefficients["treat2:post", "Std. Error"]
+  did_p   <- res$coefficients["treat2:post", "Pr(>|t|)"]
+  did_ci_lower <- did_est - 1.96 * did_se
+  did_ci_upper <- did_est + 1.96 * did_se
+  
+  tmp_df <- data_frame(
+    mediator_var = mediator,
+    did_est = did_est,
+    did_se  = did_se,
+    did_p   = did_p,
+  )
+  df_did_result <- rbind(df_did_result, tmp_df)
+}
+
+
+# library(fwildclusterboot)
+# 
+# boot_res <- boottest(
+#   did_func,
+#   param = "treat2:post",
+#   cluster = df$v024,
+#   B = 999,      # ブート回数
+#   type = "wild"
+# )
+
+tmp <- df_org %>%
+  group_by(treat2, post) %>%
+  summarise(
+    across(all_of(mediators), ~ mean(.x, na.rm = TRUE))
+  ) %>%
+  ungroup()
+
+
+```
