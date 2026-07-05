@@ -270,6 +270,30 @@ goAnalysis <- function(year){
       rh_birth_interval_short = "Birth interval less than 24 months"
     )
   
+  # 出産時の支援者の有無を記録
+  BRdata <- BRdata %>%
+    mutate(
+      rh_del_skilled_birth_assistance = ifelse(rh_del_pvskill == 1, 1, 0)
+    ) %>%
+    labelled::set_value_labels(
+      rh_del_skilled_birth_assistance = c("Yes" = 1, "No"=0  )
+      ) %>%  
+    labelled::set_variable_labels(
+      rh_del_skilled_birth_assistance = "Live births assisted by skilled provider"
+      )
+
+  # 施設分娩
+  BRdata <- BRdata %>%
+    mutate(
+      rh_del_place_facility = ifelse(rh_del_place == 1, 1, 0)
+    ) %>%
+    labelled::set_value_labels(
+      rh_del_place_facility= c("Yes" = 1, "No"=0  )
+      ) %>%
+    labelled::set_variable_labels(
+      rh_del_place_facility = "Live births delivered in a health facility"
+      )
+    
   vars_to_keep <- BRdata %>%
     select(starts_with("rh_")) %>%
     names() %>%
