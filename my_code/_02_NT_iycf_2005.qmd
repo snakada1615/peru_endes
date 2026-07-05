@@ -73,7 +73,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
                   "v414m", "v414n", "v414o", "v414p", "v414q", "v414r", "v414s", 
                   "v414t", "v414u", "v412", "v412a", "v412b", "v413", "v413a",
                   "v413a", "v413b", "v413c", "v413d", "caseid")
-  keep_REC43 <- c("h33m", "h33d", "h33y", "h34", "H42", "caseid", "hidx")
+  keep_REC43 <- c("h11","h33m", "h33d", "h33y", "h34", "H42", "caseid", "hidx")
   
   # addition for womens health status (IRdata)
   keep_rec0111_women <-c("v005", "v008", "v042")
@@ -158,6 +158,7 @@ go_analysis <- function(year){
 
   # rename IDs
   HRdata <- HRdata %>%
+    rename_with(tolower) %>%
     mutate(v001=hv001) %>%
     mutate(v002=hv002) 
   
@@ -175,7 +176,8 @@ go_analysis <- function(year){
   
   # * open IR dataset
   print(KRdatafile)
-  KRdata <-  read_dta(KRdatafile) %>% group_by(caseid) %>% 
+  KRdata <-  read_dta(KRdatafile) %>% rename_with(tolower) %>%
+    group_by(caseid) %>% 
     filter(bidx == 1) %>% ungroup() %>%   # 一番若い児童のbidxを抽出
     rename_with(tolower)
 
@@ -193,7 +195,7 @@ go_analysis <- function(year){
     rename_with(tolower)
 
   # 女性の健康状態関連指標
-  IRdata <- IRdata %>%     
+  IRdata <- IRdata %>% rename_with(tolower) %>%
     add_missing_columns(keep_IRdata) %>% 
     dplyr::select(all_of(keep_IRdata)) %>% group_by(caseid)
   
