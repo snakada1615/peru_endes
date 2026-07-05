@@ -39,11 +39,12 @@ library(purrr)      # for functional programming, e.g., map
 
 # 各種の関数セット読み込み
 source("../myTools.R")  # プロジェクトルートから読み込む（quarto限定の処理）
+source(here("my_code/_tool_safe_join.R"), local = environment())
+
 
 # 対象とする年のリスト
-yearlist <- c("2007", "2008", "2009", "2010", "2011",
+yearlist <- c("2006", "2007", "2008", "2009", "2010", "2011",
 "2012", "2013", "2014", "2015", "2016") 
-yearlist <- c("2006")
 
 # DHSデータのルートフォルダを指定
 gdrive_dir <- "/Users/snakada/Library/CloudStorage/GoogleDrive-snakada@g.ecc.u-tokyo.ac.jp/マイドライブ/Peru_work/Peru_endes/spss"

@@ -1,11 +1,14 @@
 # ===============================================================================
-# Safe Join Functions - Clean Version
-# 診断機能付き安全な左結合関数（優先キー対応版）
+# Safe Join Functions - Clean Version v3
+# 診断機能付き安全な結合関数（優先キー対応版）
 # ===============================================================================
-# このファイルは以下の冗長な定義を整理し、第2版実装を核に据えた
-# クリーンなバージョンです
+# 更新履歴:
+#   v1: 初期版（left_join_safe のみ）
+#   v2: inner_join_safe を追加
+#   v3: by引数の正規化ロジックを共通化（.prepare_safe_join）
+#       by = c("CASEID", "BIDX" = "HIDX") 形式（部分的名前付き）を安全に処理
+#       left_join_safe / inner_join_safe の重複コードを共通下請け関数に集約
 
-# 必要なライブラリ
 library(dplyr)
 library(stringr)
 
@@ -19,31 +22,21 @@ library(stringr)
 #' @param key_vars 正規化するキー変数のベクトル
 #' @return 正規化されたデータフレーム
 #' @description
-#' この関数は、指定されたデータフレームのキー変数に対して、
 #' ファクター型を文字型に変換し、文字型の場合は空白を正規化します。
 #' 数値型の場合はそのまま保持します。
-#'
 #' @examples
 #' df_normalized <- normalize_keys(df, key_vars = c("id", "year"))
-#'
 #' @export
 normalize_keys <- function(df, key_vars) {
   for (key in key_vars) {
     if (key %in% names(df)) {
-      # ファクター型の場合は文字型に変換
       if (is.factor(df[[key]])) {
         df[[key]] <- as.character(df[[key]])
       }
-
-      # 文字型の場合は空白を正規化
       if (is.character(df[[key]])) {
         df[[key]] <- stringr::str_squish(df[[key]])
       }
-
-      # 数値型の場合はそのまま（ただしNA処理）
-      if (is.numeric(df[[key]])) {
-        # 特に何もしない（必要に応じて処理追加）
-      }
+      # 数値型はそのまま（必要に応じて処理追加）
     }
   }
   return(df)
@@ -52,34 +45,17 @@ normalize_keys <- function(df, key_vars) {
 # ===============================================================================
 # 2. 結合前の診断を行う関数
 # ===============================================================================
+
 #' 結合前の診断を行う関数（名前付きベクトル対応版）
-#' @title 結合前の診断を行う関数（名前付きベクトル対応版）
+#'
 #' @param df1 左側のデータフレーム
 #' @param df2 右側のデータフレーム
-#' @param by_df1 左側データフレームの結合キーの
-#' ベクトル
-#' @param by_df2 右側データフレームの結合キー
-#' のベクトル
+#' @param by_df1 左側データフレームの結合キーのベクトル
+#' @param by_df2 右側データフレームの結合キーのベクトル
 #' @param join_name 結合の名称（診断ログに表示）
-#' @return 診断結果のリスト
-#'  - match_rate: マッチング率（左側データに対する
-#'  割合）
-#'  - unmatched_left: 左側データでマッチしなかった行
-#'  - unmatched_right: 右側データでマッチしなかった行
-#'  @description
-#'  この関数は、dplyrのleft_joinを行う前に、
-#'  指定された2つのデータフレームに対して
-#'  結合キーの存在確認、データ型の確認、
-#'  ユニークキー数の確認、マッチング率の診断
-#'  を行います。
-#'  @examples
-#'  diag_result <- diagnose_join(df1, df2,
-#'                                    by_df1 = c("id", "year"),
-#'                                    by_df2 = c("id", "year"),
-#'                                    join_name = "Example Join")
-#' ****************************************************************************
+#' @return 診断結果のリスト（match_rate, unmatched_left, unmatched_right）
+#' @export
 diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
-  # 引数join_nameの設定
   if (join_name == "") {
     join_name <- paste0(deparse(substitute(df1)), " ⟵ ", deparse(substitute(df2)))
   }
@@ -88,7 +64,6 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
   cat("結合診断:", join_name, "\n")
   cat(strrep("=", 80), "\n")
   
-  # キー変数の存在確認
   missing_keys_df1 <- setdiff(by_df1, names(df1))
   missing_keys_df2 <- setdiff(by_df2, names(df2))
   
@@ -96,117 +71,89 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
     warning("左側データフレームに以下のキーが存在しません: ",
             paste(missing_keys_df1, collapse = ", "))
   }
-  
   if (length(missing_keys_df2) > 0) {
     warning("右側データフレームに以下のキーが存在しません: ",
             paste(missing_keys_df2, collapse = ", "))
   }
   
-  # 共通キーの確認（名前付きベクトルの場合は対応する変数ペアを確認）
-  common_pairs <- intersect(by_df1, by_df2)  # 同じ名前のキー
-  
+  common_pairs <- intersect(by_df1, by_df2)
   if (length(common_pairs) == 0 && length(by_df1) != length(by_df2)) {
     warning("名前付きベクトルで指定された結合キーの数が一致しません")
   }
   
-  # データ型の確認（対応するキーペアごとに）
+  # データ型の確認
   cat("\n【キー変数のデータ型】\n")
   for (i in seq_along(by_df1)) {
     key1 <- by_df1[i]
     key2 <- by_df2[i]
-    
     if (key1 %in% names(df1) && key2 %in% names(df2)) {
       type1 <- class(df1[[key1]])[1]
       type2 <- class(df2[[key2]])[1]
-      match_symbol <- if(type1 == type2) "✓" else "✗"
+      match_symbol <- if (type1 == type2) "✓" else "✗"
       cat(sprintf(" %s (左) ⟷ %s (右): %s vs %s %s\n",
                   key1, key2, type1, type2, match_symbol))
     }
   }
   
-  # ユニークキーの数とマッチング率
+  # ユニーク数
   cat("\n【キーの分布】\n")
-  cat(sprintf(" 左側データ行数(%s): %d\n", deparse(substitute(df1)), 
-              nrow(df1)))
-  cat(sprintf(" 右側データ行数(%s): %d\n", deparse(substitute(df2)), 
-              nrow(df2)))
+  cat(sprintf(" 左側データ行数: %d\n", nrow(df1)))
+  cat(sprintf(" 右側データ行数: %d\n", nrow(df2)))
   
-  # ★ 修正：各データフレームに存在するキーのみ選択
+  valid_by_df1 <- by_df1[by_df1 %in% names(df1)]
+  valid_by_df2 <- by_df2[by_df2 %in% names(df2)]
+  
   df1_keys <- df1 %>%
     dplyr::ungroup() %>%
-    dplyr::select(dplyr::all_of(by_df1)) %>%
+    dplyr::select(dplyr::all_of(valid_by_df1)) %>%
     dplyr::filter(stats::complete.cases(.))
   
   df2_keys <- df2 %>%
     dplyr::ungroup() %>%
-    dplyr::select(dplyr::all_of(by_df2)) %>%
+    dplyr::select(dplyr::all_of(valid_by_df2)) %>%
     dplyr::filter(stats::complete.cases(.))
   
   for (i in seq_along(by_df1)) {
     key1 <- by_df1[i]
     key2 <- by_df2[i]
-    
-    if (key1 %in% names(df1)) {
-      n_unique_df1 <- df1_keys %>% dplyr::distinct(.data[[key1]]) %>% nrow()
-    } else {
-      n_unique_df1 <- NA
-    }
-    
-    if (key2 %in% names(df2)) {
-      n_unique_df2 <- df2_keys %>% dplyr::distinct(.data[[key2]]) %>% nrow()
-    } else {
-      n_unique_df2 <- NA
-    }
-    
-    cat(sprintf(" %s (左) ⟷ %s (右) のユニーク数: 左=%d, 右=%d\n",
-                key1, key2, n_unique_df1, n_unique_df2))
+    n_unique_df1 <- if (key1 %in% names(df1_keys)) {
+      df1_keys %>% dplyr::distinct(.data[[key1]]) %>% nrow()
+    } else { NA }
+    n_unique_df2 <- if (key2 %in% names(df2_keys)) {
+      df2_keys %>% dplyr::distinct(.data[[key2]]) %>% nrow()
+    } else { NA }
+    cat(sprintf(" %s (左) ⟷ %s (右) のユニーク数: 左=%s, 右=%s\n",
+                key1, key2,
+                ifelse(is.na(n_unique_df1), "NA", n_unique_df1),
+                ifelse(is.na(n_unique_df2), "NA", n_unique_df2)))
   }
   
   # マッチング診断
-  cat("\n【マッチング診断】: ", join_name, "\n")
+  cat("\n【マッチング診断】:", join_name, "\n")
   
-  # ★★★ 修正：名前付きベクトルの作成方法を変更 ★★★
-  # setNames(右側の変数名, 左側の変数名) → 正しい順序
-  by_named <- setNames(by_df2, by_df1)
-  
-  # ★★★ さらに修正：一時的に変数名を統一してマッチング診断を行う ★★★
-  # 左側データフレームの変数名を右側に合わせて一時的にリネーム
+  # 左側キーを右側キー名に一時リネームして anti_join / semi_join を行う
   df1_temp <- df1 %>% dplyr::ungroup()
   df2_temp <- df2 %>% dplyr::ungroup()
   
-  # by_df1とby_df2が異なる場合、左側を右側の変数名にリネーム
   if (!identical(by_df1, by_df2)) {
     for (i in seq_along(by_df1)) {
       if (by_df1[i] != by_df2[i] && by_df1[i] %in% names(df1_temp)) {
-        # 一時的な変数名を生成（衝突を避けるため）
         temp_name <- paste0("__temp_join_key_", i, "__")
-        df1_temp <- df1_temp %>%
-          dplyr::rename(!!temp_name := !!by_df1[i])
+        df1_temp <- df1_temp %>% dplyr::rename(!!temp_name := !!by_df1[i])
       }
     }
-    
-    # 最終的に右側の変数名に統一
     for (i in seq_along(by_df1)) {
       temp_name <- paste0("__temp_join_key_", i, "__")
       if (temp_name %in% names(df1_temp)) {
-        df1_temp <- df1_temp %>%
-          dplyr::rename(!!by_df2[i] := !!temp_name)
+        df1_temp <- df1_temp %>% dplyr::rename(!!by_df2[i] := !!temp_name)
       }
     }
   }
   
-  # 統一されたキー名で診断
-  unmatched_left <- df1_temp %>%
-    dplyr::anti_join(df2_temp, by = by_df2)
-  
-  unmatched_right <- df2_temp %>%
-    dplyr::anti_join(df1_temp, by = by_df2)
-  
-  matched_rows <- df1_temp %>%
-    dplyr::semi_join(df2_temp, by = by_df2) %>%
-    nrow()
-  
-  match_rate <- 100 * matched_rows / nrow(df1)
+  unmatched_left  <- df1_temp %>% dplyr::anti_join(df2_temp, by = by_df2)
+  unmatched_right <- df2_temp %>% dplyr::anti_join(df1_temp, by = by_df2)
+  matched_rows    <- df1_temp %>% dplyr::semi_join(df2_temp, by = by_df2) %>% nrow()
+  match_rate      <- 100 * matched_rows / nrow(df1)
   
   cat(sprintf(" マッチング率: %.1f%%\n", match_rate))
   cat(sprintf(" マッチした行数: %d / %d\n", matched_rows, nrow(df1)))
@@ -220,12 +167,11 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
   cat(strrep("=", 80), "\n\n")
   
   return(list(
-    match_rate = match_rate,
-    unmatched_left = unmatched_left,
+    match_rate     = match_rate,
+    unmatched_left  = unmatched_left,
     unmatched_right = unmatched_right
   ))
 }
-# -------関数ここまで☺️-------------------------------------------------------
 
 # ===============================================================================
 # 3. 結合キーの重複を診断する関数
@@ -236,54 +182,39 @@ diagnose_join <- function(df1, df2, by_df1, by_df2, join_name = "") {
 #' @param df データフレーム
 #' @param by_vars 結合キーのベクトル
 #' @param df_name データフレーム名（ログ用）
-#' @return 重複情報のリスト
-#'   - has_duplicates: 重複があるか（TRUE/FALSE）
-#'   - n_duplicates: 重複行数（has_duplicates=TRUEの場合）
-#'   - duplicate_keys: 重複しているキーパターン（has_duplicates=TRUEの場合）
-#'
-#' @description
-#' この関数は、指定されたデータフレームにおいて、
-#' 結合キーの重複を診断します。重複行数、
-#' ユニークキー数、重複しているキーの例を表示します。
-#'
-#' @examples
-#' dup_result <- diagnose_duplicates(df, 
-#'                                   by_vars = c("id", "year"),
-#'                                   df_name = "Example Data")
-#'
+#' @return 重複情報のリスト（has_duplicates, n_duplicates, duplicate_keys）
 #' @export
 diagnose_duplicates <- function(df, by_vars, df_name = "") {
   cat("\n【重複診断:", df_name, "】\n")
-
-  # ▼ ここで必ず ungroup() してから処理 ▼
+  
   key_combo <- df %>%
     dplyr::ungroup() %>%
     dplyr::select(dplyr::all_of(by_vars)) %>%
     dplyr::filter(stats::complete.cases(.))
-
-  n_total <- nrow(key_combo)
-  n_unique <- key_combo %>% dplyr::distinct() %>% nrow()
+  
+  n_total      <- nrow(key_combo)
+  n_unique     <- key_combo %>% dplyr::distinct() %>% nrow()
   n_duplicates <- n_total - n_unique
-
+  
   cat(sprintf(" 総行数: %d\n", n_total))
-  cat(sprintf(" ユニークなキー組み合わせ(%s): %d\n", 
+  cat(sprintf(" ユニークなキー組み合わせ(%s): %d\n",
               paste(by_vars, collapse = "*"), n_unique))
   cat(sprintf(" 重複行数: %d\n", n_duplicates))
-
+  
   if (n_duplicates > 0) {
     duplicate_keys <- key_combo %>%
       dplyr::group_by(dplyr::across(dplyr::all_of(by_vars))) %>%
       dplyr::filter(dplyr::n() > 1) %>%
       dplyr::ungroup() %>%
       dplyr::distinct()
-
+    
     cat(sprintf(" 重複しているキーパターン数: %d\n", nrow(duplicate_keys)))
     cat(" 重複例（最初の5件）:\n")
     print(head(duplicate_keys, 5))
-
+    
     return(list(
       has_duplicates = TRUE,
-      n_duplicates = n_duplicates,
+      n_duplicates   = n_duplicates,
       duplicate_keys = duplicate_keys
     ))
   } else {
@@ -293,173 +224,383 @@ diagnose_duplicates <- function(df, by_vars, df_name = "") {
 }
 
 # ===============================================================================
-# 4. メイン関数：安全な左結合を行う関数（診断機能付き、優先キー対応版）
+# 4. 共通下請け関数（by解析・正規化・診断・重複処理・共通列チェック）
 # ===============================================================================
 
-#' 改良版：安全な左結合を行う関数（診断機能付き、優先キー対応版）
+#' 安全結合の共通準備を行う内部関数
+#'
+#' @description
+#' left_join_safe / inner_join_safe から呼ばれる共通処理。
+#' by引数の正規化（部分的名前付き対応）、キー存在チェック、
+#' キー正規化、診断、右側重複処理、共通列チェックを行い、
+#' 後続の結合処理に必要な情報をリストで返す。
+#'
+#' @return リスト（df1, df2, by_named, by_df1, by_df2,
+#'   join_name, relationship, suffix）
+.prepare_safe_join <- function(df1, df2, by,
+                               join_name,
+                               diagnose,
+                               priority_key,
+                               relationship,
+                               check_nonkey_conflicts,
+                               suffix,
+                               join_type,
+                               ...) {
+  
+  # ---- 1. by引数の解析と正規化 ----------------------------------------------
+  if (missing(by) || is.null(by)) {
+    common_cols <- intersect(names(df1), names(df2))
+    if (length(common_cols) == 0) {
+      stop("byがNULLですが、共通列名が存在しません。")
+    }
+    by_df1   <- common_cols
+    by_df2   <- common_cols
+    by_named <- stats::setNames(by_df2, by_df1)
+    
+  } else if (is.character(by) && is.null(names(by))) {
+    by_df1   <- by
+    by_df2   <- by
+    by_named <- stats::setNames(by_df2, by_df1)
+    
+  } else if (is.character(by) && !is.null(names(by))) {
+    by_df2 <- unname(by)
+    by_df1 <- names(by)
+    
+    # 部分的に名前がない要素（空文字）は右側と同名とみなして補完
+    # 例: c("CASEID", "BIDX" = "HIDX") → c("CASEID"="CASEID", "BIDX"="HIDX")
+    empty_idx          <- is.na(by_df1) | by_df1 == ""
+    by_df1[empty_idx]  <- by_df2[empty_idx]
+    by_named           <- stats::setNames(by_df2, by_df1)
+    
+  } else {
+    stop("by引数の形式が不正です。文字ベクトルまたは名前付き文字ベクトルを指定してください。")
+  }
+  
+  # ---- 2. キーのバリデーション ----------------------------------------------
+  if (length(by_df1) == 0 || length(by_df2) == 0) {
+    stop("結合キーが0件です。byを確認してください。")
+  }
+  if (any(is.na(by_df1) | by_df1 == "")) {
+    stop("左側結合キーに空文字またはNAがあります。byを確認してください。")
+  }
+  if (any(is.na(by_df2) | by_df2 == "")) {
+    stop("右側結合キーに空文字またはNAがあります。byを確認してください。")
+  }
+  
+  missing_df1 <- setdiff(by_df1, names(df1))
+  missing_df2 <- setdiff(by_df2, names(df2))
+  if (length(missing_df1) > 0) {
+    stop("左側データフレームに以下のキーが存在しません: ",
+         paste(missing_df1, collapse = ", "))
+  }
+  if (length(missing_df2) > 0) {
+    stop("右側データフレームに以下のキーが存在しません: ",
+         paste(missing_df2, collapse = ", "))
+  }
+  
+  # ---- 3. キー変数の正規化 --------------------------------------------------
+  df1_normalized <- normalize_keys(df1, by_df1)
+  df2_normalized <- normalize_keys(df2, by_df2)
+  
+  # ---- 4. 診断（オプション） ------------------------------------------------
+  if (diagnose) {
+    diagnose_join(df1_normalized, df2_normalized, by_df1, by_df2, join_name)
+    cat("\n")
+    dup_label_left  <- paste0("左側データ: ", deparse(substitute(df1)))
+    dup_label_right <- paste0("右側データ: ", deparse(substitute(df2)))
+    diagnose_duplicates(df1_normalized, by_df1, dup_label_left)
+    diagnose_duplicates(df2_normalized, by_df2, dup_label_right)
+  }
+  
+  # ---- 5. 右側重複処理 ------------------------------------------------------
+  if (!is.null(priority_key) && !all(is.na(priority_key))) {
+    missing_priority <- setdiff(priority_key, names(df2_normalized))
+    if (length(missing_priority) > 0) {
+      stop("右側データフレームにpriority_keyが存在しません: ",
+           paste(missing_priority, collapse = ", "))
+    }
+    df2_prepared <- df2_normalized %>%
+      dplyr::arrange(
+        dplyr::across(dplyr::all_of(by_df2)),
+        dplyr::desc(dplyr::across(dplyr::all_of(priority_key)))
+      ) %>%
+      dplyr::group_by(dplyr::across(dplyr::all_of(by_df2))) %>%
+      dplyr::slice(1) %>%
+      dplyr::ungroup()
+    
+  } else if (relationship %in% c("many-to-one", "one-to-one")) {
+    df2_prepared <- df2_normalized %>%
+      dplyr::group_by(dplyr::across(dplyr::all_of(by_df2))) %>%
+      dplyr::slice(1) %>%
+      dplyr::ungroup()
+    
+  } else {
+    df2_prepared <- df2_normalized
+  }
+  
+  if (diagnose && nrow(df2_prepared) < nrow(df2_normalized)) {
+    cat(sprintf("\n【重複除去】右側データを %d 行 → %d 行に削減しました\n",
+                nrow(df2_normalized), nrow(df2_prepared)))
+  }
+  
+  # ---- 6. 非キー共通列チェック ----------------------------------------------
+  if (check_nonkey_conflicts) {
+    common_nonkey_cols <- intersect(
+      setdiff(names(df1_normalized), by_df1),
+      setdiff(names(df2_prepared),  by_df2)
+    )
+    
+    if (length(common_nonkey_cols) > 0) {
+      warning("結合キー以外の共通列名があります: ",
+              paste(common_nonkey_cols, collapse = ", "))
+      
+      # 内部確認用にinner_joinで不一致を測る
+      temp_join <- dplyr::inner_join(
+        df1_normalized, df2_prepared,
+        by = by_named, suffix = suffix,
+        relationship = relationship, ...
+      )
+      
+      for (col in common_nonkey_cols) {
+        col_x <- paste0(col, suffix[1])
+        col_y <- paste0(col, suffix[2])
+        if (all(c(col_x, col_y) %in% names(temp_join))) {
+          diffs <- sum(
+            !is.na(temp_join[[col_x]]) &
+              !is.na(temp_join[[col_y]]) &
+              temp_join[[col_x]] != temp_join[[col_y]]
+          )
+          if (diffs > 0) {
+            warning(sprintf("列 %s で %d 行の不一致があります", col, diffs))
+          }
+        }
+      }
+    }
+  }
+  
+  return(list(
+    df1          = df1_normalized,
+    df2          = df2_prepared,
+    by_named     = by_named,
+    by_df1       = by_df1,
+    by_df2       = by_df2,
+    join_name    = join_name,
+    relationship = relationship,
+    suffix       = suffix
+  ))
+}
+
+# ===============================================================================
+# 5. サフィックス整理の共通ヘルパー
+# ===============================================================================
+
+.cleanup_suffix <- function(result, suffix, priotiry_col_left) {
+  if (priotiry_col_left) {
+    result %>%
+      dplyr::select(-dplyr::ends_with(suffix[2])) %>%
+      dplyr::rename_with(
+        ~ stringr::str_remove(., stringr::fixed(suffix[1])),
+        dplyr::ends_with(suffix[1])
+      )
+  } else {
+    result %>%
+      dplyr::select(-dplyr::ends_with(suffix[1])) %>%
+      dplyr::rename_with(
+        ~ stringr::str_remove(., stringr::fixed(suffix[2])),
+        dplyr::ends_with(suffix[2])
+      )
+  }
+}
+
+# ===============================================================================
+# 6. メイン関数: left_join_safe（診断機能付き、優先キー対応版）
+# ===============================================================================
+
+#' 安全な左結合を行う関数（診断機能付き、優先キー対応版）
 #'
 #' @param df1 左側のデータフレーム
 #' @param df2 右側のデータフレーム
-#' @param by 結合キー（名前付きベクトルまたは文字ベクトル）
-#'   - 例: c("id") または c("df1_id" = "df2_id")
-#' @param join_name 結合の名称（診断ログに表示）
+#' @param by 結合キー（文字ベクトルまたは名前付き文字ベクトル）
+#'   例: c("id") または c("df1_id" = "df2_id")
+#'   例: c("CASEID", "BIDX" = "HIDX")  ← 部分的名前付きも可
+#' @param join_name 結合の名称（ログ表示用）
 #' @param diagnose 診断を実行するか（デフォルト: FALSE）
-#' @param priority_key 右側データフレームで重複がある場合に
-#'   優先的に保持するキー変数のベクトル
-#'   - 例: c("date_updated", "version")
-#' @param priotiry_col_left 結合後に優先的に保持する列を
-#'  左側データフレームのものにするか（デフォルト
-#'  : TRUE）
-#'  
-#' @return 結合されたデータフレーム
+#' @param priority_key 右側データフレームで重複がある場合の優先キー
+#'   例: c("survey_date", "data_quality_score")
+#' @param priotiry_col_left 重複列は左側を優先するか（デフォルト: TRUE）
+#' @param relationship 結合関係の宣言（デフォルト: "many-to-one"）
+#' @param check_nonkey_conflicts 非キー共通列の不一致をチェックするか
+#' @return 結合されたデータフレーム（左側の全行を保持）
 #'
-#' @description
-#' この関数は、dplyrのleft_joinを拡張し、
-#' 結合前にキー変数の正規化と診断を行います。
-#' 
-#' **主な特徴:**
-#' 1. キー変数の正規化（ファクター→文字、空白統一）
-#' 2. 結合前の詳細診断（存在確認、型確認、マッチング率）
-#' 3. 右側データの重複診断
-#' 4. priority_keyによる優先度付き重複除去
-#' 5. サフィックス（.x, .y）の自動クリーンアップ
-#' 6. 結合結果の整合性チェック
+#' @examples
+#' # 基本
+#' result <- left_join_safe(df1, df2, by = "household_id")
 #'
-#' **使用例:**
-#' ```R
-#' # 基本的な使用例
-#' result <- left_join_safe(df1, df2, by = "id")
-#'
-#' # 診断付きで実行
-#' result <- left_join_safe(df1, df2, 
-#'                          by = c("id" = "household_id"),
-#'                          join_name = "Household Data Join",
-#'                          diagnose = TRUE)
-#'
-#' # 世帯データのように複数時点の観測がある場合
+#' # 診断付き・異なるキー名
 #' result <- left_join_safe(df1, df2,
-#'                          by = c("household_id" = "hh_id"),
-#'                          join_name = "Latest Household Data",
-#'                          diagnose = TRUE,
-#'                          priority_key = c("survey_date", "version"))
-#' ```
+#'   by = c("household_id" = "hh_id"),
+#'   join_name = "Household Join", diagnose = TRUE)
 #'
+#' # 複合キー（部分的名前付きも可）
+#' result <- left_join_safe(df1, df2,
+#'   by = c("CASEID", "BIDX" = "HIDX"), diagnose = TRUE)
+#'
+#' # 複数時点データ（最新優先）
+#' result <- left_join_safe(df1, df2,
+#'   by = c("household_id" = "hh_id"),
+#'   priority_key = c("survey_date", "data_quality_score"), diagnose = TRUE)
 #' @export
 left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
-                           priority_key = NULL, priotiry_col_left = TRUE) {
-
-  # ================================================================================
-  # Step 0: 引数join_nameの設定
-  # ================================================================================
+                           priority_key = NULL, priotiry_col_left = TRUE,
+                           relationship = "many-to-one",
+                           check_nonkey_conflicts = TRUE,
+                           ...) {
   
   if (join_name == "") {
     join_name <- paste0(deparse(substitute(df1)), " ⟵ ", deparse(substitute(df2)))
   }
   
   cat("\n", strrep("=", 80), "\n", sep = "")
-  cat("left_join_safe:", join_name, ": 結合を開始します","\n")
+  cat("left_join_safe:", join_name, ": 結合を開始します\n")
   cat(strrep("=", 80), "\n")
   
-  # ================================================================================
-  # Step 1: by引数の解析と正規化
-  # ================================================================================
-  if (is.null(names(by))) {
-    by_vars <- by
-    by_df1 <- by
-    by_df2 <- by
-  } else {
-    by_df1 <- names(by)
-    by_df2 <- unname(by)
-    by_vars <- unique(c(by_df1, by_df2))
-  }
-
-  # ================================================================================
-  # Step 2: キー変数の正規化
-  # ================================================================================
-  df1_normalized <- normalize_keys(df1, by_df1)
-  df2_normalized <- normalize_keys(df2, by_df2)
-
-  # ================================================================================
-  # Step 3: 診断の実行（オプション）
-  # ================================================================================
-  if (diagnose) {
-    # ★★★ 修正点：diagnose_joinには by_df1 と by_df2 を別々に渡す ★★★
-    # 元の関数を呼ぶのではなく、修正版を使う
-    diag_result <- diagnose_join(df1_normalized, df2_normalized,
-                                         by_df1, by_df2, join_name)
-    
-    # 重複診断を追加
-    cat("\n")
-    left_name <- paste0("左側データ: ", deparse(substitute(df1)))
-    right_name <- paste0("右側データ: ", deparse(substitute(df2)))
-    dup_df1 <- diagnose_duplicates(df1_normalized, by_df1, left_name)
-    dup_df2 <- diagnose_duplicates(df2_normalized, by_df2, right_name)
-  }
-
-  # ================================================================================
-  # Step 4: 右側（df2）に重複がある場合の処理
-  # ================================================================================
-  # 世帯データのような複数時点観測の場合、priority_keyで優先順位を指定
-  if (!is.null(priority_key) && !all(is.na(priority_key))) {
-    # priority_keyが指定されている場合：優先度付き重複除去
-    df2_unique <- df2_normalized %>%
-      arrange(across(all_of(by_df2)),
-              desc(across(all_of(priority_key)))) %>% # 降順で新しい/優先度の高い順
-      group_by(across(all_of(by_df2))) %>%
-      slice(1) %>%
-      ungroup()
-  } else {
-    # 従来の処理（指定されていない場合）：最初の行のみ保持
-    df2_unique <- df2_normalized %>%
-      group_by(across(all_of(by_df2))) %>%
-      slice(1) %>%
-      ungroup()
-  }
-
-  # 重複除去後の行数を確認
-  if (diagnose && nrow(df2_unique) < nrow(df2_normalized)) {
-    cat(sprintf("\n【重複除去】右側データを %d 行 → %d 行に削減しました\n",
-                nrow(df2_normalized), nrow(df2_unique)))
-  }
-
-  # ================================================================================
-  # Step 5: 結合の実行
-  # ================================================================================
-  result <- dplyr::left_join(df1_normalized, df2_unique, by = by,
-                             relationship = "many-to-one")
-
-  # ================================================================================
-  # Step 6: サフィックスをクリーンアップ
-  # ================================================================================
-  # 結合直後に .y サフィックスが付いた列を削除
-  # .x サフィックスをクリーンアップ
+  prep <- .prepare_safe_join(
+    df1 = df1, df2 = df2, by = by,
+    join_name = join_name, diagnose = diagnose,
+    priority_key = priority_key, relationship = relationship,
+    check_nonkey_conflicts = check_nonkey_conflicts,
+    suffix = c(".x", ".y"), join_type = "left", ...
+  )
   
-  if (priotiry_col_left) {
-    result <- result %>%
-      dplyr::select(-ends_with(".y")) %>%
-      rename_with(~str_remove(., "\\.x$"), ends_with(".x"))
-  } else {
-    result <- result %>%
-      dplyr::select(-ends_with(".x")) %>%
-      rename_with(~str_remove(., "\\.y$"), ends_with(".y"))
-  }
-
-  # ================================================================================
-  # Step 7: 結果の整合性チェック
-  # ================================================================================
+  result <- dplyr::left_join(
+    prep$df1, prep$df2,
+    by = prep$by_named,
+    suffix = prep$suffix,
+    relationship = prep$relationship,
+    ...
+  )
+  
+  result <- .cleanup_suffix(result, prep$suffix, priotiry_col_left)
+  
   if (nrow(result) == 0) {
-    stop(sprintf("結合結果が0行です: %s", join_name))
+    stop(sprintf("結合結果が0行です: %s", prep$join_name))
   }
-
   if (nrow(result) != nrow(df1)) {
     warning(sprintf("結合後の行数が変化しました: %s (元: %d, 結果: %d)",
-                    join_name, nrow(df1), nrow(result)))
+                    prep$join_name, nrow(df1), nrow(result)))
   }
   
   cat("\n", strrep("=", 80), "\n", sep = "")
-  cat("left_join_safe:", join_name, ": 結合を完了しました","\n")
+  cat("left_join_safe:", prep$join_name, ": 結合を完了しました\n")
   cat(strrep("=", 80), "\n")
+  
+  return(result)
+}
 
+# ===============================================================================
+# 7. メイン関数: inner_join_safe（診断機能付き、優先キー対応版）
+# ===============================================================================
+
+#' 安全なinner_joinを行う関数（診断機能付き、優先キー対応版）
+#'
+#' @param df1 左側のデータフレーム
+#' @param df2 右側のデータフレーム
+#' @param by 結合キー（文字ベクトルまたは名前付き文字ベクトル）
+#'   例: c("id") または c("df1_id" = "df2_id")
+#'   例: c("CASEID", "BIDX" = "HIDX")  ← 部分的名前付きも可
+#' @param join_name 結合の名称（ログ表示用）
+#' @param diagnose 診断を実行するか（デフォルト: FALSE）
+#' @param priority_key 右側データフレームで重複がある場合の優先キー
+#' @param priotiry_col_left 重複列は左側を優先するか（デフォルト: TRUE）
+#' @param relationship 結合関係の宣言（デフォルト: "many-to-one"）
+#' @param check_nonkey_conflicts 非キー共通列の不一致をチェックするか
+#' @param warn_if_dropped マッチしなかった行への警告を出すか（デフォルト: TRUE）
+#' @return 結合されたデータフレーム（両側でマッチした行のみ保持）
+#'
+#' @examples
+#' # 基本
+#' result <- inner_join_safe(df1, df2, by = "CASEID")
+#'
+#' # 複合キー（部分的名前付きも可）
+#' result <- inner_join_safe(df1, df2,
+#'   by = c("CASEID", "BIDX" = "HIDX"), diagnose = TRUE)
+#'
+#' # 完全名前付き（推奨）
+#' result <- inner_join_safe(df1, df2,
+#'   by = c("CASEID" = "CASEID", "BIDX" = "HIDX"), diagnose = TRUE)
+#' @export
+inner_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
+                            priority_key = NULL, priotiry_col_left = TRUE,
+                            relationship = "many-to-one",
+                            check_nonkey_conflicts = TRUE,
+                            warn_if_dropped = TRUE,
+                            ...) {
+  
+  if (join_name == "") {
+    join_name <- paste0(deparse(substitute(df1)), " ⋈ ", deparse(substitute(df2)))
+  }
+  
+  cat("\n", strrep("=", 80), "\n", sep = "")
+  cat("inner_join_safe:", join_name, ": 結合を開始します\n")
+  cat(strrep("=", 80), "\n")
+  
+  prep <- .prepare_safe_join(
+    df1 = df1, df2 = df2, by = by,
+    join_name = join_name, diagnose = diagnose,
+    priority_key = priority_key, relationship = relationship,
+    check_nonkey_conflicts = check_nonkey_conflicts,
+    suffix = c(".x", ".y"), join_type = "inner", ...
+  )
+  
+  result <- dplyr::inner_join(
+    prep$df1, prep$df2,
+    by = prep$by_named,
+    suffix = prep$suffix,
+    relationship = prep$relationship,
+    ...
+  )
+  
+  result <- .cleanup_suffix(result, prep$suffix, priotiry_col_left)
+  
+  if (nrow(result) == 0) {
+    stop(sprintf("結合結果が0行です: %s", prep$join_name))
+  }
+  
+  # 左右の脱落行数を計算
+  # by_named: 左キー名 → 右キー名  なので
+  #   left  側の semi_join は by = by_named（左から右を探す）
+  #   right 側の semi_join は by = setNames(by_df1, by_df2)（右から左を探す）
+  matched_left_n <- prep$df1 %>%
+    dplyr::semi_join(prep$df2, by = prep$by_named) %>%
+    nrow()
+  
+  matched_right_n <- prep$df2 %>%
+    dplyr::semi_join(prep$df1, by = stats::setNames(prep$by_df1, prep$by_df2)) %>%
+    nrow()
+  
+  unmatched_left_n  <- nrow(prep$df1) - matched_left_n
+  unmatched_right_n <- nrow(prep$df2) - matched_right_n
+  
+  cat("\n【inner join 結果チェック】\n")
+  cat(sprintf(" 左側入力行数: %d\n", nrow(prep$df1)))
+  cat(sprintf(" 右側入力行数: %d\n", nrow(prep$df2)))
+  cat(sprintf(" 結合後行数:   %d\n", nrow(result)))
+  cat(sprintf(" 左側で脱落した行数: %d\n", unmatched_left_n))
+  cat(sprintf(" 右側で脱落した行数: %d\n", unmatched_right_n))
+  
+  if (warn_if_dropped && unmatched_left_n > 0) {
+    warning(sprintf("inner_joinにより左側で %d 行が脱落しました: %s",
+                    unmatched_left_n, prep$join_name))
+  }
+  if (warn_if_dropped && unmatched_right_n > 0) {
+    warning(sprintf("inner_joinにより右側で %d 行が脱落しました: %s",
+                    unmatched_right_n, prep$join_name))
+  }
+  
+  cat("\n", strrep("=", 80), "\n", sep = "")
+  cat("inner_join_safe:", prep$join_name, ": 結合を完了しました\n")
+  cat(strrep("=", 80), "\n")
+  
   return(result)
 }
 
@@ -467,10 +608,11 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
 # 使用例：ペルーの栄養改善プログラム評価での使用シナリオ
 # ===============================================================================
 
+# -- left_join_safe の例 -------------------------------------------------------
+
 # 例1：基本的な世帯属性情報の結合
 # result1 <- left_join_safe(
-#   df_baseline,          # ベースラインデータ
-#   df_hh_attributes,     # 世帯属性
+#   df_baseline, df_hh_attributes,
 #   by = "household_id",
 #   join_name = "Household Attributes",
 #   diagnose = TRUE
@@ -478,8 +620,7 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
 
 # 例2：複数時点の栄養指標（最新情報を優先）
 # result2 <- left_join_safe(
-#   df_baseline,
-#   df_nutrition_outcomes,  # 複数時点の栄養データ
+#   df_baseline, df_nutrition_outcomes,
 #   by = c("household_id" = "hh_id"),
 #   join_name = "Latest Nutrition Outcomes",
 #   diagnose = TRUE,
@@ -488,10 +629,36 @@ left_join_safe <- function(df1, df2, by, join_name = "", diagnose = FALSE,
 
 # 例3：農業生産データ（最も最近の調査を選択）
 # result3 <- left_join_safe(
-#   df_baseline,
-#   df_agricultural_production,
+#   df_baseline, df_agricultural_production,
 #   by = c("household_id" = "hhid"),
 #   join_name = "Agricultural Production Data",
 #   diagnose = TRUE,
 #   priority_key = "last_updated"
 # )
+
+# -- inner_join_safe の例 ------------------------------------------------------
+
+# 例4：単一キーの基本結合
+# IRdata <- df_REC21 %>%
+#   filter(BIDX == 1) %>%
+#   inner_join_safe(df_rec0111, by = "CASEID") %>%
+#   inner_join_safe(df_RE223132, by = "CASEID")
+
+# 例5：複合キー（部分的名前付き）
+# IRdata <- IRdata %>%
+#   inner_join_safe(df_REC43,
+#     by = c("CASEID", "BIDX" = "HIDX"),  # 部分的名前付きも可
+#     join_name = "REC21 ⋈ REC43", diagnose = TRUE)
+
+# 例6：複合キー（完全名前付き推奨）
+# IRdata <- IRdata %>%
+#   inner_join_safe(df_REC43,
+#     by = c("CASEID" = "CASEID", "BIDX" = "HIDX"),
+#     join_name = "REC21 ⋈ REC43", diagnose = TRUE) %>%
+#   inner_join_safe(df_REC41,
+#     by = c("CASEID" = "CASEID", "BIDX" = "MIDX"),
+#     join_name = "REC21 ⋈ REC41", diagnose = TRUE) %>%
+#   inner_join_safe(df_REC42, by = "CASEID") %>%
+#   mutate(midx = BIDX) %>%
+#   dplyr::select(keep_IRdata)
+

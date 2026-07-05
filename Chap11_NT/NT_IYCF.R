@@ -232,9 +232,9 @@ KRiycf <- KRiycf %>%
 KRiycf <- KRiycf %>%
   # NAを0に置き換えてから処理
   mutate(across(c(nt_formula, nt_milk, nt_dairy, nt_grains, nt_root, nt_bbyfood, 
-                  nt_vita, nt_frtveg, nt_eggs, nt_meatfish, nt_nuts), ~replace_na(.x, 0))) %>%
+                  nt_vita, nt_frtveg, nt_eggs, nt_meatfish, nt_nuts), ~tidyr::replace_na(.x, 0))) %>%
   
-  # 元のコードをシンプルに修正
+  # 元のコードをシンプルに修正  
   mutate(group1 = ifelse(m4==95, 1, 0)) %>% 
   mutate(group2 = ifelse(nt_formula==1 | nt_milk==1 | nt_dairy==1, 1, 0)) %>%
   mutate(group3 = ifelse(nt_grains==1 | nt_root==1 | nt_bbyfood==1, 1, 0)) %>%

@@ -187,6 +187,13 @@ IRdata <- IRdata %>%
   set_value_labels(nt_wm_obese = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(nt_wm_obese = "Obese BMI - women")
 
+# //BMI
+IRdata <- IRdata %>%
+  mutate(nt_wm_BMI = v445/100) %>%
+  replace_with_na(replace = list(nt_wm_obese = c(99))) %>%
+  set_variable_labels(nt_wm_BMI = "Women BMI")
+
+
 # //Took iron supplements during last pregnancy
 IRdata <- IRdata %>%
   mutate(nt_wm_micro_iron =
