@@ -18,7 +18,9 @@ all_variables <- names(df_org)
 analysis_vars <- all_variables[grepl("^[a-zA-Z]{2}_.*_Yes$", all_variables)]
 
 analysis_vars <- c(analysis_vars, "juntos_participation", "dm_altitude_high", "dm_altitude_low", "dm_altitude_mid",
-                   "dm_house_crowding3")
+                   "dm_house_crowding3", "rh_birth_interval_short", "rh_num_child", "dm_wealth_index", "rc_edu_acceptable",
+                   "rc_edu_acceptable_father"
+                   )
 
 attr(df_org$nt_ch_haz, "label")
 
