@@ -71,7 +71,7 @@ endes_var_labels <- readRDS(file.path(gdrive_dir, "output", "endes_var_labels.rd
                   "V414M", "V414N", "V414O", "V414P", "V414Q", "V414R", "V414S", 
                   "V414T", "V414U", "V412", "V412A", "V412B", "V413", "V413A",
                   "V413A", "V413B", "V413C", "V413D", "CASEID")
-  keep_REC43 <- c("H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
+  keep_REC43 <- c("H11","H33M", "H33D", "H33Y", "H34", "H42", "CASEID", "HIDX")
   
   # addition for womens health status (IRdata)
   keep_rec0111_women <-c("V005", "V008", "V042")

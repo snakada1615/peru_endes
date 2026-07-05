@@ -291,3 +291,14 @@ KRiycf[["nt_ch_micro_irf"]] <- ifelse(KRiycf[["age"]]<6 | KRiycf[["age"]]>23  , 
 KRiycf <- KRiycf %>%
   set_value_labels(nt_ch_micro_irf = c("Yes" = 1, "No"=0  )) %>%
   set_variable_labels(nt_ch_micro_irf = "Youngest children age 6-23 mos living with mother given iron rich food")
+
+# // child with diarrhea in last 2 weeks
+KRiycf <- KRiycf %>%
+  mutate(nt_ch_diar_2wk = case_when(
+      h11==1 | h11==2 ~ 1, 
+     h11==0 | h11==8 ~ 0,
+     TRUE ~ NA_real_
+    )) %>%
+  set_value_labels(nt_ch_diar_2wk = c("Yes" = 1, "No"=0  )) %>%
+  set_variable_labels(nt_ch_diar_2wk = "Child with diarrhea in last 2 weeks - last-born under 2 years")
+
