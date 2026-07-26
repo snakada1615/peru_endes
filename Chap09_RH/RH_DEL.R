@@ -9,6 +9,7 @@
 #
 # /*----------------------------------------------------------------------------//
 # Variables created in this file:
+# rh_del_age_1st_birth  "Age at first birth"
 # rh_del_place		"Live births by place of delivery"
 # rh_del_pltype		"Live births by type of place"
 # rh_del_pv			  "Person providing assistance during birth"
@@ -40,6 +41,13 @@ BRdata <- BRdata %>%
 #   BRdata <- BRdata %>%
 #     mutate(age = v008 - b3)
 # }
+
+
+# //Age at first birth
+BRdata <- BRdata %>%
+  mutate(rh_del_age_1st_birth = v212) %>%
+  replace_with_na(replace = list(rh_del_age_1st_birth = c(99))) %>%
+  set_variable_labels(rh_del_age_1st_birth = "Age at first birth")
 
 
 # //Place of delivery
